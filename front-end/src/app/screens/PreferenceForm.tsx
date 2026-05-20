@@ -1,23 +1,31 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { Button } from '../components/Button';
-import { FormField, SelectField } from '../components/FormField';
-import { Utensils, DollarSign, Leaf, MapPin, Coffee, Clock } from 'lucide-react';
+import { useState } from "react";
+import type { SubmitEvent } from "react";
+import { useNavigate } from "react-router";
+import { Button } from "../components/Button";
+import { FormField, SelectField } from "../components/FormField";
+import {
+  Utensils,
+  DollarSign,
+  Leaf,
+  MapPin,
+  Coffee,
+  Clock,
+} from "lucide-react";
 
 export function PreferenceForm() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    cuisine: '',
-    priceRange: '',
-    dietary: '',
-    distance: '',
-    ambience: '',
-    time: '',
+    cuisine: "",
+    priceRange: "",
+    dietary: "",
+    distance: "",
+    ambience: "",
+    time: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    navigate('/map', { state: formData });
+    navigate("/map", { state: formData });
   };
 
   return (
@@ -34,16 +42,18 @@ export function PreferenceForm() {
               label="Cuisine"
               icon={<Utensils size={20} />}
               options={[
-                { value: '', label: 'Select cuisine type...' },
-                { value: 'italian', label: 'Italian' },
-                { value: 'mexican', label: 'Mexican' },
-                { value: 'asian', label: 'Asian' },
-                { value: 'american', label: 'American' },
-                { value: 'mediterranean', label: 'Mediterranean' },
-                { value: 'indian', label: 'Indian' },
+                { value: "", label: "Select cuisine type..." },
+                { value: "italian", label: "Italian" },
+                { value: "mexican", label: "Mexican" },
+                { value: "asian", label: "Asian" },
+                { value: "american", label: "American" },
+                { value: "mediterranean", label: "Mediterranean" },
+                { value: "indian", label: "Indian" },
               ]}
               value={formData.cuisine}
-              onChange={(e) => setFormData({ ...formData, cuisine: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, cuisine: e.target.value })
+              }
               required
             />
 
@@ -51,14 +61,16 @@ export function PreferenceForm() {
               label="Price Range"
               icon={<DollarSign size={20} />}
               options={[
-                { value: '', label: 'Select price range...' },
-                { value: '1', label: '$ - Budget-friendly' },
-                { value: '2', label: '$$ - Moderate' },
-                { value: '3', label: '$$$ - Upscale' },
-                { value: '4', label: '$$$$ - Fine Dining' },
+                { value: "", label: "Select price range..." },
+                { value: "1", label: "$ - Budget-friendly" },
+                { value: "2", label: "$$ - Moderate" },
+                { value: "3", label: "$$$ - Upscale" },
+                { value: "4", label: "$$$$ - Fine Dining" },
               ]}
               value={formData.priceRange}
-              onChange={(e) => setFormData({ ...formData, priceRange: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, priceRange: e.target.value })
+              }
               required
             />
 
@@ -66,16 +78,18 @@ export function PreferenceForm() {
               label="Dietary Needs"
               icon={<Leaf size={20} />}
               options={[
-                { value: '', label: 'Select dietary preferences...' },
-                { value: 'none', label: 'No restrictions' },
-                { value: 'vegetarian', label: 'Vegetarian' },
-                { value: 'vegan', label: 'Vegan' },
-                { value: 'gluten-free', label: 'Gluten-Free' },
-                { value: 'halal', label: 'Halal' },
-                { value: 'kosher', label: 'Kosher' },
+                { value: "", label: "Select dietary preferences..." },
+                { value: "none", label: "No restrictions" },
+                { value: "vegetarian", label: "Vegetarian" },
+                { value: "vegan", label: "Vegan" },
+                { value: "gluten-free", label: "Gluten-Free" },
+                { value: "halal", label: "Halal" },
+                { value: "kosher", label: "Kosher" },
               ]}
               value={formData.dietary}
-              onChange={(e) => setFormData({ ...formData, dietary: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, dietary: e.target.value })
+              }
               required
             />
 
@@ -83,15 +97,17 @@ export function PreferenceForm() {
               label="Max Travel Distance"
               icon={<MapPin size={20} />}
               options={[
-                { value: '', label: 'Select max distance...' },
-                { value: '1', label: 'Within 1 mile' },
-                { value: '3', label: 'Within 3 miles' },
-                { value: '5', label: 'Within 5 miles' },
-                { value: '10', label: 'Within 10 miles' },
-                { value: '20', label: 'Within 20 miles' },
+                { value: "", label: "Select max distance..." },
+                { value: "1", label: "Within 1 mile" },
+                { value: "3", label: "Within 3 miles" },
+                { value: "5", label: "Within 5 miles" },
+                { value: "10", label: "Within 10 miles" },
+                { value: "20", label: "Within 20 miles" },
               ]}
               value={formData.distance}
-              onChange={(e) => setFormData({ ...formData, distance: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, distance: e.target.value })
+              }
               required
             />
 
@@ -99,16 +115,18 @@ export function PreferenceForm() {
               label="Ambience"
               icon={<Coffee size={20} />}
               options={[
-                { value: '', label: 'Select ambience...' },
-                { value: 'casual', label: 'Casual' },
-                { value: 'romantic', label: 'Romantic' },
-                { value: 'family', label: 'Family-friendly' },
-                { value: 'business', label: 'Business' },
-                { value: 'trendy', label: 'Trendy' },
-                { value: 'quiet', label: 'Quiet' },
+                { value: "", label: "Select ambience..." },
+                { value: "casual", label: "Casual" },
+                { value: "romantic", label: "Romantic" },
+                { value: "family", label: "Family-friendly" },
+                { value: "business", label: "Business" },
+                { value: "trendy", label: "Trendy" },
+                { value: "quiet", label: "Quiet" },
               ]}
               value={formData.ambience}
-              onChange={(e) => setFormData({ ...formData, ambience: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, ambience: e.target.value })
+              }
               required
             />
 
@@ -116,14 +134,16 @@ export function PreferenceForm() {
               label="Time of Visit"
               icon={<Clock size={20} />}
               options={[
-                { value: '', label: 'Select time...' },
-                { value: 'breakfast', label: 'Breakfast (6-11 AM)' },
-                { value: 'lunch', label: 'Lunch (11 AM-3 PM)' },
-                { value: 'dinner', label: 'Dinner (5-10 PM)' },
-                { value: 'late-night', label: 'Late Night (10 PM+)' },
+                { value: "", label: "Select time..." },
+                { value: "breakfast", label: "Breakfast (6-11 AM)" },
+                { value: "lunch", label: "Lunch (11 AM-3 PM)" },
+                { value: "dinner", label: "Dinner (5-10 PM)" },
+                { value: "late-night", label: "Late Night (10 PM+)" },
               ]}
               value={formData.time}
-              onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, time: e.target.value })
+              }
               required
             />
 

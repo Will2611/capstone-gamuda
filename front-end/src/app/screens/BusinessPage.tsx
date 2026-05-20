@@ -1,54 +1,57 @@
-import { useState } from 'react';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { FormField } from '../components/FormField';
-import { BarChart3, Megaphone, TrendingUp, Mail, Phone } from 'lucide-react';
+import { useState } from "react";
+import type { SubmitEvent } from "react";
+import { Card } from "../components/Card";
+import { Button } from "../components/Button";
+import { FormField } from "../components/FormField";
+import { BarChart3, Megaphone, TrendingUp, Mail, Phone } from "lucide-react";
 
 export function BusinessPage() {
-  const [email, setEmail] = useState('');
-  const [restaurantName, setRestaurantName] = useState('');
+  const [email, setEmail] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const businessModels = [
     {
       icon: <BarChart3 size={48} />,
-      title: 'Subscription Dashboard',
-      description: 'Access to analytics, customer insights, and performance metrics',
-      price: '$99/month',
+      title: "Subscription Dashboard",
+      description:
+        "Access to analytics, customer insights, and performance metrics",
+      price: "$99/month",
       features: [
-        'Real-time visibility score',
-        'Customer preference analytics',
-        'Conversion tracking',
-        'Weekly performance reports',
+        "Real-time visibility score",
+        "Customer preference analytics",
+        "Conversion tracking",
+        "Weekly performance reports",
       ],
     },
     {
       icon: <Megaphone size={48} />,
-      title: 'Promoted Listings',
-      description: 'Boost your restaurant to the top of search results',
-      price: '$199/month',
+      title: "Promoted Listings",
+      description: "Boost your restaurant to the top of search results",
+      price: "$199/month",
       features: [
-        'Priority placement in search',
+        "Priority placement in search",
         'Featured "Top Match" status',
-        'Custom promotional banners',
-        'A/B testing for listings',
+        "Custom promotional banners",
+        "A/B testing for listings",
       ],
     },
     {
       icon: <TrendingUp size={48} />,
-      title: 'Pay-per-Conversion',
-      description: 'Only pay when customers visit after a BiteScouts recommendation',
-      price: '$5 per visit',
+      title: "Pay-per-Conversion",
+      description:
+        "Only pay when customers visit after a BiteScouts recommendation",
+      price: "$5 per visit",
       features: [
-        'No upfront costs',
-        'Verified visit tracking',
-        'Detailed attribution reports',
-        'Volume discounts available',
+        "No upfront costs",
+        "Verified visit tracking",
+        "Detailed attribution reports",
+        "Volume discounts available",
       ],
     },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitted(true);
   };
@@ -60,8 +63,8 @@ export function BusinessPage() {
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h1 className="mb-4">Grow Your Restaurant with BiteScouts</h1>
           <p className="text-xl text-bs-neutral-700 mb-8 max-w-3xl mx-auto">
-            Connect with diners who are actively looking for exactly what you offer.
-            Turn searches into visits with AI-powered matching.
+            Connect with diners who are actively looking for exactly what you
+            offer. Turn searches into visits with AI-powered matching.
           </p>
           <div className="inline-block bg-bs-gold text-bs-neutral-900 px-6 py-3 rounded-lg shadow-lg">
             <p className="font-bold">Join our Pilot Program - 3 months free</p>
@@ -77,23 +80,38 @@ export function BusinessPage() {
             <Card key={index} hover className="flex flex-col">
               <div className="text-bs-gold mb-4">{model.icon}</div>
               <h3 className="mb-2">{model.title}</h3>
-              <p className="text-bs-neutral-600 mb-4 flex-grow">{model.description}</p>
+              <p className="text-bs-neutral-600 mb-4 flex-grow">
+                {model.description}
+              </p>
               <div className="mb-4">
-                <span className="text-2xl font-bold text-bs-neutral-900">{model.price}</span>
+                <span className="text-2xl font-bold text-bs-neutral-900">
+                  {model.price}
+                </span>
               </div>
               <ul className="space-y-2 mb-6">
                 {model.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm text-bs-neutral-700">
-                    <svg className="w-5 h-5 text-bs-green mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  <li
+                    key={idx}
+                    className="flex items-start gap-2 text-sm text-bs-neutral-700"
+                  >
+                    <svg
+                      className="w-5 h-5 text-bs-green mt-0.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     {feature}
                   </li>
                 ))}
               </ul>
-              <Button className="w-full mt-auto">
-                Get Started
-              </Button>
+              <Button className="w-full mt-auto">Get Started</Button>
             </Card>
           ))}
         </div>
@@ -103,12 +121,16 @@ export function BusinessPage() {
           <div className="text-center py-8">
             <h2 className="mb-4">Join Our Pilot Program</h2>
             <p className="text-lg text-bs-neutral-700 mb-8 max-w-2xl mx-auto">
-              Be among the first restaurants to leverage AI-powered customer matching.
-              Get 3 months of any plan completely free, plus dedicated onboarding support.
+              Be among the first restaurants to leverage AI-powered customer
+              matching. Get 3 months of any plan completely free, plus dedicated
+              onboarding support.
             </p>
 
             {!submitted ? (
-              <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
+              <form
+                onSubmit={handleSubmit}
+                className="max-w-md mx-auto space-y-4"
+              >
                 <FormField
                   type="text"
                   placeholder="Your Restaurant Name"
@@ -147,7 +169,9 @@ export function BusinessPage() {
                 </div>
                 <div className="text-left">
                   <h4 className="mb-1">Email Us</h4>
-                  <p className="text-sm text-bs-neutral-600">partners@bitescouts.com</p>
+                  <p className="text-sm text-bs-neutral-600">
+                    partners@bitescouts.com
+                  </p>
                 </div>
               </div>
             </Card>
@@ -158,7 +182,9 @@ export function BusinessPage() {
                 </div>
                 <div className="text-left">
                   <h4 className="mb-1">Call Us</h4>
-                  <p className="text-sm text-bs-neutral-600">1-800-BITE-SCOUT</p>
+                  <p className="text-sm text-bs-neutral-600">
+                    1-800-BITE-SCOUT
+                  </p>
                 </div>
               </div>
             </Card>

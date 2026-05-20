@@ -1,5 +1,5 @@
-import { Play, ExternalLink } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Play, ExternalLink } from "lucide-react";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface TikTokVideo {
   id: number;
@@ -15,11 +15,11 @@ interface TikTokVideosProps {
 
 export function TikTokVideos({ videos, profileUrl }: TikTokVideosProps) {
   const handleOpenTikTok = () => {
-    window.open(profileUrl, '_blank', 'noopener,noreferrer');
+    window.open(profileUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleOpenVideo = (videoUrl: string) => {
-    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+    window.open(videoUrl, "_blank", "noopener,noreferrer");
   };
 
   return (

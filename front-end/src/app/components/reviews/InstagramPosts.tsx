@@ -1,5 +1,5 @@
-import { Camera, ExternalLink } from 'lucide-react';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
+import { Camera, ExternalLink } from "lucide-react";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
 
 interface InstagramPost {
   id: number;
@@ -14,11 +14,11 @@ interface InstagramPostsProps {
 
 export function InstagramPosts({ posts, profileUrl }: InstagramPostsProps) {
   const handleOpenInstagram = () => {
-    window.open(profileUrl, '_blank', 'noopener,noreferrer');
+    window.open(profileUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleOpenPost = (postUrl: string) => {
-    window.open(postUrl, '_blank', 'noopener,noreferrer');
+    window.open(postUrl, "_blank", "noopener,noreferrer");
   };
 
   return (

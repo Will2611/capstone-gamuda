@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { MapPin } from '../components/MapPin';
-import { RestaurantCard } from '../components/Card';
-import { Button } from '../components/Button';
-import { ReviewPanel } from '../components/reviews/ReviewPanel';
+import { useState } from "react";
+import { useNavigate } from "react-router";
+import { MapPin } from "../components/MapPin";
+import { RestaurantCard } from "../components/Card";
+import { Button } from "../components/Button";
+import { ReviewPanel } from "../components/reviews/ReviewPanel";
 
 interface Restaurant {
   id: number;
@@ -11,7 +11,7 @@ interface Restaurant {
   rating: number;
   distance: string;
   dietary: string;
-  type: 'gold' | 'red';
+  type: "gold" | "red";
   position: { top: string; left: string };
   image?: string;
 }
@@ -27,8 +27,8 @@ export function MapInterface() {
       rating: 4.8,
       distance: "10-15 min",
       dietary: "Vegetarian options",
-      type: 'gold',
-      position: { top: '45%', left: '55%' },
+      type: "gold",
+      position: { top: "45%", left: "55%" },
     },
     {
       id: 2,
@@ -36,8 +36,8 @@ export function MapInterface() {
       rating: 4.5,
       distance: "12-18 min",
       dietary: "Gluten-free options",
-      type: 'red',
-      position: { top: '30%', left: '40%' },
+      type: "red",
+      position: { top: "30%", left: "40%" },
     },
     {
       id: 3,
@@ -45,8 +45,8 @@ export function MapInterface() {
       rating: 4.6,
       distance: "8-12 min",
       dietary: "Vegan options",
-      type: 'red',
-      position: { top: '60%', left: '35%' },
+      type: "red",
+      position: { top: "60%", left: "35%" },
     },
     {
       id: 4,
@@ -54,8 +54,8 @@ export function MapInterface() {
       rating: 4.7,
       distance: "15-20 min",
       dietary: "Gluten-free options",
-      type: 'red',
-      position: { top: '25%', left: '65%' },
+      type: "red",
+      position: { top: "25%", left: "65%" },
     },
   ];
 
@@ -66,22 +66,77 @@ export function MapInterface() {
       {/* Map Section */}
       <div className="flex-1 relative bg-gradient-to-br from-bs-neutral-100 to-bs-neutral-200">
         {/* Map Grid Pattern */}
-        <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+        <svg
+          className="absolute inset-0 w-full h-full opacity-20"
+          xmlns="http://www.w3.org/2000/svg"
+        >
           <defs>
-            <pattern id="grid" x="0" y="0" width="50" height="50" patternUnits="userSpaceOnUse">
-              <line x1="0" y1="0" x2="0" y2="50" stroke="#999" strokeWidth="0.5"/>
-              <line x1="0" y1="0" x2="50" y2="0" stroke="#999" strokeWidth="0.5"/>
+            <pattern
+              id="grid"
+              x="0"
+              y="0"
+              width="50"
+              height="50"
+              patternUnits="userSpaceOnUse"
+            >
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="50"
+                stroke="#999"
+                strokeWidth="0.5"
+              />
+              <line
+                x1="0"
+                y1="0"
+                x2="50"
+                y2="0"
+                stroke="#999"
+                strokeWidth="0.5"
+              />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#grid)"/>
+          <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
 
         {/* Roads/Streets */}
-        <svg className="absolute inset-0 w-full h-full opacity-30" xmlns="http://www.w3.org/2000/svg">
-          <line x1="0" y1="40%" x2="100%" y2="40%" stroke="#666" strokeWidth="3"/>
-          <line x1="0" y1="70%" x2="100%" y2="70%" stroke="#666" strokeWidth="3"/>
-          <line x1="30%" y1="0" x2="30%" y2="100%" stroke="#666" strokeWidth="3"/>
-          <line x1="60%" y1="0" x2="60%" y2="100%" stroke="#666" strokeWidth="3"/>
+        <svg
+          className="absolute inset-0 w-full h-full opacity-30"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <line
+            x1="0"
+            y1="40%"
+            x2="100%"
+            y2="40%"
+            stroke="#666"
+            strokeWidth="3"
+          />
+          <line
+            x1="0"
+            y1="70%"
+            x2="100%"
+            y2="70%"
+            stroke="#666"
+            strokeWidth="3"
+          />
+          <line
+            x1="30%"
+            y1="0"
+            x2="30%"
+            y2="100%"
+            stroke="#666"
+            strokeWidth="3"
+          />
+          <line
+            x1="60%"
+            y1="0"
+            x2="60%"
+            y2="100%"
+            stroke="#666"
+            strokeWidth="3"
+          />
         </svg>
 
         {/* Restaurant Pins */}
@@ -89,10 +144,10 @@ export function MapInterface() {
           <div
             key={restaurant.id}
             style={{
-              position: 'absolute',
+              position: "absolute",
               top: restaurant.position.top,
               left: restaurant.position.left,
-              transform: 'translate(-50%, -100%)',
+              transform: "translate(-50%, -100%)",
             }}
           >
             <MapPin
@@ -123,7 +178,7 @@ export function MapInterface() {
           <div className="p-6 space-y-6">
             <div>
               <h2 className="mb-2">{selectedRestaurant.name}</h2>
-              {selectedRestaurant.type === 'gold' && (
+              {selectedRestaurant.type === "gold" && (
                 <div className="inline-block bg-bs-gold/20 text-bs-neutral-900 px-3 py-1 rounded-full text-sm">
                   Top Match
                 </div>
@@ -135,14 +190,20 @@ export function MapInterface() {
               rating={selectedRestaurant.rating}
               distance={selectedRestaurant.distance}
               dietary={selectedRestaurant.dietary}
-              onDirections={() => alert(`Navigating to ${selectedRestaurant.name}...`)}
+              onDirections={() =>
+                alert(`Navigating to ${selectedRestaurant.name}...`)
+              }
             />
 
             <div className="p-4 bg-bs-blue/10 rounded-lg">
               <h4 className="mb-2">Why this match?</h4>
               <p className="text-sm text-bs-neutral-700">
-                Highly rated for {selectedRestaurant.name.includes('Spice') ? 'spicy noodles' : 'your cuisine preference'};
-                {selectedRestaurant.distance} drive; {selectedRestaurant.dietary.toLowerCase()} available
+                Highly rated for{" "}
+                {selectedRestaurant.name.includes("Spice")
+                  ? "spicy noodles"
+                  : "your cuisine preference"}
+                ;{selectedRestaurant.distance} drive;{" "}
+                {selectedRestaurant.dietary.toLowerCase()} available
               </p>
             </div>
 
@@ -155,7 +216,7 @@ export function MapInterface() {
             <Button
               variant="secondary"
               className="w-full"
-              onClick={() => navigate('/suggestions')}
+              onClick={() => navigate("/suggestions")}
             >
               View All Suggestions
             </Button>
