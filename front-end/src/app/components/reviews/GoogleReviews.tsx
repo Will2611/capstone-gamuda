@@ -1,4 +1,4 @@
-import { Star, ExternalLink } from 'lucide-react';
+import { Star, ExternalLink } from "lucide-react";
 
 interface GoogleReviewsProps {
   averageRating: number;
@@ -6,7 +6,11 @@ interface GoogleReviewsProps {
   reviewUrl: string;
 }
 
-export function GoogleReviews({ averageRating, totalReviews, reviewUrl }: GoogleReviewsProps) {
+export function GoogleReviews({
+  averageRating,
+  totalReviews,
+  reviewUrl,
+}: GoogleReviewsProps) {
   const renderStars = (rating: number) => {
     return (
       <div className="flex gap-1">
@@ -14,7 +18,11 @@ export function GoogleReviews({ averageRating, totalReviews, reviewUrl }: Google
           <Star
             key={star}
             size={24}
-            className={star <= rating ? 'fill-bs-gold text-bs-gold' : 'text-bs-neutral-300'}
+            className={
+              star <= rating
+                ? "fill-bs-gold text-bs-gold"
+                : "text-bs-neutral-300"
+            }
           />
         ))}
       </div>
@@ -22,7 +30,7 @@ export function GoogleReviews({ averageRating, totalReviews, reviewUrl }: Google
   };
 
   const handleOpenGoogle = () => {
-    window.open(reviewUrl, '_blank', 'noopener,noreferrer');
+    window.open(reviewUrl, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -32,7 +40,9 @@ export function GoogleReviews({ averageRating, totalReviews, reviewUrl }: Google
         <div className="inline-flex items-center justify-center w-24 h-24 bg-bs-gold/10 rounded-full mb-4">
           <Star size={48} className="fill-bs-gold text-bs-gold" />
         </div>
-        <div className="text-5xl font-bold text-bs-neutral-900 mb-3">{averageRating}</div>
+        <div className="text-5xl font-bold text-bs-neutral-900 mb-3">
+          {averageRating}
+        </div>
         <div className="flex justify-center mb-2">
           {renderStars(Math.round(averageRating))}
         </div>
