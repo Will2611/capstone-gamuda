@@ -46,7 +46,7 @@ interface TikTokData {
  * Returns: rating data + URL to Google reviews (no text content)
  */
 export async function getGoogleReviews(
-  restaurantId: number
+  restaurantId: number,
 ): Promise<GoogleReviewsData> {
   try {
     // In production, uncomment and use actual API call:
@@ -63,7 +63,7 @@ export async function getGoogleReviews(
       reviewUrl: `https://www.google.com/maps/search/?api=1&query=restaurant+${restaurantId}&query_place_id=place_${restaurantId}`,
     };
   } catch (error) {
-    console.error('Error fetching Google reviews data:', error);
+    console.error("Error fetching Google reviews data:", error);
     throw error;
   }
 }
@@ -74,7 +74,7 @@ export async function getGoogleReviews(
  * Returns: thumbnail URLs + post URLs (no captions or content)
  */
 export async function getInstagramPosts(
-  restaurantId: number
+  restaurantId: number,
 ): Promise<InstagramData> {
   try {
     // In production, uncomment and use actual API call:
@@ -84,29 +84,33 @@ export async function getInstagramPosts(
 
     // Mock data - backend would return just URLs
     await new Promise((resolve) => setTimeout(resolve, 300));
+    console.log("Use later", restaurantId);
 
     return {
-      profileUrl: 'https://www.instagram.com/restaurant_profile/',
+      profileUrl: "https://www.instagram.com/restaurant_profile/",
       posts: [
         {
           id: 1,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
-          postUrl: 'https://www.instagram.com/p/example1/',
+          thumbnailUrl:
+            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+          postUrl: "https://www.instagram.com/p/example1/",
         },
         {
           id: 2,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400',
-          postUrl: 'https://www.instagram.com/p/example2/',
+          thumbnailUrl:
+            "https://images.unsplash.com/photo-1559314809-0d155014e29e?w=400",
+          postUrl: "https://www.instagram.com/p/example2/",
         },
         {
           id: 3,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400',
-          postUrl: 'https://www.instagram.com/p/example3/',
+          thumbnailUrl:
+            "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400",
+          postUrl: "https://www.instagram.com/p/example3/",
         },
       ],
     };
   } catch (error) {
-    console.error('Error fetching Instagram posts:', error);
+    console.error("Error fetching Instagram posts:", error);
     throw error;
   }
 }
@@ -117,7 +121,7 @@ export async function getInstagramPosts(
  * Returns: thumbnail URLs + video URLs (no titles or descriptions)
  */
 export async function getTikTokVideos(
-  restaurantId: number
+  restaurantId: number,
 ): Promise<TikTokData> {
   try {
     // In production, uncomment and use actual API call:
@@ -126,27 +130,30 @@ export async function getTikTokVideos(
     // return await response.json();
 
     // Mock data - backend would return just URLs
+    console.log("Use later", restaurantId);
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     return {
-      profileUrl: 'https://www.tiktok.com/@restaurant_profile',
+      profileUrl: "https://www.tiktok.com/@restaurant_profile",
       videos: [
         {
           id: 1,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
-          videoUrl: 'https://www.tiktok.com/@restaurant/video/1234567890',
-          duration: '0:28',
+          thumbnailUrl:
+            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400",
+          videoUrl: "https://www.tiktok.com/@restaurant/video/1234567890",
+          duration: "0:28",
         },
         {
           id: 2,
-          thumbnailUrl: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400',
-          videoUrl: 'https://www.tiktok.com/@restaurant/video/9876543210',
-          duration: '0:15',
+          thumbnailUrl:
+            "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400",
+          videoUrl: "https://www.tiktok.com/@restaurant/video/9876543210",
+          duration: "0:15",
         },
       ],
     };
   } catch (error) {
-    console.error('Error fetching TikTok videos:', error);
+    console.error("Error fetching TikTok videos:", error);
     throw error;
   }
 }
