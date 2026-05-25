@@ -28,13 +28,14 @@ const LoginPage = lazy(() => import("./screens/LoginPage"));
 const SignUpPage = lazy(() => import("./screens/SignUpPage"));
 const UserProfile = lazy(() => import("./screens/UserProfile"));
 
+import PWABadge from "./PWABadge";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <UserProvider>
-
+          <PWABadge>
             <div className="min-h-screen bg-white">
               <Navigation />
               <Routes>
@@ -52,10 +53,9 @@ export default function App() {
                 <Route path="/search" element={<PreferenceForm />} />
                 {/* Update to nested in /owner */}
                 <Route path="/dashboard" element={<OwnerDashboard />} />
-
               </Routes>
             </div>
-
+          </PWABadge>
         </UserProvider>
       </AuthProvider>
     </BrowserRouter>
