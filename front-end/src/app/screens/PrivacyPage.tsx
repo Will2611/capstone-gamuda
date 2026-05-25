@@ -1,14 +1,39 @@
-import { Card } from '../components/Card';
-import { Shield, Lock, CheckCircle, Eye, Database, UserCheck } from 'lucide-react';
+import { Card } from "../components/Card";
+import {
+  Shield,
+  Lock,
+  CheckCircle,
+  Eye,
+  Database,
+  UserCheck,
+} from "lucide-react";
 
-export function PrivacyPage() {
+export default function PrivacyPage() {
   const privacyFeatures = [
-    { icon: <Shield size={20} />, text: 'All consumer data is anonymized and aggregated' },
-    { icon: <Lock size={20} />, text: 'Encrypted data transmission and storage' },
-    { icon: <UserCheck size={20} />, text: 'Opt-in consent required for all data collection' },
-    { icon: <Eye size={20} />, text: 'No personally identifiable information (PII) shared with restaurants' },
-    { icon: <Database size={20} />, text: 'GDPR and CCPA compliant data handling' },
-    { icon: <CheckCircle size={20} />, text: 'You control your data - delete anytime' },
+    {
+      icon: <Shield size={20} />,
+      text: "All consumer data is anonymized and aggregated",
+    },
+    {
+      icon: <Lock size={20} />,
+      text: "Encrypted data transmission and storage",
+    },
+    {
+      icon: <UserCheck size={20} />,
+      text: "Opt-in consent required for all data collection",
+    },
+    {
+      icon: <Eye size={20} />,
+      text: "No personally identifiable information (PII) shared with restaurants",
+    },
+    {
+      icon: <Database size={20} />,
+      text: "GDPR and CCPA compliant data handling",
+    },
+    {
+      icon: <CheckCircle size={20} />,
+      text: "You control your data - delete anytime",
+    },
   ];
 
   return (
@@ -21,8 +46,8 @@ export function PrivacyPage() {
           </div>
           <h1 className="mb-4">Your Privacy is Our Priority</h1>
           <p className="text-lg text-bs-neutral-600 max-w-2xl mx-auto">
-            We believe in transparent data practices. Here's how we protect your information
-            and respect your privacy.
+            We believe in transparent data practices. Here's how we protect your
+            information and respect your privacy.
           </p>
         </div>
 
@@ -31,10 +56,11 @@ export function PrivacyPage() {
           <h2 className="mb-6">Our Privacy Guarantees</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {privacyFeatures.map((feature, index) => (
-              <div key={index} className="flex items-start gap-3 p-4 bg-bs-green/10 rounded-lg">
-                <div className="text-bs-green mt-1">
-                  {feature.icon}
-                </div>
+              <div
+                key={index}
+                className="flex items-start gap-3 p-4 bg-bs-green/10 rounded-lg"
+              >
+                <div className="text-bs-green mt-1">{feature.icon}</div>
                 <p className="text-bs-neutral-700">{feature.text}</p>
               </div>
             ))}
@@ -48,23 +74,26 @@ export function PrivacyPage() {
             <div>
               <h3 className="mb-2">What We Collect</h3>
               <p className="text-bs-neutral-600">
-                We collect your dining preferences (cuisine, price range, dietary needs, etc.)
-                and location data to provide personalized restaurant recommendations.
+                We collect your dining preferences (cuisine, price range,
+                dietary needs, etc.) and location data to provide personalized
+                restaurant recommendations.
               </p>
             </div>
             <div>
               <h3 className="mb-2">How We Use It</h3>
               <p className="text-bs-neutral-600">
-                Your preferences are used to match you with restaurants. We aggregate anonymous
-                data to help restaurants understand market trends (e.g., "30% of users in this
-                area prefer vegetarian options").
+                Your preferences are used to match you with restaurants. We
+                aggregate anonymous data to help restaurants understand market
+                trends (e.g., "30% of users in this area prefer vegetarian
+                options").
               </p>
             </div>
             <div>
               <h3 className="mb-2">What We Don't Share</h3>
               <p className="text-bs-neutral-600">
-                We never share your name, contact information, or individual search history
-                with restaurants. All data shared is aggregated and anonymized.
+                We never share your name, contact information, or individual
+                search history with restaurants. All data shared is aggregated
+                and anonymized.
               </p>
             </div>
           </div>
@@ -88,7 +117,8 @@ export function PrivacyPage() {
               <div>
                 <h4 className="mb-1">Opt Out of Analytics</h4>
                 <p className="text-sm text-bs-neutral-600">
-                  Choose to exclude your data from aggregated analytics shared with restaurants
+                  Choose to exclude your data from aggregated analytics shared
+                  with restaurants
                 </p>
               </div>
             </div>
@@ -97,7 +127,8 @@ export function PrivacyPage() {
               <div>
                 <h4 className="mb-1">Delete Your Data</h4>
                 <p className="text-sm text-bs-neutral-600">
-                  Request complete deletion of your account and all associated data
+                  Request complete deletion of your account and all associated
+                  data
                 </p>
               </div>
             </div>
