@@ -5,7 +5,7 @@ import { Button } from "../components/Button";
 import { FormField } from "../components/FormField";
 import { BarChart3, Megaphone, TrendingUp, Mail, Phone } from "lucide-react";
 
-export function BusinessPage() {
+export default function BusinessPage() {
   const [email, setEmail] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [submitted, setSubmitted] = useState(false);

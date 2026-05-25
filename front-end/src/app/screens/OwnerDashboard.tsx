@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { TrendingUp, Search, Tag, Users } from "lucide-react";
 
-export function OwnerDashboard() {
+export default function OwnerDashboard() {
   const metricsData = [
     {
       label: "Visibility Score",
