@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { SubmitEvent } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/Button";
-import { FormField, SelectField } from "../components/FormField";
+import { SelectField } from "../components/FormField";
+import { useUser } from "../context/UserContext";
+import type { SearchPreferences } from "../types/restaurant";
 import {
   Utensils,
   DollarSign,
@@ -12,20 +14,51 @@ import {
   Clock,
 } from "lucide-react";
 
+const emptyForm: SearchPreferences = {
+  cuisine: "",
+  priceRange: "",
+  dietary: "",
+  distance: "",
+  ambience: "",
+  time: "",
+};
+
 export function PreferenceForm() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    cuisine: "",
-    priceRange: "",
-    dietary: "",
-    distance: "",
-    ambience: "",
-    time: "",
-  });
+  const { updatePreferences, addSearchHistory } = useUser();
+  const [formData, setFormData] = useState<SearchPreferences>(emptyForm);
+
+  const saveAndGoToMap = (prefs: SearchPreferences) => {
+    const hasAny = Object.values(prefs).some(Boolean);
+    if (hasAny) {
+      updatePreferences(prefs);
+      const labels = [
+        prefs.cuisine,
+        prefs.dietary,
+        prefs.ambience,
+      ].filter(Boolean);
+      addSearchHistory({
+        query: labels.length
+          ? `Search: ${labels.join(", ")}`
+          : "Restaurant search",
+        date: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        preferences: prefs,
+      });
+    }
+    navigate("/map");
+  };
 
   const handleSubmit = (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    navigate("/map", { state: formData });
+    saveAndGoToMap(formData);
+  };
+
+  const handleFindRestaurant = () => {
+    saveAndGoToMap(formData);
   };
 
   return (
@@ -34,7 +67,7 @@ export function PreferenceForm() {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <h1 className="mb-2 text-center">Find Your Perfect Match</h1>
           <p className="text-bs-neutral-600 text-center mb-8">
-            Tell us what you're craving and we'll find the best spots for you
+            Tell us what you&apos;re craving — or skip straight to the map
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -54,7 +87,6 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, cuisine: e.target.value })
               }
-              required
             />
 
             <SelectField
@@ -71,7 +103,6 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, priceRange: e.target.value })
               }
-              required
             />
 
             <SelectField
@@ -90,7 +121,6 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, dietary: e.target.value })
               }
-              required
             />
 
             <SelectField
@@ -108,7 +138,6 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, distance: e.target.value })
               }
-              required
             />
 
             <SelectField
@@ -127,7 +156,6 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, ambience: e.target.value })
               }
-              required
             />
 
             <SelectField
@@ -144,13 +172,15 @@ export function PreferenceForm() {
               onChange={(e) =>
                 setFormData({ ...formData, time: e.target.value })
               }
-              required
             />
 
-            <div className="pt-4">
-              <Button type="submit" className="w-full">
-                Find My Match
+            <div className="pt-4 space-y-3">
+              <Button type="button" className="w-full" onClick={handleFindRestaurant}>
+                Find Restaurant
               </Button>
+              <p className="text-center text-xs text-bs-neutral-500">
+                Goes straight to the map — preferences are optional
+              </p>
             </div>
           </form>
         </div>

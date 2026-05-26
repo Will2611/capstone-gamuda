@@ -7,5 +7,3 @@ This is a code bundle for BiteScouts Restaurant Finder. The original project is 
 Run `pnpm i` to install the dependencies.
 
 Run `pnpm run dev` to start the development server.
-
-izzah test

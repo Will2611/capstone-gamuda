@@ -130,7 +130,7 @@ export function LandingPage() {
             Discover the perfect restaurant for your cravings with AI-powered
             recommendations
           </p>
-          <Button onClick={() => navigate("/search")}>Start Your Search</Button>
+          <Button onClick={() => navigate("/map")}>Find Restaurant</Button>
         </div>
       </div>
 
@@ -157,7 +157,10 @@ export function LandingPage() {
             Join thousands of food lovers discovering their new favorite spots
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button onClick={() => navigate("/search")}>Start Searching</Button>
+            <Button onClick={() => navigate("/map")}>Find Restaurant</Button>
+            <Button variant="secondary" onClick={() => navigate("/search")}>
+              Set Preferences
+            </Button>
             <Button variant="secondary" onClick={() => navigate("/business")}>
               I'm a Restaurant Owner
             </Button>
