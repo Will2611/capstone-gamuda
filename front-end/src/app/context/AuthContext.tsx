@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
+export type Role = "client" | "owner";
 const AUTH_STORAGE_KEY = "bitescouts_auth";
 
 interface AuthUser {
@@ -18,7 +19,10 @@ interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
 
@@ -74,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
     }),
-    [user, login, logout]
+    [user, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
