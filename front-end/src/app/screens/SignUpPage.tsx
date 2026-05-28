@@ -1,18 +1,63 @@
-import { Link } from "react-router";
-import { Button } from "../components/Button";
+import { useState } from "react";
+import { Navigate } from "react-router";
+import { useAuth, type Role } from "../context/AuthContext";
+
+import { SignUpFormClient } from "../components/SignUpFormClient";
+import { SignUpFormOwner } from "../components/SignUpFormOwner";
 
 export default function SignUpPage() {
+  const { isAuthenticated } = useAuth();
+
+  const [selectedRole, setSelectedRole] = useState<Role>("client");
+
+  if (isAuthenticated) {
+    return <Navigate to="/map" replace />;
+  }
+
   return (
-    <div className="min-h-[calc(100vh-73px)] bg-bs-neutral-100 flex items-center justify-center py-12 px-6">
-      <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-lg border border-bs-neutral-200 text-center">
-        <h1 className="mb-3">Sign Up</h1>
-        <p className="text-bs-neutral-600 mb-6">
-          Account registration is coming soon. Use demo credentials on the login
-          page for now.
-        </p>
-        <Link to="/login">
-          <Button className="w-full">Back to Login</Button>
-        </Link>
+    <div className="min-h-[calc(100vh-73px)] bg-gradient-to-br from-bs-gold/10 via-white to-bs-blue/10 flex items-center justify-center py-12 px-6">
+      <div className="w-full max-w-2xl">
+        <div className="text-center mb-8">
+          <h1 className="mb-2">Create Account</h1>
+
+          <p className="text-bs-neutral-600">
+            Join BiteScouts and discover great food
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl p-8 shadow-xl border border-bs-neutral-200">
+          <div className="flex gap-4 mb-8">
+            <button
+              type="button"
+              onClick={() => setSelectedRole("client")}
+              className={`flex-1 py-3 rounded-xl border transition-all ${
+                selectedRole === "client"
+                  ? "bg-bs-gold border-bs-gold"
+                  : "border-bs-neutral-300 hover:border-bs-gold"
+              }`}
+            >
+              Client
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedRole("owner")}
+              className={`flex-1 py-3 rounded-xl border transition-all ${
+                selectedRole === "owner"
+                  ? "bg-bs-gold border-bs-gold"
+                  : "border-bs-neutral-300 hover:border-bs-gold"
+              }`}
+            >
+              Restaurant Owner
+            </button>
+          </div>
+
+          {selectedRole === "client" ? (
+            <SignUpFormClient />
+          ) : (
+            <SignUpFormOwner />
+          )}
+        </div>
       </div>
     </div>
   );
