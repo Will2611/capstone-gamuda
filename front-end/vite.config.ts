@@ -1,7 +1,8 @@
 import { defineConfig, loadEnv } from "vite";
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
-import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react";
+import svgr from "vite-plugin-svgr";
 import babel from "@rolldown/plugin-babel";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -15,7 +16,20 @@ export default defineConfig(({ mode }) => {
       // Tailwind is not being actively used – do not remove them
       react(),
       // helps with backwards compatibility
-      babel({ presets: [reactCompilerPreset()] }),
+      babel({ plugins: ["babel-plugin-react-compiler"] }),
+      svgr({
+        svgrOptions: {
+          ref: true,
+          exportType: "default",
+          dimensions: false,
+          titleProp: true,
+          // allow overwrite
+          expandProps: "start",
+          replaceAttrValues: {
+            "#TARGET_COLOR": "{props.customfill}",
+          },
+        },
+      }),
       tailwindcss(),
       VitePWA({
         registerType: "prompt",
@@ -61,7 +75,7 @@ export default defineConfig(({ mode }) => {
     },
 
     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
-    assetsInclude: ["**/*.svg", "**/*.csv"],
+    assetsInclude: ["**/*.csv"],
 
     // Change localhost port
     // server: {

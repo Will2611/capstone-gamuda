@@ -4,7 +4,11 @@
     "target": "es2023",
     "lib": ["ES2023", "DOM", "WebWorker"],
     "module": "esnext",
-    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "types": [
+      "vite/client",
+      "vite-plugin-pwa/client",
+      "vite-plugin-svgr/client"
+    ],
     "skipLibCheck": true,
 
     /* Bundler mode */

@@ -10,9 +10,9 @@ import {
   Phone,
   Camera,
 } from "lucide-react";
-import { FormField } from "./FormField";
+import { FormField, SelectField } from "./FormField";
 import { Button } from "./Button";
-import { SelectField } from "./SelectField";
+// import { SelectField } from "./SelectField";
 
 export function SignUpFormClient() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -30,6 +30,26 @@ export function SignUpFormClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const genderOptions = [
+    { label: "Select Gender", value: "" },
+    { label: "Male", value: "male" },
+    { label: "Female", value: "female" },
+  ];
+
+  const religionOptions = [
+    { value: "", label: "Select Religion" },
+    { value: "Islam", label: "Islam" },
+    { value: "Christianity", label: "Christianity" },
+    { value: "Buddhism", label: "Buddhism" },
+    { value: "Hinduism", label: "Hinduism" },
+    { value: "Others", label: "Others" },
+  ];
+  const langOptions = [
+    { value: "", label: "Select Language" },
+    { value: "en", label: "English" },
+    { value: "ms", label: "Bahasa Melayu" },
+  ];
 
   const navigate = useNavigate();
 
@@ -286,7 +306,7 @@ export function SignUpFormClient() {
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-[38px] text-bs-neutral-500 hover:text-bs-neutral-700"
+          className="absolute right-3 top-[calc(50%+5px)] text-bs-neutral-500 pointer-events-none"
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
           {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -300,11 +320,8 @@ export function SignUpFormClient() {
         onBlur={() => handleBlur("gender")}
         disabled={isLoading}
         error={touched.gender ? errors.gender : undefined}
-      >
-        <option value="">Select Gender</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-      </SelectField>
+        options={genderOptions}
+      />
 
       <FormField
         label="Birthday"
@@ -323,14 +340,8 @@ export function SignUpFormClient() {
         onBlur={() => handleBlur("religion")}
         disabled={isLoading}
         error={touched.religion ? errors.religion : undefined}
-      >
-        <option value="">Select Religion</option>
-        <option value="Islam">Islam</option>
-        <option value="Christianity">Christianity</option>
-        <option value="Buddhism">Buddhism</option>
-        <option value="Hinduism">Hinduism</option>
-        <option value="Others">Others</option>
-      </SelectField>
+        options={religionOptions}
+      />
 
       <div>
         <label className="block mb-2 font-medium">Dietary Needs</label>
@@ -364,11 +375,8 @@ export function SignUpFormClient() {
         onBlur={() => handleBlur("language")}
         disabled={isLoading}
         error={touched.language ? errors.language : undefined}
-      >
-        <option value="">Select Language</option>
-        <option value="en">English</option>
-        <option value="ms">Bahasa Melayu</option>
-      </SelectField>
+        options={langOptions}
+      />
 
       <div className="space-y-2">
         <label className="flex items-start gap-2 text-sm text-bs-neutral-700">
