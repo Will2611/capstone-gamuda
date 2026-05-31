@@ -1,0 +1,26 @@
+<svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M8 2C8 2 6 2 6 4C6 6 8 6 8 8C8 6 10 6 10 4C10 2 8 2 8 2Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 10C5 10 3 10 3 12C3 14 5 14 5 14C5 14 7 14 7 12C7 10 5 10 5 10Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11 10C11 10 9 10 9 12C9 14 11 14 11 14C11 14 13 14 13 12C13 10 11 10 11 10Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>

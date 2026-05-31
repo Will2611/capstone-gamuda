@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { useNavigate } from "react-router";
 import maplibregl from "maplibre-gl";
-import { MapPin } from "../components/MapPin";
+import { MapPinButton } from "../components/MapPin";
 import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
 import { Skeleton } from "../components/ui/skeleton";
@@ -106,7 +106,7 @@ export default function MapInterface() {
 
       const root = createRoot(el);
       root.render(
-        <MapPin
+        <MapPinButton
           type={restaurant.type}
           selected={selectedPin === restaurant.id}
           onClick={() => handlePinClick(restaurant.id)}
@@ -155,11 +155,11 @@ export default function MapInterface() {
           <div className="absolute bottom-4 right-4 pointer-events-auto bg-white rounded-xl p-4 shadow-lg border border-bs-neutral-200 z-10">
             <h4 className="text-sm font-medium mb-2">Legend</h4>
             <div className="flex items-center gap-2 mb-1.5 text-sm text-bs-neutral-700">
-              <MapPin type="gold" />
+              <MapPinButton type="gold" />
               <span>Top Match</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-bs-neutral-700">
-              <MapPin type="red" />
+              <MapPinButton type="red" />
               <span>Alternatives</span>
             </div>
           </div>

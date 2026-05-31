@@ -3,6 +3,7 @@ import type {
   SelectHTMLAttributes,
   ReactNode,
 } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -86,22 +87,8 @@ export function SelectField({
             </option>
           ))}
         </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-bs-neutral-500 pointer-events-none">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M4 6L8 10L12 6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+        <div className="absolute right-3 top-[calc(50%_-_8px)]  text-bs-neutral-500 pointer-events-none">
+          <ChevronDown size={16} />
         </div>
       </div>
       {error && <p className="mt-1 text-sm text-bs-red">{error}</p>}

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { NavLink } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import BiteSccoutIcon from "@/assets/icon.svg?react";
+import { Menu, X } from "lucide-react";
 
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,29 +21,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <NavLink className="cursor-pointer flex items-center gap-2" to={"/"}>
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 32 32"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle
-                cx="16"
-                cy="16"
-                r="14"
-                fill="#FFD700"
-                stroke="#FF4C4C"
-                strokeWidth="2"
-              />
-              <path
-                d="M12 12L16 8L20 12M12 16H20M14 20L16 22L18 20"
-                stroke="#FF4C4C"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <BiteSccoutIcon width={32} />
             <span className="font-bold text-lg text-bs-neutral-900">
               BiteScouts
             </span>
@@ -100,25 +80,20 @@ export function Navigation() {
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Toggle menu"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              {menuOpen ? (
-                <path
-                  d="M6 6L18 18M6 18L18 6"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              ) : (
-                <>
-                  <path
-                    d="M3 6H21M3 12H21M3 18H21"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </>
-              )}
-            </svg>
+            {menuOpen ? (
+              <X
+                size={24}
+                strokeWidth={2}
+                className="transition-transform duration-200"
+              />
+            ) : (
+              <Menu
+                size={24}
+                strokeWidth={2}
+                className="transition-transform duration-200"
+              />
+            )}
+            {/* Figure out animation later */}
           </button>
         </div>
 

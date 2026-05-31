@@ -12,9 +12,18 @@ import {
   Phone,
 } from "lucide-react";
 
-import { FormField } from "./FormField";
+import { FormField, SelectField } from "./FormField";
 import { Button } from "./Button";
-import { SelectField } from "./SelectField";
+const cuisineTypeOptions = [
+  { value: "", label: "Select Cuisine Type" },
+  { value: "Japanese", label: "Japanese" },
+  { value: "Korean", label: "Korean" },
+  { value: "Cafe", label: "Cafe" },
+  { value: "Western", label: "Western" },
+  { value: "Chinese", label: "Chinese" },
+  { value: "Malay", label: "Malay" },
+  { value: "Indian", label: "Indian" },
+];
 
 export function SignUpFormOwner() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -292,7 +301,7 @@ export function SignUpFormOwner() {
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-[38px] text-bs-neutral-500 hover:text-bs-neutral-700"
+          className="absolute right-3 top-[calc(50%+5px)] text-bs-neutral-500 hover:text-bs-neutral-700"
         >
           {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
         </button>
@@ -348,16 +357,8 @@ export function SignUpFormOwner() {
         onBlur={() => handleBlur("cuisineType")}
         disabled={isLoading}
         error={touched.cuisineType ? errors.cuisineType : undefined}
-      >
-        <option value="">Select Cuisine Type</option>
-        <option value="Japanese">Japanese</option>
-        <option value="Korean">Korean</option>
-        <option value="Cafe">Cafe</option>
-        <option value="Western">Western</option>
-        <option value="Chinese">Chinese</option>
-        <option value="Malay">Malay</option>
-        <option value="Indian">Indian</option>
-      </SelectField>
+        options={cuisineTypeOptions}
+      />
 
       <div>
         <label className="block mb-2 font-medium">

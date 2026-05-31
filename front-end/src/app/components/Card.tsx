@@ -1,4 +1,10 @@
 import type { ReactNode } from "react";
+import { Heart, Star } from "lucide-react";
+import ThreeDots from "@/assets/three-dots.svg?react";
+
+const ICON_SIZE = 16;
+const STAR_FILL = "#FFD700";
+const strokeWidth = 1.5;
 
 interface CardProps {
   children: ReactNode;
@@ -57,67 +63,20 @@ export function RestaurantCard({
         <h3 className="mb-3">{name}</h3>
         <div className="flex items-center gap-4 mb-4 text-sm text-bs-neutral-600">
           <div className="flex items-center gap-1">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 1L10 5.5L15 6.5L11.5 10L12.5 15L8 12.5L3.5 15L4.5 10L1 6.5L6 5.5L8 1Z"
-                fill="#FFD700"
-                stroke="#FFD700"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Star
+              size={ICON_SIZE}
+              fill={STAR_FILL}
+              stroke={STAR_FILL}
+              strokeWidth={strokeWidth}
+            />
             <span>{rating}</span>
           </div>
           <div className="flex items-center gap-1">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 14C8 14 2 10 2 5.5C2 3.5 3.5 2 5.5 2C6.5 2 7.5 2.5 8 3.5C8.5 2.5 9.5 2 10.5 2C12.5 2 14 3.5 14 5.5C14 10 8 14 8 14Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <Heart size={ICON_SIZE} strokeWidth={strokeWidth} />
             <span>{distance}</span>
           </div>
           <div className="flex items-center gap-1">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 2C8 2 6 2 6 4C6 6 8 6 8 8C8 6 10 6 10 4C10 2 8 2 8 2Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M5 10C5 10 3 10 3 12C3 14 5 14 5 14C5 14 7 14 7 12C7 10 5 10 5 10Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M11 10C11 10 9 10 9 12C9 14 11 14 11 14C11 14 13 14 13 12C13 10 11 10 11 10Z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <ThreeDots width={16} />
             <span>{dietary}</span>
           </div>
         </div>
@@ -154,67 +113,20 @@ export function SuggestionCard({
       <p className="mb-4 text-bs-neutral-700">{summary}</p>
       <div className="flex items-center gap-4 mb-4 text-sm text-bs-neutral-600">
         <div className="flex items-center gap-1">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M8 1L10 5.5L15 6.5L11.5 10L12.5 15L8 12.5L3.5 15L4.5 10L1 6.5L6 5.5L8 1Z"
-              fill="#FFD700"
-              stroke="#FFD700"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Star
+            size={ICON_SIZE}
+            fill={STAR_FILL}
+            stroke={STAR_FILL}
+            strokeWidth={strokeWidth}
+          />
           <span>{rating}</span>
         </div>
         <div className="flex items-center gap-1">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M8 14C8 14 2 10 2 5.5C2 3.5 3.5 2 5.5 2C6.5 2 7.5 2.5 8 3.5C8.5 2.5 9.5 2 10.5 2C12.5 2 14 3.5 14 5.5C14 10 8 14 8 14Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <Heart size={ICON_SIZE} strokeWidth={strokeWidth} />
           <span>{distance}</span>
         </div>
         <div className="flex items-center gap-1">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M8 2C8 2 6 2 6 4C6 6 8 6 8 8C8 6 10 6 10 4C10 2 8 2 8 2Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M5 10C5 10 3 10 3 12C3 14 5 14 5 14C5 14 7 14 7 12C7 10 5 10 5 10Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M11 10C11 10 9 10 9 12C9 14 11 14 11 14C11 14 13 14 13 12C13 10 11 10 11 10Z"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <ThreeDots width={16} />
           <span>{dietary}</span>
         </div>
       </div>
