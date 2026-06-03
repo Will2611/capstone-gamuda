@@ -4,6 +4,7 @@ import { Navigation } from "./components/Navigation";
 import { AuthProvider } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { FoodMatchProvider } from "./context/FoodMatchContext";
 
 // import LandingPage from "./screens/LandingPage";
 // import PreferenceForm from "./screens/PreferenceForm";
@@ -27,6 +28,7 @@ const BusinessPage = lazy(() => import("./screens/BusinessPage"));
 const LoginPage = lazy(() => import("./screens/LoginPage"));
 const SignUpPage = lazy(() => import("./screens/SignUpPage"));
 const UserProfile = lazy(() => import("./screens/UserProfile"));
+const FoodMatch = lazy(() => import("./screens/FoodMatch"));
 
 import PWABadge from "./PWABadge";
 
@@ -35,6 +37,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <UserProvider>
+          <FoodMatchProvider>
+ 
           <PWABadge>
             <div className="min-h-screen bg-white">
               <Navigation />
@@ -53,9 +57,11 @@ export default function App() {
                 <Route path="/search" element={<PreferenceForm />} />
                 {/* Update to nested in /owner */}
                 <Route path="/dashboard" element={<OwnerDashboard />} />
+                <Route path="/food-match" element={<FoodMatch />} />
               </Routes>
             </div>
           </PWABadge>
+           </FoodMatchProvider>
         </UserProvider>
       </AuthProvider>
     </BrowserRouter>
