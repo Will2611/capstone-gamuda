@@ -27,7 +27,9 @@ const BusinessPage = lazy(() => import("./screens/BusinessPage"));
 const LoginPage = lazy(() => import("./screens/LoginPage"));
 const SignUpPage = lazy(() => import("./screens/SignUpPage"));
 const UserProfile = lazy(() => import("./screens/UserProfile"));
-
+const SocialVisibilityDashboard = lazy(
+  () => import("./screens/SocialVisibilityDashboard"),
+);
 import PWABadge from "./PWABadge";
 
 export default function App() {
@@ -53,6 +55,10 @@ export default function App() {
                 <Route path="/search" element={<PreferenceForm />} />
                 {/* Update to nested in /owner */}
                 <Route path="/dashboard" element={<OwnerDashboard />} />
+                <Route
+                  path="/social-visibility"
+                  element={<SocialVisibilityDashboard />}
+                />
               </Routes>
             </div>
           </PWABadge>
