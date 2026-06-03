@@ -12,6 +12,7 @@ import { BusinessPage } from "./screens/BusinessPage";
 import { LoginPage } from "./screens/LoginPage";
 import { SignUpPage } from "./screens/SignUpPage";
 import { UserProfile } from "./screens/UserProfile";
+import { SocialVisibilityDashboard } from "./screens/SocialVisibilityDashboard";
 
 export default function App() {
   return (
@@ -31,6 +32,10 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignUpPage />} />
               <Route path="/profile" element={<UserProfile />} />
+              <Route
+                path="/social-visibility"
+                element={<SocialVisibilityDashboard />}
+              />
             </Routes>
           </div>
         </UserProvider>
