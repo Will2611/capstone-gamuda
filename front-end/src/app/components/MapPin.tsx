@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import MapPinColored from "@/assets/map-pin-coloured.svg?react";
 
 interface MapPinProps {
   type: "gold" | "red";
@@ -7,7 +8,7 @@ interface MapPinProps {
   style?: CSSProperties;
 }
 
-export function MapPin({
+export function MapPinButton({
   type,
   selected = false,
   onClick,
@@ -17,7 +18,7 @@ export function MapPin({
   const scale = selected ? 1.3 : 1;
 
   return (
-    <div
+    <button
       onClick={onClick}
       style={{
         ...style,
@@ -30,19 +31,7 @@ export function MapPin({
       }}
       className="hover:scale-125 transition-transform"
     >
-      <svg
-        width="32"
-        height="40"
-        viewBox="0 0 32 40"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M16 0C7.163 0 0 7.163 0 16C0 28 16 40 16 40C16 40 32 28 32 16C32 7.163 24.837 0 16 0Z"
-          fill={fillColor}
-        />
-        <circle cx="16" cy="16" r="6" fill="white" />
-      </svg>
-    </div>
+      <MapPinColored width={32} height={40} customfill={fillColor} />
+    </button>
   );
 }

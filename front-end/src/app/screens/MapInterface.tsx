@@ -1,126 +1,191 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { useNavigate } from "react-router";
-import { MapPin } from "../components/MapPin";
+import maplibregl from "maplibre-gl";
+import { MapPinButton } from "../components/MapPin";
 import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
-import { MapLoadingSkeleton } from "../components/MapLoadingSkeleton";
-import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
+import { Skeleton } from "../components/ui/skeleton";
+import {
+  MAP_DEFAULT_CENTER,
+  MAP_DEFAULT_ZOOM,
+  MOCK_RESTAURANTS,
+} from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
 import type { Restaurant } from "../types/restaurant";
 
-export function MapInterface() {
+const MAP_STYLE = "https://tiles.openfreemap.org/styles/bright";
+
+function getRestaurantBounds(
+  restaurants: Restaurant[],
+): maplibregl.LngLatBoundsLike {
+  const lngs = restaurants.map((r) => r.coordinates[0]);
+  const lats = restaurants.map((r) => r.coordinates[1]);
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ];
+}
+
+export default function MapInterface() {
   const navigate = useNavigate();
   const { toggleFavorite, isFavorite } = useUser();
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const markerRootsRef = useRef<Root[]>([]);
+
   const restaurants: Restaurant[] = MOCK_RESTAURANTS;
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+  const handlePinClick = useCallback((id: number) => {
+    setSelectedPin((current) => (current === id ? null : id));
   }, []);
 
-  const handlePinClick = (id: number) => {
-    setSelectedPin(selectedPin === id ? null : id);
-  };
-
-  const handleDirections = (name: string) => {
+  const handleDirections = useCallback((restaurant: Restaurant) => {
+    const [lng, lat] = restaurant.coordinates;
     window.open(
-      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}`,
-      "_blank"
+      `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+      "_blank",
     );
-  };
+  }, []);
 
-  if (isLoading) {
-    return <MapLoadingSkeleton />;
-  }
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: MAP_STYLE,
+      center: MAP_DEFAULT_CENTER,
+      zoom: MAP_DEFAULT_ZOOM,
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    mapRef.current = map;
+
+    map.on("load", () => {
+      map.fitBounds(getRestaurantBounds(restaurants), {
+        padding: 80,
+        maxZoom: 14,
+        duration: 0,
+      });
+      map.resize();
+      setIsLoading(false);
+    });
+
+    map.on("click", () => {
+      setSelectedPin(null);
+    });
+
+    return () => {
+      markerRootsRef.current.forEach((root) => root.unmount());
+      markerRootsRef.current = [];
+      markersRef.current.forEach((marker) => marker.remove());
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [restaurants]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isLoading) return;
+
+    markerRootsRef.current.forEach((root) => root.unmount());
+    markerRootsRef.current = [];
+    markersRef.current.forEach((marker) => marker.remove());
+    markersRef.current = [];
+
+    restaurants.forEach((restaurant) => {
+      const el = document.createElement("div");
+      el.className = "map-marker";
+      el.addEventListener("click", (e) => e.stopPropagation());
+
+      const root = createRoot(el);
+      root.render(
+        <MapPinButton
+          type={restaurant.type}
+          selected={selectedPin === restaurant.id}
+          onClick={() => handlePinClick(restaurant.id)}
+        />,
+      );
+      markerRootsRef.current.push(root);
+
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat(restaurant.coordinates)
+        .addTo(map);
+
+      markersRef.current.push(marker);
+    });
+  }, [isLoading, selectedPin, restaurants, handlePinClick]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isLoading || selectedPin === null) return;
+
+    const restaurant = restaurants.find((r) => r.id === selectedPin);
+    if (!restaurant) return;
+
+    map.flyTo({
+      center: restaurant.coordinates,
+      zoom: 15,
+      duration: 800,
+    });
+  }, [selectedPin, isLoading, restaurants]);
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 lg:gap-4 lg:p-4 overflow-hidden">
-      {/* Map Section */}
       <div className="flex-1 relative min-h-[45vh] lg:min-h-0 rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-bs-neutral-200 shadow-md lg:shadow-lg">
-        <div className="absolute inset-0 bg-gradient-to-br from-bs-neutral-100 to-bs-neutral-200">
-          <svg
-            className="absolute inset-0 w-full h-full opacity-20"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <pattern
-                id="grid"
-                x="0"
-                y="0"
-                width="50"
-                height="50"
-                patternUnits="userSpaceOnUse"
-              >
-                <line x1="0" y1="0" x2="0" y2="50" stroke="#999" strokeWidth="0.5" />
-                <line x1="0" y1="0" x2="50" y2="0" stroke="#999" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+        <div
+          ref={mapContainerRef}
+          className="absolute inset-0 w-full h-full"
+          aria-label="Restaurant map"
+        />
 
-          <svg
-            className="absolute inset-0 w-full h-full opacity-30"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <line x1="0" y1="40%" x2="100%" y2="40%" stroke="#666" strokeWidth="3" />
-            <line x1="0" y1="70%" x2="100%" y2="70%" stroke="#666" strokeWidth="3" />
-            <line x1="30%" y1="0" x2="30%" y2="100%" stroke="#666" strokeWidth="3" />
-            <line x1="60%" y1="0" x2="60%" y2="100%" stroke="#666" strokeWidth="3" />
-          </svg>
+        {isLoading && (
+          <div className="absolute inset-0 z-30 bg-bs-neutral-100">
+            <Skeleton className="w-full h-full rounded-none" />
+          </div>
+        )}
 
-          {restaurants.map((restaurant) => (
-            <div
-              key={restaurant.id}
-              style={{
-                position: "absolute",
-                top: restaurant.position.top,
-                left: restaurant.position.left,
-                transform: "translate(-50%, -100%)",
-              }}
-            >
-              <MapPin
-                type={restaurant.type}
-                selected={selectedPin === restaurant.id}
-                onClick={() => handlePinClick(restaurant.id)}
-              />
-            </div>
-          ))}
-
-          <div className="absolute bottom-4 right-4 bg-white rounded-xl p-4 shadow-lg border border-bs-neutral-200">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute bottom-4 right-4 pointer-events-auto bg-white rounded-xl p-4 shadow-lg border border-bs-neutral-200 z-10">
             <h4 className="text-sm font-medium mb-2">Legend</h4>
             <div className="flex items-center gap-2 mb-1.5 text-sm text-bs-neutral-700">
-              <MapPin type="gold" />
+              <MapPinButton type="gold" />
               <span>Top Match</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-bs-neutral-700">
-              <MapPin type="red" />
+              <MapPinButton type="red" />
               <span>Alternatives</span>
             </div>
           </div>
 
           {!selectedRestaurant && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
               Tap a pin to view restaurant details
             </div>
           )}
         </div>
 
         {selectedRestaurant && (
-          <RestaurantPopupCard
-            restaurant={selectedRestaurant}
-            isFavorite={isFavorite(selectedRestaurant.id)}
-            onClose={() => setSelectedPin(null)}
-            onToggleFavorite={() => toggleFavorite(selectedRestaurant)}
-            onDirections={() => handleDirections(selectedRestaurant.name)}
-          />
+          <div className="absolute inset-0 pointer-events-none z-20">
+            <div className="pointer-events-auto">
+              <RestaurantPopupCard
+                restaurant={selectedRestaurant}
+                isFavorite={isFavorite(selectedRestaurant.id)}
+                onClose={() => setSelectedPin(null)}
+                onToggleFavorite={() => toggleFavorite(selectedRestaurant)}
+                onDirections={() => handleDirections(selectedRestaurant)}
+              />
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Chatbot Panel — side on desktop, below on mobile */}
       <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col min-h-[320px] lg:min-h-0 lg:max-h-full p-4 lg:p-0">
         <ChatbotPanel />
         <button

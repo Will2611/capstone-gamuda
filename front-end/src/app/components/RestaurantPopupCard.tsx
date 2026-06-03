@@ -5,11 +5,11 @@ import {
   Utensils,
   Heart,
   Navigation,
-  Instagram,
   Play,
 } from "lucide-react";
 import type { Restaurant } from "../types/restaurant";
 import { Button } from "./Button";
+import Instagram from "@/assets/instagram.svg?react";
 
 interface RestaurantPopupCardProps {
   restaurant: Restaurant;
@@ -113,7 +113,9 @@ export function RestaurantPopupCard({
               >
                 {restaurant.isOpen ? "Open Now" : "Closed"}
               </span>
-              <span className="text-xs text-bs-neutral-500">{restaurant.dietary}</span>
+              <span className="text-xs text-bs-neutral-500">
+                {restaurant.dietary}
+              </span>
             </div>
 
             {/* Actions: stacked on mobile, grid on sm+ */}
@@ -134,9 +136,14 @@ export function RestaurantPopupCard({
                       ? "border-bs-red bg-bs-red/10 text-bs-red"
                       : "border-bs-neutral-300 text-bs-neutral-700 hover:border-bs-red hover:text-bs-red"
                   }`}
-                  aria-label={isFavorite ? "Remove from favorites" : "Save as favorite"}
+                  aria-label={
+                    isFavorite ? "Remove from favorites" : "Save as favorite"
+                  }
                 >
-                  <Heart size={18} className={isFavorite ? "fill-current" : ""} />
+                  <Heart
+                    size={18}
+                    className={isFavorite ? "fill-current" : ""}
+                  />
                   <span className="text-sm font-medium sm:hidden">
                     {isFavorite ? "Saved" : "Save"}
                   </span>
@@ -159,7 +166,8 @@ export function RestaurantPopupCard({
                   rel="noopener noreferrer"
                   className={`${socialLinkBase} hover:border-bs-red hover:bg-bs-red/5 hover:text-bs-red`}
                 >
-                  <Instagram size={16} className="shrink-0" />
+                  {/* <Instagram size={16} className="shrink-0" /> */}
+                  <Instagram width={16} />
                   View Instagram
                 </a>
               </div>
