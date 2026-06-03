@@ -1,48 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import maplibregl from "maplibre-gl";
 import { MapPinButton } from "../components/MapPin";
 import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
 import { Skeleton } from "../components/ui/skeleton";
-import {
-  MAP_DEFAULT_CENTER,
-  MAP_DEFAULT_ZOOM,
-  MOCK_RESTAURANTS,
-} from "../data/mockRestaurants";
+import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
+import { useRestaurantMap } from "../hooks/useRestaurantMap";
 import type { Restaurant } from "../types/restaurant";
-
-const MAP_STYLE = "https://tiles.openfreemap.org/styles/bright";
-
-function getRestaurantBounds(
-  restaurants: Restaurant[],
-): maplibregl.LngLatBoundsLike {
-  const lngs = restaurants.map((r) => r.coordinates[0]);
-  const lats = restaurants.map((r) => r.coordinates[1]);
-  return [
-    [Math.min(...lngs), Math.min(...lats)],
-    [Math.max(...lngs), Math.max(...lats)],
-  ];
-}
 
 export default function MapInterface() {
   const navigate = useNavigate();
   const { toggleFavorite, isFavorite } = useUser();
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<maplibregl.Marker[]>([]);
-  const markerRootsRef = useRef<Root[]>([]);
-
-  const restaurants: Restaurant[] = MOCK_RESTAURANTS;
+  const restaurants = useMemo(() => MOCK_RESTAURANTS, []);
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
   const handlePinClick = useCallback((id: number) => {
     setSelectedPin((current) => (current === id ? null : id));
+  }, []);
+
+  const handleMapBackgroundClick = useCallback(() => {
+    setSelectedPin(null);
   }, []);
 
   const handleDirections = useCallback((restaurant: Restaurant) => {
@@ -53,88 +33,12 @@ export default function MapInterface() {
     );
   }, []);
 
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    const map = new maplibregl.Map({
-      container: mapContainerRef.current,
-      style: MAP_STYLE,
-      center: MAP_DEFAULT_CENTER,
-      zoom: MAP_DEFAULT_ZOOM,
-    });
-
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
-    mapRef.current = map;
-
-    map.on("load", () => {
-      map.fitBounds(getRestaurantBounds(restaurants), {
-        padding: 80,
-        maxZoom: 14,
-        duration: 0,
-      });
-      map.resize();
-      setIsLoading(false);
-    });
-
-    map.on("click", () => {
-      setSelectedPin(null);
-    });
-
-    return () => {
-      markerRootsRef.current.forEach((root) => root.unmount());
-      markerRootsRef.current = [];
-      markersRef.current.forEach((marker) => marker.remove());
-      markersRef.current = [];
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [restaurants]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || isLoading) return;
-
-    markerRootsRef.current.forEach((root) => root.unmount());
-    markerRootsRef.current = [];
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = [];
-
-    restaurants.forEach((restaurant) => {
-      const el = document.createElement("div");
-      el.className = "map-marker";
-      el.addEventListener("click", (e) => e.stopPropagation());
-
-      const root = createRoot(el);
-      root.render(
-        <MapPinButton
-          type={restaurant.type}
-          selected={selectedPin === restaurant.id}
-          onClick={() => handlePinClick(restaurant.id)}
-        />,
-      );
-      markerRootsRef.current.push(root);
-
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
-        .setLngLat(restaurant.coordinates)
-        .addTo(map);
-
-      markersRef.current.push(marker);
-    });
-  }, [isLoading, selectedPin, restaurants, handlePinClick]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || isLoading || selectedPin === null) return;
-
-    const restaurant = restaurants.find((r) => r.id === selectedPin);
-    if (!restaurant) return;
-
-    map.flyTo({
-      center: restaurant.coordinates,
-      zoom: 15,
-      duration: 800,
-    });
-  }, [selectedPin, isLoading, restaurants]);
+  const { mapContainerRef, isLoading } = useRestaurantMap({
+    restaurants,
+    selectedPin,
+    onPinClick: handlePinClick,
+    onMapBackgroundClick: handleMapBackgroundClick,
+  });
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 lg:gap-4 lg:p-4 overflow-hidden">
