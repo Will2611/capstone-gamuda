@@ -29,7 +29,7 @@ import {
 import { SocialMediaCard } from "../components/visibility-dashboard/SocialMediaCard";
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
 import { FunnelChart } from "../components/visibility-dashboard/FunnelChart";
-import { SuggestionBanner } from "../components/visibility-dashboard/SuggestionBanner";
+// import { SuggestionBanner } from "../components/visibility-dashboard/SuggestionBanner"; // Remove as there is action center for it
 import { useNavigate } from "react-router";
 
 export default function SocialVisibilityDashboard() {
@@ -59,16 +59,16 @@ export default function SocialVisibilityDashboard() {
     { theme: "Taste", count: 5 },
   ];
 
-  // Trending keywords
-  const trendingKeywords = [
-    { keyword: "#SpicyNoodles", trend: "+45%" },
-    { keyword: "#ThaiFood", trend: "+28%" },
-    { keyword: "#LocalEats", trend: "+22%" },
-    { keyword: "#FoodieChallenge", trend: "+18%" },
-    { keyword: "#QuickLunch", trend: "+15%" },
-  ];
+  // Trending keywords    // Remove as there is suggestion hashtag in quick fixes
+  // const trendingKeywords = [
+  //   { keyword: "#SpicyNoodles", trend: "+45%" },
+  //   { keyword: "#ThaiFood", trend: "+28%" },
+  //   { keyword: "#LocalEats", trend: "+22%" },
+  //   { keyword: "#FoodieChallenge", trend: "+18%" },
+  //   { keyword: "#QuickLunch", trend: "+15%" },
+  // ];
 
-  // Content freshness data
+  // Content freshness data // REMOVE
   const freshnessData = [
     { week: "W1", posts: 2, reviews: 6 },
     { week: "W2", posts: 3, reviews: 8 },
@@ -185,13 +185,10 @@ export default function SocialVisibilityDashboard() {
           <h2 id="traffic-funnel" className="mb-4">
             Traffic & Conversion Funnel
           </h2>
-
-          <SuggestionBanner
-            message="Boost CTR with new Instagram Story campaign"
-            actionLabel="Learn More"
-            variant="warning"
-          />
-
+          {/* <SuggestionBanner // REMOVE */}
+          {/* message="Boost CTR with new Instagram Story campaign" */}
+          {/* actionLabel="Learn More" variant="warning" */}
+          {/* /> */}
           <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 mt-4">
             <h3 className="mb-4">Conversion Funnel</h3>
             <FunnelChart stages={funnelStages} />
@@ -211,12 +208,12 @@ export default function SocialVisibilityDashboard() {
             Social Media Visibility
           </h2>
 
-          <SuggestionBanner
-            message="Add trending keyword 'spicy noodles' to menu description"
-            actionLabel="Update Now"
-            onAction={() => handleQuickFix("update-keywords")}
-            variant="info"
-          />
+          {/* <SuggestionBanner // Remove as there is action center for it */}
+          {/* message="Add trending keyword 'spicy noodles' to menu description" */}
+          {/* actionLabel="Update Now" */}
+          {/* onAction={() => handleQuickFix("update-keywords")} */}
+          {/* variant="info" */}
+          {/* /> */}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
             <SocialMediaCard
@@ -258,12 +255,13 @@ export default function SocialVisibilityDashboard() {
               color="text-bs-blue"
             />
           </div>
+        </section>
 
-          {/* Trending Keywords */}
-          <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 mt-4">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp className="text-bs-green" size={24} />
-              <h3 className="font-bold text-bs-neutral-900">
+        {/* Trending Keywords   REMOVE  */}
+        {/* <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 mt-4"> */}
+        {/* <div className="flex items-center gap-3 mb-4"> */}
+        {/* <TrendingUp className="text-bs-green" size={24} /> */}
+        {/* <h3 className="font-bold text-bs-neutral-900">
                 Trending Keywords
               </h3>
             </div>
@@ -281,7 +279,7 @@ export default function SocialVisibilityDashboard() {
               ))}
             </div>
           </div>
-        </section>
+        </section>  */}
 
         {/* 4. Customer Sentiment & Awareness */}
         <section aria-labelledby="sentiment-awareness">
@@ -289,12 +287,12 @@ export default function SocialVisibilityDashboard() {
             Customer Sentiment & Awareness
           </h2>
 
-          <SuggestionBanner
+          {/* <SuggestionBanner // REMOVE
             message="Respond to negative reviews within 24 hours"
             actionLabel="Reply Now"
             onAction={() => handleQuickFix("reply-reviews")}
             variant="warning"
-          />
+          /> */}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
             {/* Sentiment Widget */}
@@ -392,12 +390,12 @@ export default function SocialVisibilityDashboard() {
             SEO & Long-Term Growth
           </h2>
 
-          <SuggestionBanner
+          {/* <SuggestionBanner // REMOVE
             message="Post at least 3 times per week to improve ranking"
             actionLabel="Schedule Posts"
             onAction={() => handleQuickFix("post-instagram")}
             variant="info"
-          />
+          /> */}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             {/* Local Search Rank */}
@@ -541,7 +539,7 @@ export default function SocialVisibilityDashboard() {
               </div>
             </div>
 
-            {/* AI Recommendations Card */}
+            {/* AI Recommendations Card // REMOVE
             <div className="bg-bs-blue/5 border-2 border-bs-blue rounded-lg p-6">
               <h3 className="mb-4">AI Recommendations</h3>
               <div className="space-y-4">
@@ -572,10 +570,10 @@ export default function SocialVisibilityDashboard() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
-            {/* Priority Ranking Card */}
-            <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
+            {/* Priority Ranking Card  REMOVE */}
+            {/* <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
               <h3 className="mb-4">What to Do First</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
@@ -603,7 +601,7 @@ export default function SocialVisibilityDashboard() {
                   </span>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </section>
 
@@ -705,9 +703,6 @@ export default function SocialVisibilityDashboard() {
       {/* Sticky CTA Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-bs-neutral-200 shadow-lg z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3">
-          <button className="flex-1 py-3 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors font-bold">
-            Apply Suggestions
-          </button>
           <button className="flex-1 py-3 bg-bs-neutral-900 text-white rounded-lg hover:bg-bs-neutral-800 transition-colors font-bold">
             Download Report
           </button>
