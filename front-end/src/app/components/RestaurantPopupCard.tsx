@@ -11,6 +11,9 @@ import type { Restaurant } from "../types/restaurant";
 import { Button } from "./Button";
 import Instagram from "@/assets/instagram.svg?react";
 
+import { isPromotionActive } from "../utils/promotionUtils";
+import { PromotionPreview } from "./PromotionPreview";
+
 interface RestaurantPopupCardProps {
   restaurant: Restaurant;
   isFavorite: boolean;
@@ -40,6 +43,9 @@ export function RestaurantPopupCard({
   const tiktokUrl = getTikTokSearchUrl(restaurant.name);
   const instagramUrl = getInstagramTagUrl(restaurant.name);
 
+  const activePromotions =
+    restaurant.promotions?.filter(isPromotionActive) ?? [];
+
   return (
     <>
       <div
@@ -53,7 +59,7 @@ export function RestaurantPopupCard({
         role="dialog"
         aria-labelledby="restaurant-popup-title"
       >
-        <div className="overflow-hidden rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl">
+        <div className="rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
           <div className="relative h-40 bg-bs-neutral-200">
             {restaurant.image ? (
               <img
@@ -171,6 +177,20 @@ export function RestaurantPopupCard({
                   View Instagram
                 </a>
               </div>
+              {activePromotions.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="font-semibold text-bs-neutral-900 mb-2">
+                    Promotions
+                  </h4>
+
+                  {activePromotions.map((promotion) => (
+                    <PromotionPreview
+                      key={promotion.promoId}
+                      promotion={promotion}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

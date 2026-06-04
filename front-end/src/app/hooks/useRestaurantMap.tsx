@@ -2,11 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import maplibregl from "maplibre-gl";
 import { MapPinButton } from "../components/MapPin";
-import {
-  MAP_DEFAULT_CENTER,
-  MAP_DEFAULT_ZOOM,
-} from "../data/mockRestaurants";
+import { MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM } from "../data/mockRestaurants";
 import type { Restaurant } from "../types/restaurant";
+import { isPromotionActive } from "../utils/promotionUtils";
 
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/bright";
 
@@ -40,6 +38,7 @@ function renderMapPin(
     <MapPinButton
       type={pinType}
       selected={selected}
+      hasPromotion={restaurant.promotions?.some(isPromotionActive) ?? false}
       onClick={() => onPinClick(restaurant.id)}
     />,
   );
