@@ -20,7 +20,8 @@ function formatCountdown(expiresAt: string): string {
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  if (days > 0) return `Chat expires in ${days} day${days !== 1 ? "s" : ""} ${hours} hours`;
+  if (days > 0)
+    return `Chat expires in ${days} day${days !== 1 ? "s" : ""} ${hours} hours`;
   if (hours > 0) return `Chat expires in ${hours} hours ${mins} min`;
   return `Chat expires in ${mins} minutes`;
 }
@@ -70,7 +71,7 @@ export function ChatRoom({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[55] flex flex-col bg-white md:max-w-lg md:mx-auto md:my-4 md:rounded-2xl md:shadow-2xl md:border md:border-bs-neutral-200 md:inset-x-4 md:inset-y-auto md:left-1/2 md:-translate-x-1/2 md:h-[85vh]"
+          className="fixed inset-0 z-[55] flex flex-col bg-white md:max-w-lg  md:rounded-2xl md:shadow-2xl md:border md:border-bs-neutral-200 md:inset-x-4 md:top-[45vh] md:left-[100vh] md:h-[55vh]"
         >
           <div className="flex items-center gap-3 p-4 border-b border-bs-neutral-200 bg-gradient-to-r from-bs-gold/10 to-bs-red/5">
             <img
