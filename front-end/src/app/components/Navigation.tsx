@@ -13,7 +13,7 @@ export function Navigation() {
     { label: "Find Restaurants", path: "/map" },
     { label: "User Profile", path: "/profile" },
     { label: "For Owners", path: "/dashboard" },
-    { label: "Social Visibility", path: "/social-visibility" },
+    { label: "Dashboard", path: "/social-visibility" },
     { label: "Privacy", path: "/privacy" },
   ];
 
