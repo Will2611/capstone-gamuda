@@ -9,3 +9,5 @@ Run python3 -m venv to create the virtual environment, creating a folder named '
 Run 'source venv/bin/activate` in cli to start the virtual environment
 
 Once in virtual environment you can start pip installing packages, run pip install -r requirements.txt
+
+To ensure you're using your vsCode can understand the packagess installed, open command pallete and switch python interpretor to be using the python.exe found in venv
