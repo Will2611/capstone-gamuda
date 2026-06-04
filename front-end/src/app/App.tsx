@@ -30,7 +30,12 @@ const SignUpPage = lazy(() => import("./screens/SignUpPage"));
 const UserProfile = lazy(() => import("./screens/UserProfile"));
 const FoodMatch = lazy(() => import("./screens/FoodMatch"));
 
+const SocialVisibilityDashboard = lazy(
+  () => import("./screens/SocialVisibilityDashboard"),
+);
 import PWABadge from "./PWABadge";
+import PromotionManagement from "./screens/PromotionManagement";
+import PromotionFormPage from "./screens/PromotionFormPage";
 
 export default function App() {
   return (
@@ -38,30 +43,43 @@ export default function App() {
       <AuthProvider>
         <UserProvider>
           <FoodMatchProvider>
- 
-          <PWABadge>
-            <div className="min-h-screen bg-white">
-              <Navigation />
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/map" element={<MapInterface />} />
-                <Route path="/suggestions" element={<SuggestionsPage />} />
-                <Route path="/privacy" element={<PrivacyPage />} />
-                <Route path="/business" element={<BusinessPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                {/* Update to nested in /user */}
-                {/* Update to be in /user/profile */}
-                <Route path="/profile" element={<UserProfile />} />
-                {/* Update to be in /user/updatePreference */}
-                <Route path="/search" element={<PreferenceForm />} />
-                {/* Update to nested in /owner */}
-                <Route path="/dashboard" element={<OwnerDashboard />} />
-                <Route path="/food-match" element={<FoodMatch />} />
-              </Routes>
-            </div>
-          </PWABadge>
-           </FoodMatchProvider>
+            <PWABadge>
+              <div className="min-h-screen bg-white">
+                <Navigation />
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/map" element={<MapInterface />} />
+                  <Route path="/suggestions" element={<SuggestionsPage />} />
+                  <Route path="/privacy" element={<PrivacyPage />} />
+                  <Route path="/business" element={<BusinessPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignUpPage />} />
+                  {/* Update to nested in /user */}
+                  {/* Update to be in /user/profile */}
+                  <Route path="/profile" element={<UserProfile />} />
+                  {/* Update to be in /user/updatePreference */}
+                  <Route path="/search" element={<PreferenceForm />} />
+                  {/* Update to nested in /owner */}
+                  <Route path="/dashboard" element={<OwnerDashboard />} />
+                  <Route path="/food-match" element={<FoodMatch />} />
+                  <Route
+                    path="/social-visibility"
+                    element={<SocialVisibilityDashboard />}
+                  />
+                  <Route path="/promotion" element={<PromotionManagement />} />
+                  <Route
+                    path="/promotion-form"
+                    element={<PromotionFormPage />}
+                  />
+
+                  <Route
+                    path="/promotion/edit/:promoId"
+                    element={<PromotionFormPage />}
+                  />
+                </Routes>
+              </div>
+            </PWABadge>
+          </FoodMatchProvider>
         </UserProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -8,13 +8,24 @@ import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
 import type { Restaurant } from "../types/restaurant";
+import { mockPromotions } from "../data/mockPromotions";
 
 export default function MapInterface() {
   const navigate = useNavigate();
   const { toggleFavorite, isFavorite } = useUser();
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
 
-  const restaurants = useMemo(() => MOCK_RESTAURANTS, []);
+  const restaurants = useMemo(
+    () =>
+      MOCK_RESTAURANTS.map((restaurant) => ({
+        ...restaurant,
+
+        promotions: mockPromotions.filter(
+          (promo) => promo.id === restaurant.id,
+        ),
+      })),
+    [],
+  );
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
   const handlePinClick = useCallback((id: number) => {

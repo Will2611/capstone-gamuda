@@ -1,3 +1,5 @@
+import type { Promotion } from "./promotion";
+
 export interface Restaurant {
   id: number;
   name: string;
@@ -10,6 +12,7 @@ export interface Restaurant {
   /** [longitude, latitude] for map display */
   coordinates: [number, number];
   image?: string;
+  promotions?: Promotion[];
 }
 
 export interface SearchPreferences {
