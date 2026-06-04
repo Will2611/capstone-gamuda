@@ -11,6 +11,7 @@ import {
   Calendar,
   ExternalLink,
   Lightbulb,
+  Megaphone,
 } from "lucide-react";
 import Instagram from "@/assets/instagram.svg?react";
 import {
@@ -29,8 +30,11 @@ import { SocialMediaCard } from "../components/visibility-dashboard/SocialMediaC
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
 import { FunnelChart } from "../components/visibility-dashboard/FunnelChart";
 import { SuggestionBanner } from "../components/visibility-dashboard/SuggestionBanner";
+import { useNavigate } from "react-router";
 
 export default function SocialVisibilityDashboard() {
+  const navigate = useNavigate();
+
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
 
   // Funnel data
@@ -609,7 +613,7 @@ export default function SocialVisibilityDashboard() {
             Promotion Suggestions
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Family Dinner Friday */}
             <div className="bg-gradient-to-br from-bs-gold/10 to-bs-gold/5 border-2 border-bs-gold rounded-lg p-6">
               <div className="flex items-center gap-2 mb-3">
@@ -660,6 +664,38 @@ export default function SocialVisibilityDashboard() {
               </p>
               <button className="w-full py-2 bg-bs-blue text-white rounded-lg hover:bg-bs-blue/90 transition-colors font-medium text-sm">
                 View Example Posts
+              </button>
+            </div>
+            {/* Promotion Management */}
+            <div className="bg-gradient-to-br from-bs-green/10 to-bs-green/5 border-2 border-bs-green rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Megaphone className="text-bs-green" size={20} />
+
+                <h3 className="font-bold text-bs-neutral-900">
+                  Promotion Management
+                </h3>
+              </div>
+
+              <p className="text-sm text-bs-neutral-700 mb-4">
+                Create, edit and manage your restaurant promotions and special
+                offers.
+              </p>
+
+              <button
+                onClick={() => navigate("/promotion")}
+                className="
+      w-full
+      py-2
+      bg-bs-green
+      text-bs-neutral-900
+      rounded-lg
+      hover:brightness-110
+      transition-colors
+      font-medium
+      text-sm
+    "
+              >
+                Manage Promotions
               </button>
             </div>
           </div>

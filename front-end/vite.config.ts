@@ -8,7 +8,6 @@ import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  console.log(env.NODE_ENV);
 
   return {
     plugins: [
@@ -34,7 +33,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: "prompt",
         // For destroying the serviceWorker and later replacement
-        // selfDestroying: env.VITE_IS_DEV === "true",
+        // selfDestroying: true,
         // Ensures assets are in the src/asset folder
         srcDir: "src/sw",
         // strategies: "generateSW",

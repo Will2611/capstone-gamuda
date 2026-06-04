@@ -25,3 +25,12 @@ dev-dist
 *.njsproj
 *.sln
 *.sw?
+
+#firebase
+.firebase
+.firebaserc
+firebase.json
+
+#ai
+.agents
+skills-lock.json
