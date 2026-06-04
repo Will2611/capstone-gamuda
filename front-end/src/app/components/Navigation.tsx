@@ -14,7 +14,7 @@ export function Navigation() {
     { label: "Find Food", path: "/food-match" },
     { label: "User Profile", path: "/profile" },
     { label: "For Owners", path: "/dashboard" },
-    { label: "Social Visibility", path: "/social-visibility" },
+    { label: "Dashboard", path: "/social-visibility" },
     { label: "Privacy", path: "/privacy" },
   ];
 
