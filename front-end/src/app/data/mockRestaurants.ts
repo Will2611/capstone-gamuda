@@ -1,5 +1,6 @@
 import type { Restaurant } from "../types/restaurant";
 
+/** Mock restaurants around central Kuala Lumpur for the map view */
 export const MOCK_RESTAURANTS: Restaurant[] = [
   {
     id: 1,
@@ -10,7 +11,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     cuisine: "Asian",
     isOpen: true,
     type: "gold",
-    position: { top: "45%", left: "55%" },
+    coordinates: [101.7118, 3.1478],
     image:
       "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop",
   },
@@ -23,7 +24,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     cuisine: "Italian",
     isOpen: true,
     type: "red",
-    position: { top: "30%", left: "40%" },
+    coordinates: [101.7004, 3.152],
     image:
       "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=400&h=300&fit=crop",
   },
@@ -36,7 +37,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     cuisine: "Mexican",
     isOpen: false,
     type: "red",
-    position: { top: "60%", left: "35%" },
+    coordinates: [101.695, 3.139],
     image:
       "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=400&h=300&fit=crop",
   },
@@ -49,8 +50,11 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     cuisine: "Japanese",
     isOpen: true,
     type: "red",
-    position: { top: "25%", left: "65%" },
+    coordinates: [101.718, 3.158],
     image:
       "https://images.unsplash.com/photo-1579584425555-c3ce17fd1871?w=400&h=300&fit=crop",
   },
 ];
+
+export const MAP_DEFAULT_CENTER: [number, number] = [101.704, 3.147];
+export const MAP_DEFAULT_ZOOM = 13.2;

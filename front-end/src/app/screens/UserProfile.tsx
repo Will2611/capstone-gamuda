@@ -63,7 +63,7 @@ function formatPref(key: string, value: string) {
   return PREFERENCE_LABELS[key]?.[value] ?? (value || "—");
 }
 
-export function UserProfile() {
+export default function UserProfile() {
   const navigate = useNavigate();
   const { profile } = useUser();
   const { user } = useAuth();
@@ -110,9 +110,7 @@ export function UserProfile() {
 
         <ProfileCard
           title="Saved Preferences"
-          action={
-            <Settings size={18} className="text-bs-neutral-500" />
-          }
+          action={<Settings size={18} className="text-bs-neutral-500" />}
         >
           {prefs ? (
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -126,7 +124,10 @@ export function UserProfile() {
                   ["Visit Time", "time"],
                 ] as const
               ).map(([label, key]) => (
-                <div key={key} className="bg-bs-neutral-100 rounded-lg px-4 py-3">
+                <div
+                  key={key}
+                  className="bg-bs-neutral-100 rounded-lg px-4 py-3"
+                >
                   <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide mb-1">
                     {label}
                   </dt>
@@ -149,7 +150,10 @@ export function UserProfile() {
           )}
         </ProfileCard>
 
-        <ProfileCard title="Search History" action={<History size={18} className="text-bs-neutral-500" />}>
+        <ProfileCard
+          title="Search History"
+          action={<History size={18} className="text-bs-neutral-500" />}
+        >
           {profile.searchHistory.length > 0 ? (
             <ul className="space-y-3">
               {profile.searchHistory.map((entry) => (
@@ -179,7 +183,10 @@ export function UserProfile() {
           )}
         </ProfileCard>
 
-        <ProfileCard title="Favorite Restaurants" action={<Heart size={18} className="text-bs-red" />}>
+        <ProfileCard
+          title="Favorite Restaurants"
+          action={<Heart size={18} className="text-bs-red" />}
+        >
           {profile.favoriteRestaurants.length > 0 ? (
             <ul className="space-y-3">
               {profile.favoriteRestaurants.map((r) => (

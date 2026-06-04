@@ -3,9 +3,16 @@ import type { SubmitEvent } from "react";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { FormField } from "../components/FormField";
-import { BarChart3, Megaphone, TrendingUp, Mail, Phone } from "lucide-react";
+import {
+  BarChart3,
+  Megaphone,
+  TrendingUp,
+  Mail,
+  Phone,
+  Check,
+} from "lucide-react";
 
-export function BusinessPage() {
+export default function BusinessPage() {
   const [email, setEmail] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -94,19 +101,7 @@ export function BusinessPage() {
                     key={idx}
                     className="flex items-start gap-2 text-sm text-bs-neutral-700"
                   >
-                    <svg
-                      className="w-5 h-5 text-bs-green mt-0.5 flex-shrink-0"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
+                    <Check className="w-5 h-5 text-bs-green mt-0.5 flex-shrink-0" />
                     {feature}
                   </li>
                 ))}

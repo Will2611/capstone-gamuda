@@ -23,7 +23,7 @@ const emptyForm: SearchPreferences = {
   time: "",
 };
 
-export function PreferenceForm() {
+export default function PreferenceForm() {
   const navigate = useNavigate();
   const { updatePreferences, addSearchHistory } = useUser();
   const [formData, setFormData] = useState<SearchPreferences>(emptyForm);
@@ -32,11 +32,9 @@ export function PreferenceForm() {
     const hasAny = Object.values(prefs).some(Boolean);
     if (hasAny) {
       updatePreferences(prefs);
-      const labels = [
-        prefs.cuisine,
-        prefs.dietary,
-        prefs.ambience,
-      ].filter(Boolean);
+      const labels = [prefs.cuisine, prefs.dietary, prefs.ambience].filter(
+        Boolean,
+      );
       addSearchHistory({
         query: labels.length
           ? `Search: ${labels.join(", ")}`
@@ -175,7 +173,11 @@ export function PreferenceForm() {
             />
 
             <div className="pt-4 space-y-3">
-              <Button type="button" className="w-full" onClick={handleFindRestaurant}>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handleFindRestaurant}
+              >
                 Find Restaurant
               </Button>
               <p className="text-center text-xs text-bs-neutral-500">

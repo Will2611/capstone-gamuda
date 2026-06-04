@@ -7,7 +7,8 @@ export interface Restaurant {
   cuisine: string;
   isOpen: boolean;
   type: "gold" | "red";
-  position: { top: string; left: string };
+  /** [longitude, latitude] for map display */
+  coordinates: [number, number];
   image?: string;
 }
 

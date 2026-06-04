@@ -1,49 +1,55 @@
-import { useNavigate } from 'react-router';
-import { SuggestionCard } from '../components/Card';
-import { Button } from '../components/Button';
+import { useNavigate } from "react-router";
+import { SuggestionCard } from "../components/Card";
+import { Button } from "../components/Button";
 
-export function SuggestionsPage() {
+export default function SuggestionsPage() {
   const navigate = useNavigate();
 
   const suggestions = [
     {
       id: 1,
-      summary: "Highly rated for spicy noodles; 10-15 min drive; vegetarian options available",
+      summary:
+        "Highly rated for spicy noodles; 10-15 min drive; vegetarian options available",
       rating: 4.8,
       distance: "10-15 min",
       dietary: "Vegetarian options",
     },
     {
       id: 2,
-      summary: "Perfect for authentic Italian pasta; 12-18 min drive; gluten-free menu available",
+      summary:
+        "Perfect for authentic Italian pasta; 12-18 min drive; gluten-free menu available",
       rating: 4.5,
       distance: "12-18 min",
       dietary: "Gluten-free options",
     },
     {
       id: 3,
-      summary: "Fresh Mexican cuisine with vegan choices; 8-12 min drive; lively atmosphere",
+      summary:
+        "Fresh Mexican cuisine with vegan choices; 8-12 min drive; lively atmosphere",
       rating: 4.6,
       distance: "8-12 min",
       dietary: "Vegan options",
     },
     {
       id: 4,
-      summary: "Premium sushi experience; 15-20 min drive; gluten-free soy sauce available",
+      summary:
+        "Premium sushi experience; 15-20 min drive; gluten-free soy sauce available",
       rating: 4.7,
       distance: "15-20 min",
       dietary: "Gluten-free options",
     },
     {
       id: 5,
-      summary: "Classic American comfort food; 5-8 min drive; vegetarian burgers available",
+      summary:
+        "Classic American comfort food; 5-8 min drive; vegetarian burgers available",
       rating: 4.4,
       distance: "5-8 min",
       dietary: "Vegetarian options",
     },
     {
       id: 6,
-      summary: "Mediterranean flavors with healthy options; 18-22 min drive; fully vegan menu",
+      summary:
+        "Mediterranean flavors with healthy options; 18-22 min drive; fully vegan menu",
       rating: 4.6,
       distance: "18-22 min",
       dietary: "Vegan options",
@@ -68,16 +74,14 @@ export function SuggestionsPage() {
               rating={suggestion.rating}
               distance={suggestion.distance}
               dietary={suggestion.dietary}
-              onViewMap={() => navigate('/map')}
+              onViewMap={() => navigate("/map")}
             />
           ))}
         </div>
 
         <div className="flex justify-center gap-4">
-          <Button onClick={() => navigate('/map')}>
-            View on Map
-          </Button>
-          <Button variant="secondary" onClick={() => navigate('/search')}>
+          <Button onClick={() => navigate("/map")}>View on Map</Button>
+          <Button variant="secondary" onClick={() => navigate("/search")}>
             New Search
           </Button>
         </div>
