@@ -57,7 +57,7 @@ function PWABadge({ children }: { children: ReactNode }) {
   return (
     <>
       <div className="PWABadge" role="alert" aria-labelledby="toast-message">
-        <span>Is it Offline :{`${isOffline}`}</span>
+        {/* <span>Is it Offline :{`${isOffline}`}</span> */}
         {needRefresh && (
           <div className="PWABadge-toast">
             <div className="PWABadge-message">

@@ -68,7 +68,7 @@ export default function SocialVisibilityDashboard() {
   //   { keyword: "#QuickLunch", trend: "+15%" },
   // ];
 
-  // Content freshness data // REMOVE
+  // Content freshness data
   const freshnessData = [
     { week: "W1", posts: 2, reviews: 6 },
     { week: "W2", posts: 3, reviews: 8 },
@@ -179,7 +179,6 @@ export default function SocialVisibilityDashboard() {
             </div>
           </div>
         </section>
-
         {/* 2. Traffic & Conversion Funnel */}
         <section aria-labelledby="traffic-funnel">
           <h2 id="traffic-funnel" className="mb-4">
@@ -201,7 +200,6 @@ export default function SocialVisibilityDashboard() {
             </div>
           </div>
         </section>
-
         {/* 3. Social Media Visibility */}
         <section aria-labelledby="social-visibility">
           <h2 id="social-visibility" className="mb-4">
@@ -256,7 +254,6 @@ export default function SocialVisibilityDashboard() {
             />
           </div>
         </section>
-
         {/* Trending Keywords   REMOVE  */}
         {/* <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 mt-4"> */}
         {/* <div className="flex items-center gap-3 mb-4"> */}
@@ -280,7 +277,6 @@ export default function SocialVisibilityDashboard() {
             </div>
           </div>
         </section>  */}
-
         {/* 4. Customer Sentiment & Awareness */}
         <section aria-labelledby="sentiment-awareness">
           <h2 id="sentiment-awareness" className="mb-4">
@@ -384,7 +380,7 @@ export default function SocialVisibilityDashboard() {
           </div>
         </section>
 
-        {/* 5. SEO & Long-Term Growth */}
+        {/* //5. SEO & Long-Term Growth */}
         <section aria-labelledby="seo-growth">
           <h2 id="seo-growth" className="mb-4">
             SEO & Long-Term Growth
@@ -466,7 +462,6 @@ export default function SocialVisibilityDashboard() {
             </div>
           </div>
         </section>
-
         {/* 6. Action Center (Simplified) */}
         <section aria-labelledby="action-center">
           <h2 id="action-center" className="mb-4">
@@ -604,7 +599,6 @@ export default function SocialVisibilityDashboard() {
             </div> */}
           </div>
         </section>
-
         {/* 7. Promotion Suggestion Cards */}
         <section aria-labelledby="promotion-suggestions">
           <h2 id="promotion-suggestions" className="mb-4">
@@ -702,8 +696,8 @@ export default function SocialVisibilityDashboard() {
 
       {/* Sticky CTA Bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-bs-neutral-200 shadow-lg z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row gap-3">
-          <button className="flex-1 py-3 bg-bs-neutral-900 text-white rounded-lg hover:bg-bs-neutral-800 transition-colors font-bold">
+        <div className="max-w-7xl mx-auto px-4 sm:px-90 py-4 flex flex-col sm:flex-row gap-3">
+          <button className="flex-1 px-4 py-3 bg-bs-neutral-900 text-white rounded-lg hover:bg-bs-neutral-800 transition-colors font-bold">
             Download Report
           </button>
         </div>
