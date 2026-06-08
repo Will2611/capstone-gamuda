@@ -4,3 +4,5 @@ fastapi[standard]
 uvicorn[standard]
 email_validator
 python-dotenv
+cloud-sql-python-connector
+pg8000

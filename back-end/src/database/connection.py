@@ -2,9 +2,10 @@ from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
+from google.cloud.sql.connector import Connector
 from typing import Annotated
-import os
 from dotenv import load_dotenv
+import os
 
 
 # Load variables from .env into the system environment
@@ -12,17 +13,31 @@ load_dotenv()
 #PostgrSQL connection details
 DB_USER= os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD") if (os.getenv("DB_PASSWORD") is None)  else 'root'
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT=os.getenv("DB_PORT")
 DB_NAME=os.getenv("DB_NAME")
 
-DATABASE_URL=f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT=os.getenv("DB_PORT")
 
-engine = create_engine(DATABASE_URL,
-                       pool_size=5,
-                       max_overflow=10,
-                       pool_timeout=30,
-                       pool_recycle=1800)
+INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
+print(f'{INSTANCE_CONNECTION_NAME} is the connection name')
+
+def get_conn():
+    if(INSTANCE_CONNECTION_NAME is None):
+        return None
+
+    connector = Connector()
+    conn = connector.connect(
+        INSTANCE_CONNECTION_NAME,
+        'pg8000',
+        user=DB_USER,
+        password=DB_PASSWORD,
+        db=DB_NAME
+    )
+    return conn
+
+DATABASE_URL=f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}' if INSTANCE_CONNECTION_NAME is None else "postgresql+pg8000://"
+Kwargs = {"pool_size":5,"max_overflow":10,"pool_timeout":30,"pool_recycle":1800} if INSTANCE_CONNECTION_NAME is None else {'creator':get_conn}
+engine = create_engine( DATABASE_URL,**Kwargs)
 
 # pool_size (Default: 5): The number of connections to keep persistently in the pool.
 # max_overflow (Default: 10): The number of additional connections allowed beyond pool_size during high demand.
