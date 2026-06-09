@@ -11,9 +11,9 @@ export function Navigation() {
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Find Restaurants", path: "/map" },
-    { label: "Find Food", path: "/food-match" },
+    { label: "Food Buddy", path: "/food-match" },
     { label: "User Profile", path: "/profile" },
-    { label: "For Owners", path: "/dashboard" },
+    // { label: "For Owners", path: "/dashboard" },
     { label: "Dashboard", path: "/social-visibility" },
     { label: "Privacy", path: "/privacy" },
   ];
