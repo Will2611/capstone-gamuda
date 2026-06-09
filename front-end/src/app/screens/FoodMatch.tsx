@@ -115,7 +115,7 @@ export default function FoodMatch() {
         {/* Header of discover and matches tabs */}
         <header className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-bs-neutral-900 via-bs-red to-bs-gold bg-clip-text text-transparent mb-2">
-            Food Match
+            Find Your Perfect Food Buddy!
           </h1>
           <p className="text-bs-neutral-600 max-w-md mx-auto">
             Find friends, dates, and food buddies through shared taste.
@@ -279,7 +279,8 @@ export default function FoodMatch() {
           activeChat && addChatMessage(activeChat.id, text, "me")
         }
         onPlanDate={() => {
-          if (activeChat) { //if there is an active chat, set the planner match to the active chat and set the planner open to true
+          if (activeChat) {
+            //if there is an active chat, set the planner match to the active chat and set the planner open to true
             setPlannerMatch(activeChat);
             setPlannerOpen(true);
           }

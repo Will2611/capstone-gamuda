@@ -77,7 +77,7 @@ export default function LandingPage() {
           <p className="text-lg text-bs-neutral-700 mb-8">
             Join thousands of food lovers discovering their new favorite spots
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {/* <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button onClick={() => navigate("/map")}>Find Restaurant</Button>
             <Button variant="secondary" onClick={() => navigate("/search")}>
               Set Preferences
@@ -85,7 +85,7 @@ export default function LandingPage() {
             <Button variant="secondary" onClick={() => navigate("/business")}>
               I'm a Restaurant Owner
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
     </div>
