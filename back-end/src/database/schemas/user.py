@@ -1,5 +1,5 @@
 from src.database.connection import Base
-from sqlalchemy import Column, String
+from sqlalchemy import Column, String, Integer, ForeignKey
 from pydantic import   Field, EmailStr
 from .base_model import DBBaseModelMixIn, DBBaseRequest
 
@@ -15,10 +15,14 @@ class UserModel(DBBaseModelMixIn, Base):
     __mapper_args__ = {'polymorphic_on': user_type}
 
 class ClientModel(UserModel):
+    __tablename__ ='clients'
     __mapper_args__ = {'polymorphic_identity': 'client'}
+    id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     avatar_url= Column(String)
 
-class ClientModel(UserModel):
+class OwnerModel(UserModel):
+    __tablename__ ='owners'
     __mapper_args__ = {'polymorphic_identity': 'owner'}
+    id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     restaurant_name= Column(String, nullable=False)
 
