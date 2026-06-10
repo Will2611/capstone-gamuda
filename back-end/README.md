@@ -10,4 +10,6 @@ Run 'source venv/bin/activate` in cli to start the virtual environment
 
 Once in virtual environment you can start pip installing packages, run pip install -r requirements.txt
 
-To ensure you're using your vsCode can understand the packagess installed, open command pallete and switch python interpretor to be using the python.exe found in venv
+To ensure you're using your vsCode can understand the packagess installed, open command pallete (Ctrl+P on windows) and switch python interpretor to be using the python.exe found in venv
+
+Remember to set up .env file
