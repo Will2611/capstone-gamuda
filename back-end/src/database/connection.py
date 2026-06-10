@@ -35,8 +35,8 @@ def get_conn():
     )
     return conn
 
-DATABASE_URL=f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}' if INSTANCE_CONNECTION_NAME is None else "postgresql+pg8000://"
-Kwargs = {"pool_size":5,"max_overflow":10,"pool_timeout":30,"pool_recycle":1800} if INSTANCE_CONNECTION_NAME is None else {'creator':get_conn}
+DATABASE_URL=f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}' if  (not INSTANCE_CONNECTION_NAME) else "postgresql+pg8000://"
+Kwargs = {"pool_size":5,"max_overflow":10,"pool_timeout":30,"pool_recycle":1800} if (not INSTANCE_CONNECTION_NAME) else {'creator':get_conn}
 engine = create_engine( DATABASE_URL,**Kwargs)
 
 # pool_size (Default: 5): The number of connections to keep persistently in the pool.
