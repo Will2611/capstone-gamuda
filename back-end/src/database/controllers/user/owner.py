@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.database.connection import db_dependency
-from src.database.models.user import UserModel, UserRequest
+from src.database.schemas.user import UserModel, UserRequest
 
 router = APIRouter(prefix='/owner', tags=['owner'])
 

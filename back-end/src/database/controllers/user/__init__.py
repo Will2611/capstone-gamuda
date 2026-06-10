@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from src.database.connection import db_dependency
-from src.database.models.user import UserModel, UserRequest
+from src.database.schemas.user import UserModel, UserRequest
 import os
 from src.database.controllers.utils import get_subcontrollers
 
