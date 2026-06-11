@@ -10,15 +10,16 @@ import os
 
 # Load variables from .env into the system environment
 load_dotenv()
+USE_LOCAL =os.getenv("USE_LOCAL", "TRUE")
 #PostgrSQL connection details
 DB_NAME=os.getenv("DB_NAME")
 DB_USER= os.getenv("DB_USER", 'postgres') 
-DB_PASSWORD = os.getenv("DB_PASSWORD", 'root')
+INSTANCE_CONNECTION_NAME = None if USE_LOCAL =="TRUE" else os.getenv("INSTANCE_CONNECTION_NAME", None)
+DB_PASSWORD = os.getenv("CLOUD_PASSWORD", 'root') if INSTANCE_CONNECTION_NAME else os.getenv("DB_PASSWORD", 'root')
 
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT=os.getenv("DB_PORT", '5432')
 
-INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
 print(f'{INSTANCE_CONNECTION_NAME} is the connection name')
 
 def get_conn():
