@@ -8,17 +8,15 @@ import {
   type ReactNode,
 } from "react";
 import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
-import type {
-  Restaurant,
-  SearchHistoryEntry,
-  SearchPreferences,
-  UserProfileData,
-} from "../types/restaurant";
+import type { Restaurant, SearchHistoryEntry } from "../types/restaurant";
+import type { FullUserProfileData, SearchPreferences } from "../types/user";
 
 const USER_STORAGE_KEY = "bitescouts_user_profile";
 
-const DEFAULT_PROFILE: UserProfileData = {
+const DEFAULT_PROFILE: FullUserProfileData = {
+  id: "0",
   displayName: "Alex Foodie",
+  type: "client",
   email: "demo@bitescouts.com",
   avatarUrl: undefined,
   savedPreferences: {
@@ -53,7 +51,7 @@ const DEFAULT_PROFILE: UserProfileData = {
 };
 
 interface UserContextValue {
-  profile: UserProfileData;
+  profile: FullUserProfileData;
   updatePreferences: (prefs: SearchPreferences) => void;
   addSearchHistory: (entry: Omit<SearchHistoryEntry, "id">) => void;
   toggleFavorite: (restaurant: Restaurant) => void;
@@ -63,13 +61,13 @@ interface UserContextValue {
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserProfileData>(DEFAULT_PROFILE);
+  const [profile, setProfile] = useState<FullUserProfileData>(DEFAULT_PROFILE);
 
   useEffect(() => {
     const stored = localStorage.getItem(USER_STORAGE_KEY);
     if (stored) {
       try {
-        setProfile(JSON.parse(stored) as UserProfileData);
+        setProfile(JSON.parse(stored) as FullUserProfileData);
       } catch {
         localStorage.removeItem(USER_STORAGE_KEY);
       }
@@ -94,12 +92,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
         ],
       }));
     },
-    []
+    [],
   );
 
   const toggleFavorite = useCallback((restaurant: Restaurant) => {
     setProfile((prev) => {
-      const exists = prev.favoriteRestaurants.some((r) => r.id === restaurant.id);
+      const exists = prev.favoriteRestaurants.some(
+        (r) => r.id === restaurant.id,
+      );
       return {
         ...prev,
         favoriteRestaurants: exists
@@ -112,7 +112,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const isFavorite = useCallback(
     (restaurantId: number) =>
       profile.favoriteRestaurants.some((r) => r.id === restaurantId),
-    [profile.favoriteRestaurants]
+    [profile.favoriteRestaurants],
   );
 
   const value = useMemo(
@@ -123,7 +123,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       toggleFavorite,
       isFavorite,
     }),
-    [profile, updatePreferences, addSearchHistory, toggleFavorite, isFavorite]
+    [profile, updatePreferences, addSearchHistory, toggleFavorite, isFavorite],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

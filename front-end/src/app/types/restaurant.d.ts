@@ -15,6 +15,9 @@ export interface Restaurant {
   promotions?: Promotion[];
 }
 
+/**
+ * Deprecated, use the one from user.d.ts
+ */
 export interface SearchPreferences {
   cuisine: string;
   priceRange: string;
@@ -24,6 +27,9 @@ export interface SearchPreferences {
   time: string;
 }
 
+/**
+ * Deprecated, use the one from user.d.ts
+ */
 export interface SearchHistoryEntry {
   id: string;
   query: string;
@@ -31,6 +37,9 @@ export interface SearchHistoryEntry {
   preferences: Partial<SearchPreferences>;
 }
 
+/**
+ * Deprecated, use the one from user.d.ts
+ */
 export interface UserProfileData {
   displayName: string;
   email: string;

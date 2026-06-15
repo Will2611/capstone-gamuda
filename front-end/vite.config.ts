@@ -20,12 +20,14 @@ export default defineConfig(({ mode }) => {
         svgrOptions: {
           ref: true,
           exportType: "default",
-          dimensions: false,
+          dimensions: true,
           titleProp: true,
           // allow overwrite
-          expandProps: "start",
+          expandProps: "end",
           replaceAttrValues: {
             "#TARGET_COLOR": "{props.customfill}",
+            "#TARGET_SIZE_WIDTH": "{props.size || props.width || 16}",
+            "#TARGET_SIZE_HEIGHT": "{props.size || props.height || 16}",
           },
         },
       }),

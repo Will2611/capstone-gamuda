@@ -1,12 +1,5 @@
 import { motion } from "motion/react";
-import {
-  Heart,
-  X,
-  Bookmark,
-  MapPin,
-  Utensils,
-  Sparkles,
-} from "lucide-react";
+import { Heart, X, Bookmark, MapPin, Utensils, Sparkles } from "lucide-react";
 import { LOOKING_FOR_LABELS } from "../../data/mockFoodMatch";
 import type { MatchUser } from "../../types/foodMatch";
 
@@ -29,7 +22,8 @@ export function MatchCard({
   onSave,
   dragDirection,
 }: MatchCardProps) {
-  const exitX = dragDirection === "left" ? -400 : dragDirection === "right" ? 400 : 0;
+  const exitX =
+    dragDirection === "left" ? -400 : dragDirection === "right" ? 400 : 0;
 
   return (
     <motion.div
@@ -39,9 +33,14 @@ export function MatchCard({
         scale: 1,
         opacity: 1,
         x: 0,
-        rotate: dragDirection === "left" ? -8 : dragDirection === "right" ? 8 : 0,
+        rotate:
+          dragDirection === "left" ? -8 : dragDirection === "right" ? 8 : 0,
       }}
-      exit={{ x: exitX, opacity: 0, rotate: dragDirection === "left" ? -20 : 20 }}
+      exit={{
+        x: exitX,
+        opacity: 0,
+        rotate: dragDirection === "left" ? -20 : 20,
+      }}
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="relative w-full max-w-sm mx-auto"
     >
@@ -66,7 +65,9 @@ export function MatchCard({
             <h2 className="text-2xl font-bold">
               {user.name}, {user.age}
             </h2>
-            <p className="text-sm text-white/80 mt-1 line-clamp-2">{user.bio}</p>
+            <p className="text-sm text-white/80 mt-1 line-clamp-2">
+              {user.bio}
+            </p>
             <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-medium bg-bs-gold/90 text-bs-neutral-900">
               {LOOKING_FOR_LABELS[user.lookingFor]}
             </span>

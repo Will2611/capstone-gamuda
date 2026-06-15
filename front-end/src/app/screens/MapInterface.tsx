@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { MapPinButton } from "../components/MapPin";
-import { ChatbotPanel } from "../components/ChatbotPanel";
+import ChatBoxPanel from "../components/ChatBoxPanel";
+// import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
 import { Skeleton } from "../components/ui/skeleton";
 import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
@@ -101,11 +102,41 @@ export default function MapInterface() {
         )}
       </div>
 
-      <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col min-h-[320px] lg:min-h-0 lg:max-h-full p-4 lg:p-0">
-        <ChatbotPanel />
+      <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col p-4 min-h-[320px] max-h-[50vh] lg:min-h-0 lg:max-h-full overflow-y-hidden">
+        <ChatBoxPanel
+          socketUrl={null}
+          dummyChat={{
+            chatGroupName: "BiteScouts AI",
+            chatCaption: "Your dining discovery assistant",
+            messages: [
+              {
+                id: crypto.randomUUID(),
+                userName: "ChatBot",
+                userType: "bot",
+                userId: "-1",
+                timestamp: new Date(),
+                message: "What do you feel like eating today?",
+              },
+            ],
+            participants: [
+              {
+                displayName: "ChatBot",
+                id: "-1",
+                type: "bot",
+                dummyResponses: [
+                  "Based on your cravings, I'd suggest trying Spice Haven — great spicy noodles nearby!",
+                  "How about Italian? Pasta Paradise has excellent gluten-free options.",
+                  "For something quick, Taco Fiesta is only 8–12 minutes away.",
+                  "Sushi Supreme is perfect if you're in the mood for Japanese tonight.",
+                  "Tell me more about your dietary needs and I'll narrow it down!",
+                ],
+              },
+            ],
+          }}
+        />
         <button
           onClick={() => navigate("/suggestions")}
-          className="mt-3 w-full text-center text-sm text-bs-blue hover:underline py-2"
+          className="mt-3 w-full text-center text-sm text-bs-blue hover:underline py-2 max-h-[56px]"
         >
           View all suggestions →
         </button>
