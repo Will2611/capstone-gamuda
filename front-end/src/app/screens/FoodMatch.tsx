@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { AnimatePresence } from "motion/react";
-import { Users, Heart, MessageCircle, Settings2 } from "lucide-react";
+import {
+  Users,
+  Heart,
+  MessageCircle,
+  Settings2,
+  X,
+  Calendar,
+} from "lucide-react";
 import { useFoodMatch } from "../context/FoodMatchContext";
 import { useUser } from "../context/UserContext";
 import { computeCompatibility } from "../data/mockFoodMatch";
@@ -8,9 +15,9 @@ import type { FoodMatch as FoodMatchType, MatchUser } from "../types/foodMatch";
 import { FoodPreferenceForm } from "../components/foodMatch/FoodPreferenceForm";
 import { MatchCard } from "../components/foodMatch/MatchCard";
 import { MatchModal } from "../components/foodMatch/MatchModal";
-import { ChatRoom } from "../components/foodMatch/ChatRoom";
 import { FoodDatePlanner } from "../components/foodMatch/FoodDatePlanner";
 import { FoodMatchSafetyBar } from "../components/foodMatch/FoodMatchSafetyBar";
+import ChatBoxPanel from "../components/ChatBoxPanel";
 
 type Tab = "discover" | "matches";
 
@@ -70,6 +77,7 @@ export default function FoodMatch() {
   };
 
   //Save User to Matches
+
   const handleSave = () => {
     if (currentUser) saveUser(currentUser.id);
   };
@@ -270,22 +278,70 @@ export default function FoodMatch() {
           setNewMatch(null); //reset the new match
         }}
       />
+      {activeChat && (
+        <div className="fixed inset-0 md:left-[calc(100vw-32rem)] md:w-md z-[56] md:top-[45vh]">
+          <ChatBoxPanel
+            socketUrl={null}
+            dummyChat={{
+              chatGroupName: activeChat.user.name,
+              avatarUrl: activeChat.user.avatarUrl,
+              expiresAt: activeChat.chatExpiresAt,
+              messages: (chatMessages[activeChat.id] ?? []).map((v) => {
+                return {
+                  id: v.id,
+                  userId: v.senderId,
+                  userName: activeChat.user.name,
+                  userType: "client",
 
-      <ChatRoom
-        match={activeChat}
-        messages={activeChat ? (chatMessages[activeChat.id] ?? []) : []} //if there is an active chat, show the messages for the active chat, otherwise show an empty array
-        onClose={() => setActiveChat(null)}
-        onSendMessage={(text) =>
-          activeChat && addChatMessage(activeChat.id, text, "me")
-        }
-        onPlanDate={() => {
-          if (activeChat) {
-            //if there is an active chat, set the planner match to the active chat and set the planner open to true
-            setPlannerMatch(activeChat);
-            setPlannerOpen(true);
-          }
-        }}
-      />
+                  timestamp: new Date(v.timestamp),
+                  message: v.text,
+                };
+              }),
+              participants: [
+                {
+                  id: activeChat.user.id,
+                  displayName: activeChat.user.name,
+                  avatarUrl: activeChat.user.avatarUrl,
+                  type: "client",
+                  dummyResponses: [
+                    "Based on your cravings, I'd suggest trying Spice Haven — great spicy noodles nearby!",
+                    "How about Italian? Pasta Paradise has excellent gluten-free options.",
+                    "For something quick, Taco Fiesta is only 8–12 minutes away.",
+                    "Sushi Supreme is perfect if you're in the mood for Japanese tonight.",
+                    "Tell me more about your dietary needs and I'll narrow it down!",
+                  ],
+                },
+              ],
+            }}
+            onSendMessage={(text) => {
+              addChatMessage(activeChat.id, text, "0");
+            }}
+            onReceiveMessage={(text, senderId) => {
+              addChatMessage(activeChat.id, text, senderId || "0");
+            }}
+            height={"55vh"}
+          >
+            <button
+              onClick={() => {
+                setPlannerMatch(activeChat);
+                setPlannerOpen(true);
+              }} //plan the food date
+              className="p-2 rounded-lg bg-bs-gold/20 hover:bg-bs-gold/40 transition-colors"
+              title="Plan Food Date"
+            >
+              <Calendar className="w-5 h-5 text-bs-neutral-800" />
+            </button>
+            <button
+              onClick={() => {
+                setActiveChat(null);
+              }} //close the chat
+              className="p-2 rounded-lg hover:bg-bs-neutral-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </ChatBoxPanel>
+        </div>
+      )}
 
       <FoodDatePlanner
         match={plannerMatch}

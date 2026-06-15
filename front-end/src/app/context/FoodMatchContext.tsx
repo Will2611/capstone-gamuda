@@ -47,7 +47,10 @@ interface FoodMatchContextValue extends FoodMatchState {
 
 const FoodMatchContext = createContext<FoodMatchContextValue | null>(null);
 
-function createMatch(user: MatchUser, profile: FoodPreferenceProfile): FoodMatch {
+function createMatch(
+  user: MatchUser,
+  profile: FoodPreferenceProfile,
+): FoodMatch {
   const { score, sharedInterests } = computeCompatibility(profile, user);
   const now = new Date();
   return {
@@ -88,12 +91,15 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  const updateProfile = useCallback((updates: Partial<FoodPreferenceProfile>) => {
-    setState((prev) => ({
-      ...prev,
-      profile: { ...prev.profile, ...updates },
-    }));
-  }, []);
+  const updateProfile = useCallback(
+    (updates: Partial<FoodPreferenceProfile>) => {
+      setState((prev) => ({
+        ...prev,
+        profile: { ...prev.profile, ...updates },
+      }));
+    },
+    [],
+  );
 
   const completeProfile = useCallback(() => {
     setState((prev) => ({
@@ -179,9 +185,14 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       ...state.matches.map((m) => m.user.id),
     ]);
     return MOCK_MATCH_USERS.filter(
-      (u) => !seen.has(u.id) && state.profile.profileVisible
+      (u) => !seen.has(u.id) && state.profile.profileVisible,
     );
-  }, [state.passedIds, state.blockedIds, state.matches, state.profile.profileVisible]);
+  }, [
+    state.passedIds,
+    state.blockedIds,
+    state.matches,
+    state.profile.profileVisible,
+  ]);
 
   const addChatMessage = useCallback(
     (matchId: string, text: string, senderId: string) => {
@@ -199,7 +210,7 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
         },
       }));
     },
-    []
+    [],
   );
 
   const value = useMemo(
@@ -228,11 +239,13 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       getDiscoverUsers,
       addChatMessage,
       resetDiscoverPool,
-    ]
+    ],
   );
 
   return (
-    <FoodMatchContext.Provider value={value}>{children}</FoodMatchContext.Provider>
+    <FoodMatchContext.Provider value={value}>
+      {children}
+    </FoodMatchContext.Provider>
   );
 }
 

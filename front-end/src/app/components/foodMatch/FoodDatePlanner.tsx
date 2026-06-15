@@ -30,10 +30,14 @@ const TIME_SLOTS = [
   "9:00 PM",
 ];
 
-export function FoodDatePlanner({ match, isOpen, onClose }: FoodDatePlannerProps) {
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(
-    null
-  );
+export function FoodDatePlanner({
+  match,
+  isOpen,
+  onClose,
+}: FoodDatePlannerProps) {
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<
+    number | null
+  >(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("7:00 PM");
   const [cuisine, setCuisine] = useState("Any");
@@ -195,7 +199,8 @@ export function FoodDatePlanner({ match, isOpen, onClose }: FoodDatePlannerProps
                   </section>
 
                   <p className="text-xs text-bs-neutral-500 text-center">
-                    Meet safely in public places. Share plans only when comfortable.
+                    Meet safely in public places. Share plans only when
+                    comfortable.
                   </p>
 
                   <Button

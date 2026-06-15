@@ -13,7 +13,6 @@ interface MatchModalProps {
   onStartChat: () => void;
 }
 
-
 export function MatchModal({
   match,
   currentUserAvatar,
@@ -45,9 +44,7 @@ export function MatchModal({
     frame();
   }, [match]);
 
-  const message = match
-    ? getSharedInterestMessage(match.sharedInterests)
-    : "";
+  const message = match ? getSharedInterestMessage(match.sharedInterests) : "";
 
   return (
     <AnimatePresence>

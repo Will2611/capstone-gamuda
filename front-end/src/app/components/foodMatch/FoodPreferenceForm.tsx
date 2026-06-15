@@ -70,7 +70,8 @@ export function FoodPreferenceForm({
           What&apos;s your food vibe?
         </h1>
         <p className="text-bs-neutral-600">
-          Help us find people who share your taste — friends, dates, or food buddies.
+          Help us find people who share your taste — friends, dates, or food
+          buddies.
         </p>
       </motion.div>
 
@@ -166,7 +167,9 @@ export function FoodPreferenceForm({
                   onChange={(e) => onUpdate({ halal: e.target.checked })}
                   className="w-4 h-4 rounded accent-bs-gold"
                 />
-                <span className="text-sm text-bs-neutral-700">Halal preference</span>
+                <span className="text-sm text-bs-neutral-700">
+                  Halal preference
+                </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input

@@ -172,8 +172,7 @@ export function RestaurantPopupCard({
                   rel="noopener noreferrer"
                   className={`${socialLinkBase} hover:border-bs-red hover:bg-bs-red/5 hover:text-bs-red`}
                 >
-                  {/* <Instagram size={16} className="shrink-0" /> */}
-                  <Instagram width={16} />
+                  <Instagram size={16} />
                   View Instagram
                 </a>
               </div>

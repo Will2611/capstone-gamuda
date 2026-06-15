@@ -76,7 +76,7 @@ export function RestaurantCard({
             <span>{distance}</span>
           </div>
           <div className="flex items-center gap-1">
-            <ThreeDots width={16} />
+            <ThreeDots size={16} />
             <span>{dietary}</span>
           </div>
         </div>
@@ -126,7 +126,7 @@ export function SuggestionCard({
           <span>{distance}</span>
         </div>
         <div className="flex items-center gap-1">
-          <ThreeDots width={16} />
+          <ThreeDots size={16} />
           <span>{dietary}</span>
         </div>
       </div>

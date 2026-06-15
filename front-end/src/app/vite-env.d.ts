@@ -1,6 +1,6 @@
 /// <reference types="vite-plugin-pwa/react" />
 
-// overwrite vite-plugin-svgr/client to include custom props
+// first come first serve, overwrite vite-plugin-svgr/client to include custom props
 declare module "*.svg?react" {
   import * as React from "react";
 
@@ -10,7 +10,9 @@ declare module "*.svg?react" {
       titleId?: string;
       desc?: string;
       descId?: string;
+      //certain pins may have custom colours, defined in vite.config
       customfill?: string;
+      size?: number;
     }
   >;
 
