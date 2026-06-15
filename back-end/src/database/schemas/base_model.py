@@ -1,7 +1,8 @@
 from src.database.connection import Base
-from sqlalchemy import Column, Integer, DateTime
-from sqlalchemy.sql import func
-from pydantic import BaseModel, StrictInt, Field, PastDatetime
+from sqlalchemy import Column, DateTime, func
+from datetime import datetime
+from pydantic import BaseModel, Field, UUID7
+from typing import Optional
 
 # Example model for checker
 # from pydantic import BaseModel, StrictInt, Field
@@ -13,12 +14,12 @@ from pydantic import BaseModel, StrictInt, Field, PastDatetime
 
 
 class DBBaseRequest(BaseModel):
-    id:StrictInt = Field(gt=0)
-    time_created:PastDatetime =Field()
+    # For updating users
+    id:Optional[UUID7]= Field(None)
 
 # Is supposed to include in mixin, what is expected in a base class
 class DBBaseModelMixIn(object):
-    id=Column(Integer, primary_key=True, index=True, nullable=False)
-    created_at = Column(DateTime, default=func.now())
-    # updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    # id is manual, could be overwritten in case of is also Foreign Key in case of joint table inheritance
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=datetime.now())
+    

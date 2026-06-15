@@ -20,7 +20,6 @@ DB_PASSWORD = os.getenv("CLOUD_PASSWORD", 'root') if INSTANCE_CONNECTION_NAME el
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT=os.getenv("DB_PORT", '5432')
 
-print(f'{INSTANCE_CONNECTION_NAME} is the connection name')
 
 def get_conn():
     if(INSTANCE_CONNECTION_NAME is None):
