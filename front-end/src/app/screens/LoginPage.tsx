@@ -28,7 +28,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-bs-gold/20 mb-4">
-            <BiteSccoutIcon width={40} />
+            <BiteSccoutIcon size={40} />
           </div>
           <h1 className="mb-2">Welcome back</h1>
           <p className="text-bs-neutral-600">

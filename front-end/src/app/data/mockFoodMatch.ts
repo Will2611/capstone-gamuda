@@ -92,7 +92,11 @@ export const MOCK_MATCH_USERS: MatchUser[] = [
     bio: "Street food explorer by day, Korean BBQ champion by night.",
     favoriteFoods: ["Korean BBQ", "Spicy Food", "Hotpot", "Seafood"],
     favoriteRestaurants: ["Spice Haven", "BBQ Alley", "Night Market Noodles"],
-    personalityTags: ["Street food hunter", "Late night foodie", "Adventurous eater"],
+    personalityTags: [
+      "Street food hunter",
+      "Late night foodie",
+      "Adventurous eater",
+    ],
     lookingFor: "food-buddy",
     likesBack: true,
   },
@@ -212,7 +216,7 @@ export const MOCK_SUGGESTED_RESTAURANTS: SuggestedRestaurant[] = [
 
 export function computeCompatibility(
   userProfile: FoodPreferenceProfile,
-  matchUser: MatchUser
+  matchUser: MatchUser,
 ): { score: number; sharedInterests: string[] } {
   const userTags = [
     ...userProfile.favoriteFoods,
@@ -227,28 +231,32 @@ export function computeCompatibility(
 export function getSharedInterestMessage(shared: string[]): string {
   if (shared.length === 0) return "You both love exploring new food spots!";
   const foods = shared.filter((s) =>
-    FAVORITE_FOOD_OPTIONS.includes(s as (typeof FAVORITE_FOOD_OPTIONS)[number])
+    FAVORITE_FOOD_OPTIONS.includes(s as (typeof FAVORITE_FOOD_OPTIONS)[number]),
   );
   const tags = shared.filter((s) =>
-    PERSONALITY_TAG_OPTIONS.includes(s as (typeof PERSONALITY_TAG_OPTIONS)[number])
+    PERSONALITY_TAG_OPTIONS.includes(
+      s as (typeof PERSONALITY_TAG_OPTIONS)[number],
+    ),
   );
   const parts: string[] = [];
   if (foods.length >= 2) {
-    parts.push(`You both love ${foods.slice(0, 2).join(" and ").toLowerCase()}`);
+    parts.push(
+      `You both love ${foods.slice(0, 2).join(" and ").toLowerCase()}`,
+    );
   } else if (foods.length === 1) {
     parts.push(`You both love ${foods[0].toLowerCase()}`);
   }
   if (tags.length > 0) {
     const tagPhrase = tags[0].toLowerCase();
     parts.push(
-      parts.length ? `and ${tagPhrase}!` : `You're both ${tagPhrase}s!`
+      parts.length ? `and ${tagPhrase}!` : `You're both ${tagPhrase}s!`,
     );
   }
   return parts.join(" ") || "Great taste — you're a foodie match!";
 }
 
 export function getRestaurantsForSharedInterests(
-  sharedInterests: string[]
+  sharedInterests: string[],
 ): SuggestedRestaurant[] {
   const lower = sharedInterests.map((s) => s.toLowerCase());
   const japaneseKeywords = ["sushi", "ramen", "japanese", "coffee"];
@@ -260,7 +268,7 @@ export function getRestaurantsForSharedInterests(
   }
   if (koreanKeywords.some((k) => lower.some((s) => s.includes(k)))) {
     return MOCK_SUGGESTED_RESTAURANTS.filter(
-      (r) => r.cuisine === "Korean" || r.cuisine === "Hotpot"
+      (r) => r.cuisine === "Korean" || r.cuisine === "Hotpot",
     );
   }
   if (cafeKeywords.some((k) => lower.some((s) => s.includes(k)))) {

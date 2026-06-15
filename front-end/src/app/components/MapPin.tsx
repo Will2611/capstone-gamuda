@@ -34,7 +34,7 @@ export function MapPinButton({
       }}
       className="hover:scale-125 transition-transform"
     >
-      <MapPinColored width={32} height={40} customfill={fillColor} />
+      <MapPinColored customfill={fillColor} />
       {hasPromotion && (
         <div className="absolute -top-1 -right-1">
           <AlertCircle size={20} className="fill-bs-red text-bs-red" />

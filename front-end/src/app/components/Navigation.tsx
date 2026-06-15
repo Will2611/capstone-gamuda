@@ -23,7 +23,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <NavLink className="cursor-pointer flex items-center gap-2" to={"/"}>
-            <BiteSccoutIcon width={32} />
+            <BiteSccoutIcon size={32} />
             <span className="font-bold text-lg text-bs-neutral-900">
               BiteScouts
             </span>
