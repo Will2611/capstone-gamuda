@@ -1,7 +1,7 @@
 from fastapi import Depends
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, MappedAsDataclass
 from google.cloud.sql.connector import Connector
 from typing import Annotated
 from dotenv import load_dotenv
@@ -45,7 +45,9 @@ engine = create_engine( DATABASE_URL,**Kwargs)
 # pool_recycle: The number of seconds after which a connection is automatically recycled (useful for preventing "lost connection" errors with MySQL/MariaDB
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+# Base = declarative_base()
+class Base(DeclarativeBase, MappedAsDataclass):
+    pass
 
 def get_db():
     db = SessionLocal()

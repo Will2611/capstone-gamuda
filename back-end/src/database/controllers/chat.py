@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter(prefix="/chat", tags=['chat'])
 
+# https://www.digitalocean.com/community/questions/building-real-time-chat-with-room-management-in-fastapi
 class RoomConnectionManager:
     def __init__(self):
         # Store active connections by room
@@ -45,7 +46,8 @@ class RoomConnectionManager:
     def disconnect(self, websocket: WebSocket):
         user_info = self.user_info.get(websocket)
         if not user_info:
-            return
+            # Empy stringis stil false
+            return '', ''
 
         room_id = user_info["room_id"]
         username = user_info["username"]

@@ -7,11 +7,11 @@ from src.database.controllers.utils import get_subcontrollers
 user_router = APIRouter(tags=['users'])
 
 @user_router.get('/ping')
-async def get_users(db: db_dependency):
+async def get_users_base(db: db_dependency):
     return {'ping':'pong'}
 
 @user_router.post('/validate-user-test')
-async def get_users(db: db_dependency, inputUser:UserRequest):
+async def post_users_base(db: db_dependency, inputUser:UserRequest):
     return {'ping':'pong'}
 
 
