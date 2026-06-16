@@ -1,5 +1,6 @@
 from src.database.connection import Base
-from sqlalchemy import Column, DateTime, func
+from sqlalchemy import  DateTime, func
+from sqlalchemy.orm import mapped_column, Mapped
 from datetime import datetime
 from pydantic import BaseModel, Field, UUID7
 from typing import Optional
@@ -20,6 +21,6 @@ class DBBaseRequest(BaseModel):
 # Is supposed to include in mixin, what is expected in a base class
 class DBBaseModelMixIn(object):
     # id is manual, could be overwritten in case of is also Foreign Key in case of joint table inheritance
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at:Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=datetime.now())
     

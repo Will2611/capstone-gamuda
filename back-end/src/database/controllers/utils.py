@@ -2,7 +2,14 @@ import os
 import inspect
 
 def get_subcontrollers(dirname):
-    caller_name = inspect.currentframe().f_back.f_globals.get("__name__")
+    current_frame = inspect.currentframe()
+    if current_frame is None:
+        return[]
+    # Get Folder
+    prev_frame = current_frame.f_back
+    if(prev_frame is None):
+        return[]
+    caller_name = prev_frame.f_globals.get("__name__")
     routers = []
     for f in os.listdir(dirname):
         # Reset/Init

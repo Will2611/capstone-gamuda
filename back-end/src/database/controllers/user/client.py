@@ -11,7 +11,7 @@ async def get_clients(db: db_dependency):
 @router.post("/validate-user-test")
 async def create_client(db: db_dependency, inputUser:ClientRequest):
     new_client = ClientModel(
-     full_name= inputUser.full_name,email=inputUser.email, avatar_url=inputUser.avatar_url
+     full_name= inputUser.full_name,email=inputUser.email, avatar_url=inputUser.avatar_url, user_type=inputUser.user_type
     )
     try:
         db.add(new_client)
