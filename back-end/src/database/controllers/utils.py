@@ -1,16 +1,17 @@
 import os
 import inspect
+from fastapi import APIRouter
 
-def get_subcontrollers(dirname):
+def get_subcontrollers(dirname:str):
     current_frame = inspect.currentframe()
+    routers:list[APIRouter] = []
     if current_frame is None:
-        return[]
+        return routers
     # Get Folder
     prev_frame = current_frame.f_back
     if(prev_frame is None):
-        return[]
+        return routers
     caller_name = prev_frame.f_globals.get("__name__")
-    routers = []
     for f in os.listdir(dirname):
         # Reset/Init
         module_name=None
@@ -25,7 +26,9 @@ def get_subcontrollers(dirname):
         # Only if module exists
         if(module_name is not None):
             moduleVar = __import__(f"{caller_name}.{module_name}", fromlist=[''])
-            if hasattr(moduleVar, 'router'):
-                routers.append(getattr(moduleVar, 'router'))
+            if not hasattr(moduleVar, 'router'):
+                continue
+            if isinstance(getattr(moduleVar, 'router'), APIRouter):
+                routers.append((getattr(moduleVar, 'router')))
         
     return routers  
