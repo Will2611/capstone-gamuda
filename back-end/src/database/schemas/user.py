@@ -22,8 +22,8 @@ class UserModel(DBBaseModelMixIn, Base):
             Uuid, 
             primary_key=True, 
             index=True, 
-            server_default=func.uuidv7(monotonic=True),
-            default=func.uuidv7(monotonic=True),
+            server_default=func.uuidv7(),
+            default=func.uuidv7(),
         )
     __mapper_args__ = {'polymorphic_on': user_type}
 
@@ -40,8 +40,8 @@ class ClientModel(UserModel):
             primary_key=True, 
             index=True, 
             nullable=False, 
-            server_default=func.uuidv7(monotonic=True),
-            default=func.uuidv7(monotonic=True)
+            server_default=func.uuidv7(),
+            default=func.uuidv7()
         )
     avatar_url:Mapped[Optional[str]]= mapped_column(String, default=None)
     __mapper_args__ = {
@@ -64,8 +64,8 @@ class OwnerModel(UserModel):
             primary_key=True, 
             index=True, 
             nullable=False, 
-            server_default=func.uuidv7(monotonic=True),
-            default=func.uuidv7(monotonic=True),
+            server_default=func.uuidv7(),
+            default=func.uuidv7(),
         )
     __mapper_args__ = {
         'polymorphic_identity': 'owner',
