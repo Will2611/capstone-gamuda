@@ -84,6 +84,10 @@ export default defineConfig(({ mode }) => {
     //   port: 4000,
     // },
     server: {
+      host: env.NODE_ENV === "development",
+      watch: {
+        usePolling: env.NODE_ENV === "development",
+      },
       allowedHosts: ["gulf-hanky-tubeless.ngrok-free.dev"],
     },
   };

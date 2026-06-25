@@ -1,0 +1,43 @@
+.git*
+.env
+node_modules/
+myenv/
+venv/
+__pycache__/
+
+.agents/*
+.firebase/*
+.dist/*
+.dev-dist/
+
+# Git
+.git
+.gitlab-ci.yml
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker Compose itself (no need to copy it into the image)
+docker-compose.yml
+docker-compose.override.yml
+
+# Service-specific dependencies (Prevents the "directory vs file" error)
+# If using Option A (context: ./frontend), you can ignore other services entirely
+backend/
+node_modules/
+
+# If using Option B (context: .), be specific:
+# frontend/node_modules
+# backend/node_modules
+# frontend/dist
+# backend/__pycache__   
