@@ -1,0 +1,57 @@
+services:
+  frontend:
+    image: capstone-front-end
+    pull_policy: never
+    build:
+      # Option A: Context is the service folder (isolated)
+      context: ./front-end
+      dockerfile: Dockerfile
+    volumes:
+      # Only for development
+      - ./front-end:/app
+      # For quicker npm install, maybe?
+      - /app/node_modules
+    env_file:
+      - ./front-end/.env
+    ports:
+      # front is for our local network
+      - "5173:5173"
+  backend:
+    image: capstone-back-end
+    pull_policy: never
+    env_file:
+      - ./back-end/.env
+    environment:
+      - DB_HOST=db # Must match the service name of your postgres container, over write env
+      - DB_PORT=5432 # Must match the service name of your postgres container, over write env
+      - WATCHFILES_FORCE_POLLING=true
+    volumes:
+      # Mount local ./back-end folder to /app inside the container
+      # For development only
+      - ./back-end:/app
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile.dev
+      # target: runner
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    ports:
+      - "8000:8000"
+  db:
+    image: "postgres:18-alpine"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "root"
+      POSTGRES_DB: "bitescout_db"
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bitescout_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

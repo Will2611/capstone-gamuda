@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.database.connection import create_tables
+# Important for creating tables, to import the base model
+from .database.schemas import *
+from src.database.connection import create_tables, drop_tables
 from src.database.controllers import routers
 import os
 
@@ -20,6 +22,13 @@ app.add_middleware(
 @app.get('/')
 async def read_root():
     return {'message':'Hello World'}
+
+@app.delete('/delete')
+async def drop_all_tables():
+    drop_tables()
+    create_tables()
+    return {'Dropped all tables and recreated'}
+
 
 for router_file in routers:
     app.include_router(router_file)

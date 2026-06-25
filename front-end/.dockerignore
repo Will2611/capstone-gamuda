@@ -1,0 +1,15 @@
+**/node_modules/
+**/.agents/
+**/.firebase/
+**/.firebase*.*
+**/.firebase*
+**/skils-lock.json
+**/firebase*.json
+
+guidelines/
+dist/
+.env*
+
+.dockerignore
+Dockerfile
+Dockerfile*.*
