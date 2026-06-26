@@ -1,29 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import maplibregl from "maplibre-gl";
+import { Marker as MapLibreMarker, Map as MapLibreMap, NavigationControl as MapLibreNavigationControl } from "maplibre-gl";
 import { MapPinButton } from "../components/MapPin";
 import { MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM } from "../data/mockRestaurants";
 import type { Restaurant } from "../types/restaurant";
 import { isPromotionActive } from "../utils/promotionUtils";
+import { fitMapAroundUser, getRestaurantBounds } from "../utils/mapUtils";
 
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/bright";
 
-function getRestaurantBounds(
-  restaurants: Restaurant[],
-): maplibregl.LngLatBoundsLike | null {
-  if (restaurants.length === 0) return null;
-
-  const lngs = restaurants.map((r) => r.coordinates[0]);
-  const lats = restaurants.map((r) => r.coordinates[1]);
-  return [
-    [Math.min(...lngs), Math.min(...lats)],
-    [Math.max(...lngs), Math.max(...lats)],
-  ];
-}
-
 type MarkerEntry = {
   root: Root;
-  marker: maplibregl.Marker;
+  marker: MapLibreMarker;
   restaurant: Restaurant;
 };
 
@@ -49,6 +37,8 @@ export interface UseRestaurantMapOptions {
   selectedPin: number | null;
   onPinClick: (id: number) => void;
   onMapBackgroundClick?: () => void;
+  /** Set after the user clicks "Locate me"; triggers user-centered fitBounds. */
+  userCenter?: [number, number] | null;
 }
 
 export function useRestaurantMap({
@@ -56,9 +46,11 @@ export function useRestaurantMap({
   selectedPin,
   onPinClick,
   onMapBackgroundClick,
+  userCenter = null,
 }: UseRestaurantMapOptions) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const userMarkerRef = useRef<MapLibreMarker | null>(null);
   const markerEntriesRef = useRef<Map<number, MarkerEntry>>(new Map());
   const prevSelectedPinRef = useRef<number | null>(null);
   const onPinClickRef = useRef(onPinClick);
@@ -76,14 +68,14 @@ export function useRestaurantMap({
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = new maplibregl.Map({
+    const map = new MapLibreMap({
       container: mapContainerRef.current,
       style: MAP_STYLE,
       center: MAP_DEFAULT_CENTER,
       zoom: MAP_DEFAULT_ZOOM,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new MapLibreNavigationControl(), "top-right");
     mapRef.current = map;
 
     map.on("load", () => {
@@ -113,10 +105,36 @@ export function useRestaurantMap({
       });
       markerEntriesRef.current.clear();
       prevSelectedPinRef.current = null;
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
   }, [restaurants]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isLoading || !userCenter) return;
+
+    if (!userMarkerRef.current) {
+      const el = document.createElement("div");
+      el.className = "user-location-marker";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = "#2563eb";
+      el.style.border = "3px solid white";
+      el.style.boxShadow = "0 0 6px rgba(0,0,0,0.35)";
+
+      userMarkerRef.current = new MapLibreMarker({ element: el })
+        .setLngLat(userCenter)
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(userCenter);
+    }
+
+    fitMapAroundUser(map, userCenter, restaurants);
+  }, [userCenter, isLoading, restaurants]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -161,7 +179,7 @@ export function useRestaurantMap({
         handlePinClickStable,
       );
 
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      const marker = new MapLibreMarker({ element: el, anchor: "bottom" })
         .setLngLat(restaurant.coordinates)
         .addTo(map);
 
