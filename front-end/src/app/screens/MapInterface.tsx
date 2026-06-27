@@ -5,11 +5,13 @@ import ChatBoxPanel from "../components/ChatBoxPanel";
 // import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
 import { Skeleton } from "../components/ui/skeleton";
-import { MOCK_RESTAURANTS } from "../data/mockRestaurants";
+import { MAP_DEFAULT_CENTER, MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
+import { useGeolocation } from "../hooks/useGeolocation";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
 import type { Restaurant } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
+import PersonPin from "@/assets/person-circle-pin.svg?react";
 
 export default function MapInterface() {
   const navigate = useNavigate();
@@ -45,11 +47,15 @@ export default function MapInterface() {
     );
   }, []);
 
+  const { userCenter, locate, isLocating, error: geoError } =
+    useGeolocation(MAP_DEFAULT_CENTER);
+
   const { mapContainerRef, isLoading } = useRestaurantMap({
     restaurants,
     selectedPin,
     onPinClick: handlePinClick,
     onMapBackgroundClick: handleMapBackgroundClick,
+    userCenter,
   });
 
   return (
@@ -81,10 +87,27 @@ export default function MapInterface() {
           </div>
 
           {!selectedRestaurant && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
-              Tap a pin to view restaurant details
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+              <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
+                Tap a pin to view restaurant details
+              </div>
+              {geoError && (
+                <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
+                  {geoError}
+                </div>
+              )}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={locate}
+            disabled={isLocating}
+            aria-label="Locate me on the map"
+            className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+          >
+            <PersonPin/>
+          </button>
         </div>
 
         {selectedRestaurant && (
