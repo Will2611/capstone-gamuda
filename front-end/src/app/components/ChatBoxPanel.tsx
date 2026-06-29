@@ -4,6 +4,7 @@ import type { ChatBox, ChatMessage, DummyChatBox } from "../types/chat";
 import { useUser } from "../context/UserContext";
 import { Send, Bot, User } from "lucide-react";
 import type { DummyUserProfile, PublicUserProfileData } from "../types/user";
+import { sendChatMessage, type RestaurantResult } from "../services/chatbotApi";
 
 const chatConnection = {
   CONNECTED: "connected",
@@ -34,21 +35,25 @@ export default function ChatBoxPanel({
   height,
   children,
   dummyChat,
-  onSendMessage = (text) => {},
-  onReceiveMessage = (text) => {},
+  useLlm = false,
+  onSendMessage = (_text) => {},
+  onReceiveMessage = (_text) => {},
+  onLlmResponse,
 }: {
   socketUrl: string | null;
   // has to be inline style because tailwind doesn't generate
   children?: ReactNode;
   height?: string;
   dummyChat?: DummyChatBox;
+  useLlm?: boolean;
   chatName?: string;
   onSendMessage?: (text: string) => void;
   onReceiveMessage?: (text: string, id?: string) => void;
+  onLlmResponse?: (replyText: string, restaurants: RestaurantResult[]) => void;
 }) {
   const getUser = useUser();
 
-  const [socketStatus, setSocketStatus] = useState<CHAT_CONNECTION>(
+  const [_socketStatus, setSocketStatus] = useState<CHAT_CONNECTION>(
     chatConnection.DISCONNECTED,
   );
 
@@ -69,7 +74,7 @@ export default function ChatBoxPanel({
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if ((data.type = "init")) {
+        if (data.type === "init") {
           setInitPayload(data.payload);
         }
         setMessages((prev) => [...prev, data]);
@@ -209,6 +214,9 @@ export default function ChatBoxPanel({
   }, [dummyUser]);
 
   useEffect(() => {
+    if (useLlm) {
+      return;
+    }
     const dummyMessaging = setTimeout(() => {
       if (!dummyUser) {
         return;
@@ -229,16 +237,15 @@ export default function ChatBoxPanel({
     return () => {
       clearTimeout(dummyMessaging);
     };
-  }, [messages]);
+  }, [messages, useLlm, dummyUser, dummyReply, onReceiveMessage]);
 
   const handleSend = useCallback(
-    (e: ReactSubmitEvent<HTMLFormElement>) => {
+    async (e: ReactSubmitEvent<HTMLFormElement>) => {
       e.preventDefault();
       const text = input.trim();
       if (!text || isTyping.length > 0) return;
       onSendMessage(text);
-      // if(!wsRef.current) return
-      // wsRef.current.send(text)
+
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         userName: getUser.profile.displayName,
@@ -249,11 +256,67 @@ export default function ChatBoxPanel({
         message: text,
       };
 
-      setMessages((prev) => [...prev, userMsg]);
+      const updatedMessages = [...messages, userMsg];
+      setMessages(updatedMessages);
       setInput("");
+
+      if (useLlm) {
+        const botId = dummyUser?.id ?? "-1";
+        const botName = dummyUser?.displayName ?? "ChatBot";
+        setIsTyping(["LLM"]);
+        try {
+          const history = updatedMessages.map((m) => ({
+            role:
+              m.userType === "bot" || m.userId === botId
+                ? ("assistant" as const)
+                : ("user" as const),
+            content: m.message,
+          }));
+          const response = await sendChatMessage(history);
+          const replyText = response.message;
+          const restaurants = response.restaurants || [];
+          const botMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            userName: botName,
+            userType: "bot",
+            userId: botId,
+            timestamp: new Date(),
+            message: replyText,
+          };
+          onReceiveMessage(replyText, botId);
+          if (onLlmResponse) {
+            onLlmResponse(replyText, restaurants);
+          }
+          setMessages((prev) => [...prev, botMsg]);
+        } catch {
+          const errMsg: ChatMessage = {
+            id: crypto.randomUUID(),
+            userName: botName,
+            userType: "bot",
+            userId: botId,
+            timestamp: new Date(),
+            message:
+              "Sorry, I'm having trouble responding right now. Please try again.",
+          };
+          setMessages((prev) => [...prev, errMsg]);
+        } finally {
+          setIsTyping([]);
+        }
+        return;
+      }
+
       setIsTyping(["LLM"]);
     },
-    [wsRef, input, isTyping],
+    [
+      input,
+      isTyping,
+      messages,
+      useLlm,
+      dummyUser,
+      getUser.profile,
+      onSendMessage,
+      onReceiveMessage,
+    ],
   );
   return (
     <div
@@ -349,7 +412,7 @@ export default function ChatBoxPanel({
         />
         <button
           type="submit"
-          disabled={!input.trim()}
+          disabled={!input.trim() || isTyping.length > 0}
           className="p-2.5 rounded-lg bg-bs-gold text-bs-neutral-900 hover:bg-[#FFE44D] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Send message"
         >
