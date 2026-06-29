@@ -188,6 +188,38 @@ export default function MapInterface() {
     },
     [],
   );
+  const restaurants = displayedRestaurants;
+
+  const handleLlmResponse = useCallback((_replyText: string, searchResults: any[]) => {
+    if (searchResults && searchResults.length > 0) {
+      const mapped = searchResults.map((r) => {
+        const mockMatch = MOCK_RESTAURANTS.find(
+          (m) => m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase()
+        );
+        return {
+          id: r.id,
+          name: r.name,
+          rating: r.rating || 4.0,
+          cuisine: r.cuisine || "Any",
+          distance: mockMatch?.distance || "1.2 km",
+          dietary: mockMatch?.dietary || "Halal",
+          isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
+          type: "gold" as const,
+          coordinates: r.longitude && r.latitude ? [r.longitude, r.latitude] : (mockMatch?.coordinates || [101.71, 3.15]),
+          image: mockMatch?.image,
+          promotions: mockPromotions.filter((promo) => promo.id === r.id),
+        } as Restaurant;
+      });
+      setDisplayedRestaurants(mapped);
+    } else {
+      setDisplayedRestaurants(
+        MOCK_RESTAURANTS.map((restaurant) => ({
+          ...restaurant,
+          promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
+        }))
+      );
+    }
+  }, []);
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
   const handlePinClick = useCallback((id: number) => {
