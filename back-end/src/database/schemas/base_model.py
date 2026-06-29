@@ -21,6 +21,6 @@ class DBBaseRequest(BaseModel):
 # Is supposed to include in mixin, what is expected in a base class
 class DBBaseModelMixIn(object):
     # id is manual, could be overwritten in case of is also Foreign Key in case of joint table inheritance
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at:Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=datetime.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), init=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=datetime.now, init=False)
     
