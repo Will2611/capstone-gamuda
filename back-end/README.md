@@ -16,6 +16,12 @@ To ensure you're using your vsCode can understand the packagess installed, open 
 
 To start running the server for development run `uvicorn src.main:app --reload`
 
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+Create a new db called food_db to test out chatbot with a db 
+Adjust .env file so will connect to the right db
+
 Login
 gcloud auth application-default login
 

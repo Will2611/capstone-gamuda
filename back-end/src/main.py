@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database.schemas import *
 from src.database.connection import create_tables, drop_tables
 from src.database.controllers import routers
+from src.llm.router import router as llm_router
 import os
 
     
@@ -29,6 +30,7 @@ async def drop_all_tables():
     create_tables()
     return {'Dropped all tables and recreated'}
 
+app.include_router(llm_router)
 
 for router_file in routers:
     app.include_router(router_file)
