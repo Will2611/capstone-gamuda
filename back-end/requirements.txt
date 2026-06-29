@@ -6,3 +6,7 @@ email_validator
 python-dotenv
 cloud-sql-python-connector
 pg8000
+langchain-core
+langchain-google-genai
+langchain-ollama
+langchain
