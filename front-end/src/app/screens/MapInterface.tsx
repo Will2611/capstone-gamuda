@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapPinButton } from "../components/MapPin";
 import ChatBoxPanel from "../components/ChatBoxPanel";
 // import { ChatbotPanel } from "../components/ChatbotPanel";
@@ -20,11 +20,13 @@ export default function MapInterface() {
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
 
-  const [displayedRestaurants, setDisplayedRestaurants] = useState<Restaurant[]>(() =>
+  const [displayedRestaurants, setDisplayedRestaurants] = useState<
+    Restaurant[]
+  >(() =>
     MOCK_RESTAURANTS.map((restaurant) => ({
       ...restaurant,
       promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
-    }))
+    })),
   );
   const restaurants = displayedRestaurants;
 
@@ -34,46 +36,55 @@ export default function MapInterface() {
         ...restaurant,
         description: `${restaurant.cuisine} cuisine with ${restaurant.dietary.toLowerCase()} and a welcoming atmosphere. It is a strong pick if you want a memorable meal nearby.`,
       })),
-    [restaurants]
+    [restaurants],
   );
 
-  const handleLlmResponse = useCallback((_replyText: string, searchResults: any[]) => {
-    if (searchResults && searchResults.length > 0) {
-      const topIndex = searchResults.reduce((bestIdx, r, i, arr) => {
-        const rating = r.rating ?? 4.0;
-        const bestRating = arr[bestIdx].rating ?? 4.0;
-        return rating > bestRating ? i : bestIdx;
-      }, 0);
+  const handleLlmResponse = useCallback(
+    (_replyText: string, searchResults: any[]) => {
+      if (searchResults && searchResults.length > 0) {
+        const topIndex = searchResults.reduce((bestIdx, r, i, arr) => {
+          const rating = r.rating ?? 4.0;
+          const bestRating = arr[bestIdx].rating ?? 4.0;
+          return rating > bestRating ? i : bestIdx;
+        }, 0);
 
-      const mapped = searchResults.map((r, index) => {
-        const rating = r.rating || 4.0;
-        const mockMatch = MOCK_RESTAURANTS.find(
-          (m) => m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase()
+        const mapped = searchResults.map((r, index) => {
+          const rating = r.rating || 4.0;
+          const mockMatch = MOCK_RESTAURANTS.find(
+            (m) =>
+              m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase(),
+          );
+          return {
+            id: r.id,
+            name: r.name,
+            rating,
+            cuisine: r.cuisine || "Any",
+            distance: mockMatch?.distance || "1.2 km",
+            dietary: mockMatch?.dietary || "Halal",
+            isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
+            type: index === topIndex ? ("gold" as const) : ("red" as const),
+            coordinates:
+              r.longitude && r.latitude
+                ? [r.longitude, r.latitude]
+                : mockMatch?.coordinates || [101.71, 3.15],
+            image: mockMatch?.image,
+            promotions: mockPromotions.filter((promo) => promo.id === r.id),
+          } as Restaurant;
+        });
+        setDisplayedRestaurants(mapped);
+      } else {
+        setDisplayedRestaurants(
+          MOCK_RESTAURANTS.map((restaurant) => ({
+            ...restaurant,
+            promotions: mockPromotions.filter(
+              (promo) => promo.id === restaurant.id,
+            ),
+          })),
         );
-        return {
-          id: r.id,
-          name: r.name,
-          rating,
-          cuisine: r.cuisine || "Any",
-          distance: mockMatch?.distance || "1.2 km",
-          dietary: mockMatch?.dietary || "Halal",
-          isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
-          type: index === topIndex ? ("gold" as const) : ("red" as const),
-          coordinates: r.longitude && r.latitude ? [r.longitude, r.latitude] : (mockMatch?.coordinates || [101.71, 3.15]),
-          image: mockMatch?.image,
-          promotions: mockPromotions.filter((promo) => promo.id === r.id),
-        } as Restaurant;
-      });
-      setDisplayedRestaurants(mapped);
-    } else {
-      setDisplayedRestaurants(
-        MOCK_RESTAURANTS.map((restaurant) => ({
-          ...restaurant,
-          promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
-        }))
-      );
-    }
-  }, []);
+      }
+    },
+    [],
+  );
 
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
@@ -113,8 +124,12 @@ export default function MapInterface() {
     <div className="flex flex-col h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 lg:gap-4 lg:p-4 overflow-hidden">
       <div className="px-4 pt-4 lg:px-0 lg:pt-0 flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-bs-neutral-900">Dining Discovery</h2>
-          <p className="text-sm text-bs-neutral-600">Switch between a live map and curated restaurant suggestions.</p>
+          <h2 className="text-lg font-semibold text-bs-neutral-900">
+            Dining Discovery
+          </h2>
+          <p className="text-sm text-bs-neutral-600">
+            Switch between a live map and curated restaurant suggestions.
+          </p>
         </div>
         <div className="inline-flex rounded-full bg-white p-1 shadow-sm border border-bs-neutral-200">
           <button
@@ -202,7 +217,9 @@ export default function MapInterface() {
                       restaurant={selectedRestaurant}
                       isFavorite={isFavorite(selectedRestaurant.id)}
                       onClose={() => setSelectedPin(null)}
-                      onToggleFavorite={() => toggleFavorite(selectedRestaurant)}
+                      onToggleFavorite={() =>
+                        toggleFavorite(selectedRestaurant)
+                      }
                       onDirections={() => handleDirections(selectedRestaurant)}
                     />
                   </div>
@@ -212,15 +229,22 @@ export default function MapInterface() {
           ) : (
             <div className="h-full overflow-y-auto p-4 md:p-6">
               <div className="mb-6">
-                <h3 className="text-lg font-semibold text-bs-neutral-900">Suggested restaurants</h3>
+                <h3 className="text-lg font-semibold text-bs-neutral-900">
+                  Suggested restaurants
+                </h3>
                 <p className="text-sm text-bs-neutral-600">
-                  Browse polished restaurant cards with photos, descriptions, and quick actions.
+                  Browse polished restaurant cards with photos, descriptions,
+                  and quick actions.
                 </p>
               </div>
 
               <div className="grid gap-4 xl:grid-cols-2">
                 {suggestions.map((restaurant) => (
-                  <Card key={restaurant.id} hover className="overflow-hidden p-0">
+                  <Card
+                    key={restaurant.id}
+                    hover
+                    className="overflow-hidden p-0"
+                  >
                     {restaurant.image && (
                       <div className="h-48 bg-bs-neutral-200 overflow-hidden">
                         <img
@@ -233,19 +257,29 @@ export default function MapInterface() {
                     <div className="p-6">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div>
-                          <h4 className="text-lg font-semibold text-bs-neutral-900">{restaurant.name}</h4>
-                          <p className="text-sm text-bs-neutral-500">{restaurant.cuisine}</p>
+                          <h4 className="text-lg font-semibold text-bs-neutral-900">
+                            {restaurant.name}
+                          </h4>
+                          <p className="text-sm text-bs-neutral-500">
+                            {restaurant.cuisine}
+                          </p>
                         </div>
                         <span className="inline-flex items-center rounded-full bg-bs-gold/20 px-3 py-1 text-sm font-medium text-bs-neutral-900">
                           {restaurant.rating.toFixed(1)} ★
                         </span>
                       </div>
 
-                      <p className="text-sm text-bs-neutral-700 mb-4">{restaurant.description}</p>
+                      <p className="text-sm text-bs-neutral-700 mb-4">
+                        {restaurant.description}
+                      </p>
 
                       <div className="flex flex-wrap gap-2 text-xs text-bs-neutral-600 mb-4">
-                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">{restaurant.distance}</span>
-                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">{restaurant.dietary}</span>
+                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
+                          {restaurant.distance}
+                        </span>
+                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
+                          {restaurant.dietary}
+                        </span>
                         <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
                           {restaurant.isOpen ? "Open now" : "Closed"}
                         </span>
