@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { MapPinButton } from "../components/MapPin";
 import ChatBoxPanel from "../components/ChatBoxPanel";
 // import { ChatbotPanel } from "../components/ChatbotPanel";
@@ -9,14 +9,57 @@ import { MAP_DEFAULT_CENTER, MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
-import type { Restaurant } from "../types/restaurant";
+import type { Restaurant, SearchPreferences } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
+import FilterBar from "../components/FilterBar";
+
+const emptyForm: SearchPreferences = {
+  cuisine: [],
+  priceRange: [],
+  dietary: [],
+  distance: "",
+  ambience: [],
+  time: "",
+};
 
 type ViewMode = "map" | "suggestions";
 
 export default function MapInterface() {
-  const { toggleFavorite, isFavorite } = useUser();
+  // 1. 修正解构：从 useUser 拿到 profile 而不是不存在的 preferences
+  const { toggleFavorite, isFavorite, profile } = useUser();
+
+  // 2. 健壮性初始化：将 profile.savedPreferences 中的字符串或数组安全转换为 MapInterface 期望的过滤格式
+  const [filters, setFilters] = useState<SearchPreferences>(() => {
+    const saved = profile?.savedPreferences;
+    if (!saved) return emptyForm;
+
+    return {
+      cuisine: Array.isArray(saved.cuisine)
+        ? saved.cuisine
+        : saved.cuisine
+          ? [saved.cuisine]
+          : [],
+      priceRange: Array.isArray(saved.priceRange)
+        ? saved.priceRange
+        : saved.priceRange
+          ? [saved.priceRange]
+          : [],
+      dietary: Array.isArray(saved.dietary)
+        ? saved.dietary
+        : saved.dietary
+          ? [saved.dietary]
+          : [],
+      distance: typeof saved.distance === "string" ? saved.distance : "",
+      ambience: Array.isArray(saved.ambience)
+        ? saved.ambience
+        : saved.ambience
+          ? [saved.ambience]
+          : [],
+      time: typeof saved.time === "string" ? saved.time : "",
+    };
+  });
+
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
 
@@ -28,16 +71,77 @@ export default function MapInterface() {
       promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
     })),
   );
-  const restaurants = displayedRestaurants;
 
-  const suggestions = useMemo(
-    () =>
-      restaurants.map((restaurant) => ({
-        ...restaurant,
-        description: `${restaurant.cuisine} cuisine with ${restaurant.dietary.toLowerCase()} and a welcoming atmosphere. It is a strong pick if you want a memorable meal nearby.`,
-      })),
-    [restaurants],
-  );
+  const filteredRestaurants = useMemo(() => {
+    return displayedRestaurants.filter((restaurant) => {
+      // 菜系过滤 (多选)
+      if (filters.cuisine && filters.cuisine.length > 0) {
+        const rCuisine = restaurant.cuisine?.toLowerCase() || "";
+        const hasCuisine = filters.cuisine.some((c) =>
+          rCuisine.includes(c.toLowerCase()),
+        );
+        if (!hasCuisine) return false;
+      }
+
+      // 价格区间过滤 (多选)
+      if (filters.priceRange && filters.priceRange.length > 0) {
+        if (
+          (restaurant as any).priceRange &&
+          !filters.priceRange.includes((restaurant as any).priceRange)
+        ) {
+          return false;
+        }
+      }
+
+      // 宗教/饮食习惯过滤 (多选)
+      if (
+        filters.dietary &&
+        filters.dietary.length > 0 &&
+        !filters.dietary.includes("none")
+      ) {
+        const rDietary = restaurant.dietary?.toLowerCase() || "";
+        const hasDietary = filters.dietary.some((d) =>
+          rDietary.includes(d.toLowerCase()),
+        );
+        if (!hasDietary) return false;
+      }
+
+      // 氛围过滤 (多选)
+      if (filters.ambience && filters.ambience.length > 0) {
+        const rAmbience = (restaurant as any).ambience?.toLowerCase() || "";
+        const hasAmbience = filters.ambience.some((a) =>
+          rAmbience.includes(a.toLowerCase()),
+        );
+        if (!hasAmbience) return false;
+      }
+
+      // 距离过滤 (单选)
+      if (filters.distance) {
+        const maxDistance = parseFloat(filters.distance);
+        const currentDistance = parseFloat(restaurant.distance || "0");
+        if (
+          !isNaN(maxDistance) &&
+          !isNaN(currentDistance) &&
+          currentDistance > maxDistance
+        ) {
+          return false;
+        }
+      }
+
+      // 营业时间/时段过滤 (单选)
+      if (filters.time) {
+        const rTime = (restaurant as any).time?.toLowerCase() || "";
+        if (rTime && !rTime.includes(filters.time.toLowerCase())) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [displayedRestaurants, filters]);
+
+  // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
+  const restaurants = filteredRestaurants;
 
   const handleLlmResponse = useCallback(
     (_replyText: string, searchResults: any[]) => {
@@ -85,7 +189,6 @@ export default function MapInterface() {
     },
     [],
   );
-
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
   const handlePinClick = useCallback((id: number) => {
@@ -104,6 +207,14 @@ export default function MapInterface() {
     );
   }, []);
 
+  const suggestions = useMemo(
+    () =>
+      restaurants.map((restaurant) => ({
+        ...restaurant,
+        description: `${restaurant.cuisine} cuisine with ${restaurant.dietary.toLowerCase()} and a welcoming atmosphere. It is a strong pick if you want a memorable meal nearby.`,
+      })),
+    [restaurants],
+  );
   const handleSuggestionSelect = useCallback((restaurant: Restaurant) => {
     setSelectedPin(restaurant.id);
     setViewMode("map");
@@ -164,6 +275,7 @@ export default function MapInterface() {
         <div className="flex-1 relative min-h-[45vh] lg:min-h-0 rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-bs-neutral-200 shadow-md lg:shadow-lg bg-white">
           {viewMode === "map" ? (
             <>
+              <FilterBar filters={filters} onFilterChange={setFilters} />
               <div
                 ref={mountAndUnmount}
                 className="absolute inset-0 w-full h-full"
