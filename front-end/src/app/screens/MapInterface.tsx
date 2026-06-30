@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapPinButton } from "../components/MapPin";
 import ChatBoxPanel from "../components/ChatBoxPanel";
 // import { ChatbotPanel } from "../components/ChatbotPanel";
 import { RestaurantPopupCard } from "../components/RestaurantPopupCard";
 import { Card } from "../components/Card";
+import { Button } from "../components/Button";
 import { Skeleton } from "../components/ui/skeleton";
 import { MAP_DEFAULT_CENTER, MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
@@ -143,6 +144,34 @@ export default function MapInterface() {
   // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
   const restaurants = filteredRestaurants;
 
+  type SuggestedRestaurant = Restaurant & { description: string };
+
+  // Randomizer useMemo
+  function getRandomRestaurants<T>(items: T[], count: number) {
+    return [...items].sort(() => Math.random() - 0.5).slice(0, count);
+  }
+
+  const suggestions = useMemo<SuggestedRestaurant[]>(
+    () =>
+      restaurants.map((restaurant) => ({
+        ...restaurant,
+        description: `${restaurant.cuisine} cuisine with ${restaurant.dietary.toLowerCase()} and a welcoming atmosphere. It is a strong pick if you want a memorable meal nearby.`,
+      })),
+    [restaurants],
+  );
+
+  const [suggestionResults, setSuggestionResults] = useState<
+    SuggestedRestaurant[]
+  >(() => getRandomRestaurants(suggestions, 3));
+
+  useEffect(() => {
+    setSuggestionResults(getRandomRestaurants(suggestions, 3));
+  }, [suggestions]);
+
+  const visibleSuggestions = suggestionResults.length
+    ? suggestionResults
+    : suggestions.slice(0, 3);
+
   const handleLlmResponse = useCallback(
     (_replyText: string, searchResults: any[]) => {
       if (searchResults && searchResults.length > 0) {
@@ -207,14 +236,6 @@ export default function MapInterface() {
     );
   }, []);
 
-  const suggestions = useMemo(
-    () =>
-      restaurants.map((restaurant) => ({
-        ...restaurant,
-        description: `${restaurant.cuisine} cuisine with ${restaurant.dietary.toLowerCase()} and a welcoming atmosphere. It is a strong pick if you want a memorable meal nearby.`,
-      })),
-    [restaurants],
-  );
   const handleSuggestionSelect = useCallback((restaurant: Restaurant) => {
     setSelectedPin(restaurant.id);
     setViewMode("map");
@@ -234,7 +255,7 @@ export default function MapInterface() {
     onMapBackgroundClick: handleMapBackgroundClick,
     userCenter,
   });
-
+  // Dual mode
   return (
     <div className="flex flex-col h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 lg:gap-4 lg:p-4 overflow-hidden">
       <div className="px-4 pt-4 lg:px-0 lg:pt-0 flex items-center justify-between gap-4">
@@ -343,25 +364,35 @@ export default function MapInterface() {
             </>
           ) : (
             <div className="h-full overflow-y-auto p-4 md:p-6">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-bs-neutral-900">
-                  Suggested restaurants
-                </h3>
-                <p className="text-sm text-bs-neutral-600">
-                  Browse polished restaurant cards with photos, descriptions,
-                  and quick actions.
-                </p>
+              <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-bs-neutral-900">
+                    Suggested restaurants
+                  </h3>
+                  <p className="text-sm text-bs-neutral-600">
+                    Browse suggested restaurants near you with photos, descriptions,
+                    and quick actions.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() =>
+                    setSuggestionResults(getRandomRestaurants(suggestions, 3))
+                  }
+                >
+                  Surprise me!
+                </Button>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-2">
-                {suggestions.map((restaurant) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {visibleSuggestions.map((restaurant) => (
                   <Card
                     key={restaurant.id}
                     hover
                     className="overflow-hidden p-0"
                   >
                     {restaurant.image && (
-                      <div className="h-48 bg-bs-neutral-200 overflow-hidden">
+                      <div className="h-36 bg-bs-neutral-200 overflow-hidden">
                         <img
                           src={restaurant.image}
                           alt={restaurant.name}
