@@ -264,7 +264,7 @@ export default function MapInterface() {
             Dining Discovery
           </h2>
           <p className="text-sm text-bs-neutral-600">
-            Switch between a live map and curated restaurant suggestions.
+            Explore your cuisine between a live map and curated restaurant suggestions.
           </p>
         </div>
         <div className="inline-flex rounded-full bg-white p-1 shadow-sm border border-bs-neutral-200">
