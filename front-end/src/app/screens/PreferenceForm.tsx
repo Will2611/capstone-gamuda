@@ -3,6 +3,7 @@ import type { SubmitEvent } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../components/Button";
 import { SelectField } from "../components/FormField";
+import { MultiSelectField } from "../components/MultiSelectField";
 import { useUser } from "../context/UserContext";
 import type { SearchPreferences } from "../types/restaurant";
 import {
@@ -15,11 +16,11 @@ import {
 } from "lucide-react";
 
 const emptyForm: SearchPreferences = {
-  cuisine: "",
-  priceRange: "",
-  dietary: "",
+  cuisine: [],
+  priceRange: [],
+  dietary: [],
   distance: "",
-  ambience: "",
+  ambience: [],
   time: "",
 };
 
@@ -29,12 +30,17 @@ export default function PreferenceForm() {
   const [formData, setFormData] = useState<SearchPreferences>(emptyForm);
 
   const saveAndGoToMap = (prefs: SearchPreferences) => {
-    const hasAny = Object.values(prefs).some(Boolean);
+    const hasAny = Object.values(prefs).some((val) =>
+      Array.isArray(val) ? val.length > 0 : Boolean(val),
+    );
+
     if (hasAny) {
       updatePreferences(prefs);
-      const labels = [prefs.cuisine, prefs.dietary, prefs.ambience].filter(
-        Boolean,
-      );
+      const labels: string[] = [];
+      if (prefs.cuisine.length) labels.push(...prefs.cuisine);
+      if (prefs.dietary.length) labels.push(...prefs.dietary);
+      if (prefs.ambience.length) labels.push(...prefs.ambience);
+
       addSearchHistory({
         query: labels.length
           ? `Search: ${labels.join(", ")}`
@@ -69,11 +75,10 @@ export default function PreferenceForm() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <SelectField
+            <MultiSelectField
               label="Cuisine"
               icon={<Utensils size={20} />}
               options={[
-                { value: "", label: "Select cuisine type..." },
                 { value: "italian", label: "Italian" },
                 { value: "mexican", label: "Mexican" },
                 { value: "asian", label: "Asian" },
@@ -82,32 +87,30 @@ export default function PreferenceForm() {
                 { value: "indian", label: "Indian" },
               ]}
               value={formData.cuisine}
-              onChange={(e) =>
-                setFormData({ ...formData, cuisine: e.target.value })
-              }
+              onChange={(val) => setFormData({ ...formData, cuisine: val })}
+              placeholder="Select cuisine types..."
             />
 
-            <SelectField
+            <MultiSelectField
               label="Price Range"
               icon={<DollarSign size={20} />}
               options={[
-                { value: "", label: "Select price range..." },
-                { value: "1", label: "$ - Budget-friendly" },
-                { value: "2", label: "$$ - Moderate" },
-                { value: "3", label: "$$$ - Upscale" },
-                { value: "4", label: "$$$$ - Fine Dining" },
+                { value: "", label: "Any Price" },
+                { value: "1", label: "$ < RM20 / person" },
+                { value: "2", label: "$$ RM20 - RM60 / person" },
+                { value: "3", label: "$$$ RM60 - RM110 / person" },
+                { value: "4", label: "$$$$ RM110 - RM250 / person" },
+                { value: "5", label: "$$$$$ > RM250 / person" },
               ]}
               value={formData.priceRange}
-              onChange={(e) =>
-                setFormData({ ...formData, priceRange: e.target.value })
-              }
+              onChange={(val) => setFormData({ ...formData, priceRange: val })}
+              placeholder="Select price ranges..."
             />
 
-            <SelectField
+            <MultiSelectField
               label="Dietary Needs"
               icon={<Leaf size={20} />}
               options={[
-                { value: "", label: "Select dietary preferences..." },
                 { value: "none", label: "No restrictions" },
                 { value: "vegetarian", label: "Vegetarian" },
                 { value: "vegan", label: "Vegan" },
@@ -116,9 +119,8 @@ export default function PreferenceForm() {
                 { value: "kosher", label: "Kosher" },
               ]}
               value={formData.dietary}
-              onChange={(e) =>
-                setFormData({ ...formData, dietary: e.target.value })
-              }
+              onChange={(val) => setFormData({ ...formData, dietary: val })}
+              placeholder="Select dietary preferences..."
             />
 
             <SelectField
@@ -138,22 +140,23 @@ export default function PreferenceForm() {
               }
             />
 
-            <SelectField
+            <MultiSelectField
               label="Ambience"
               icon={<Coffee size={20} />}
               options={[
-                { value: "", label: "Select ambience..." },
                 { value: "casual", label: "Casual" },
+                { value: "finedining", label: "Fine Dining" },
                 { value: "romantic", label: "Romantic" },
-                { value: "family", label: "Family-friendly" },
+                { value: "family", label: "Family" },
                 { value: "business", label: "Business" },
                 { value: "trendy", label: "Trendy" },
                 { value: "quiet", label: "Quiet" },
+                { value: "cozy", label: "Cozy" },
+                { value: "lively", label: "Lively" },
               ]}
               value={formData.ambience}
-              onChange={(e) =>
-                setFormData({ ...formData, ambience: e.target.value })
-              }
+              onChange={(val) => setFormData({ ...formData, ambience: val })}
+              placeholder="Select ambiences..."
             />
 
             <SelectField
@@ -161,10 +164,10 @@ export default function PreferenceForm() {
               icon={<Clock size={20} />}
               options={[
                 { value: "", label: "Select time..." },
-                { value: "breakfast", label: "Breakfast (6-11 AM)" },
-                { value: "lunch", label: "Lunch (11 AM-3 PM)" },
-                { value: "dinner", label: "Dinner (5-10 PM)" },
-                { value: "late-night", label: "Late Night (10 PM+)" },
+                { value: "breakfast (6-11 AM)", label: "Breakfast (6-11 AM)" },
+                { value: "lunch (11 AM-3 PM)", label: "Lunch (11 AM-3 PM)" },
+                { value: "dinner (5-10 PM)", label: "Dinner (5-10 PM)" },
+                { value: "late-night (10 PM+)", label: "Late Night (10 PM+)" },
               ]}
               value={formData.time}
               onChange={(e) =>

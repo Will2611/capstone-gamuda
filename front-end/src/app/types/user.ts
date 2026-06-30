@@ -14,11 +14,11 @@ export type USERTYPE = (typeof userTypeEnum)[keyof typeof userTypeEnum];
 // type USERTYPE = "client" | "owner" | "bot";
 
 export interface SearchPreferences {
-  cuisine: string;
-  priceRange: string;
-  dietary: string;
+  cuisine: string[];
+  priceRange: string[];
+  dietary: string[];
   distance: string;
-  ambience: string;
+  ambience: string[];
   time: string;
 }
 
