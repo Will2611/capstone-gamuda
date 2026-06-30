@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from .base_model import DBBaseModelMixIn
 
 
-# ─────────────────────── ORM Models ───────────────────────
+# ---- ORM Models ----
 
 class RestaurantModel(DBBaseModelMixIn, Base):
     __tablename__ = "restaurants"
@@ -93,12 +93,6 @@ class SentimentDataModel(DBBaseModelMixIn, Base):
 
     positive_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    brand_awareness_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    brand_awareness_change: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    local_search_rank: Mapped[int] = mapped_column(Integer, nullable=False, default=50)
-    search_rank_change: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    keyword_match_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    posts_per_week_avg: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     complaint_themes: Mapped[list["ComplaintThemeModel"]] = relationship(
         "ComplaintThemeModel", back_populates="sentiment", cascade="all, delete-orphan", default_factory=list
@@ -117,7 +111,7 @@ class ComplaintThemeModel(DBBaseModelMixIn, Base):
     sentiment: Mapped[Optional["SentimentDataModel"]] = relationship("SentimentDataModel", back_populates="complaint_themes", default=None)
 
 
-# ───────────────── Pydantic Response Schemas ─────────────────
+# ---- Pydantic Response Schemas ----
 
 class VisibilityScoreEntry(BaseModel):
     value: float
@@ -203,12 +197,6 @@ class ComplaintThemeEntry(BaseModel):
 class SentimentResponse(BaseModel):
     positivePct: float
     negativePct: float
-    brandAwarenessPct: float
-    brandAwarenessChange: float
-    localSearchRank: int
-    searchRankChange: int
-    keywordMatchRate: float
-    postsPerWeekAvg: float
     complaintThemes: list[ComplaintThemeEntry]
 
     model_config = {"from_attributes": True}
@@ -235,3 +223,76 @@ class ReviewsByThemeResponse(BaseModel):
     totalNegative: int = 0
     matchedCount: int = 0
     reviews: list[ReviewItemResponse]
+
+
+# ---- Foot Traffic ----
+
+class FootTrafficHourlyModel(DBBaseModelMixIn, Base):
+    __tablename__ = "foot_traffic_hourly"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
+    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, init=False)
+    traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
+    day_name: Mapped[str] = mapped_column(String(10), nullable=False)
+    day_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    hour: Mapped[int] = mapped_column(Integer, nullable=False)
+    visitors: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    restaurant: Mapped[Optional["RestaurantModel"]] = relationship("RestaurantModel", default=None)
+
+
+class FootTrafficDailyModel(DBBaseModelMixIn, Base):
+    __tablename__ = "foot_traffic_daily"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
+    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants.id"), nullable=False, index=True, init=False)
+    traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
+    day_name: Mapped[str] = mapped_column(String(10), nullable=False)
+    day_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    visits: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    restaurant: Mapped[Optional["RestaurantModel"]] = relationship("RestaurantModel", default=None)
+
+
+# ---- Pydantic Response Schemas ----
+
+class HourlyTrafficItem(BaseModel):
+    hour: int
+    weekdayAvg: float
+    weekendAvg: float
+
+    model_config = {"from_attributes": True}
+
+
+class DailyTrafficSummary(BaseModel):
+    weekdayAvg: float
+    weekendAvg: float
+    weekdayTotal: int
+    weekendTotal: int
+
+    model_config = {"from_attributes": True}
+
+
+class FootTrafficResponse(BaseModel):
+    restaurantId: int
+    hourly: list[HourlyTrafficItem]
+    daily: DailyTrafficSummary
+
+    model_config = {"from_attributes": True}
+
+
+# ------------ Action Suggestions ------------
+
+class ActionSuggestion(BaseModel):
+    issue: str
+    impact: str
+    recommendation: str
+
+    model_config = {"from_attributes": True}
+
+
+class ActionSuggestionsResponse(BaseModel):
+    restaurantId: int
+    suggestions: list[ActionSuggestion]
+
+    model_config = {"from_attributes": True}

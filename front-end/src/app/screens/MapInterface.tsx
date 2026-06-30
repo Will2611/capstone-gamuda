@@ -124,9 +124,9 @@ export default function MapInterface() {
                 id: "-1",
                 type: "bot",
                 dummyResponses: [
-                  "Based on your cravings, I'd suggest trying Spice Haven — great spicy noodles nearby!",
+                  "Based on your cravings, I'd suggest trying Spice Haven -- great spicy noodles nearby!",
                   "How about Italian? Pasta Paradise has excellent gluten-free options.",
-                  "For something quick, Taco Fiesta is only 8–12 minutes away.",
+                  "For something quick, Taco Fiesta is only 8--12 minutes away.",
                   "Sushi Supreme is perfect if you're in the mood for Japanese tonight.",
                   "Tell me more about your dietary needs and I'll narrow it down!",
                 ],

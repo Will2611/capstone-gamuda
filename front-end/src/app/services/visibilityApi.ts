@@ -66,12 +66,6 @@ export interface ComplaintThemeItem {
 export interface Sentiment {
   positivePct: number;
   negativePct: number;
-  brandAwarenessPct: number;
-  brandAwarenessChange: number;
-  localSearchRank: number;
-  searchRankChange: number;
-  keywordMatchRate: number;
-  postsPerWeekAvg: number;
   complaintThemes: ComplaintThemeItem[];
 }
 
@@ -194,4 +188,68 @@ export function trendColorClass(trend: "up" | "down" | "flat"): string {
     return "text-bs-green";
   }
   return "text-bs-neutral-600";
+}
+
+
+// ──────────── Foot Traffic ────────────
+
+export interface HourlyTrafficItem {
+  hour: number;
+  weekdayAvg: number;
+  weekendAvg: number;
+}
+
+export interface DailyTrafficSummary {
+  weekdayAvg: number;
+  weekendAvg: number;
+  weekdayTotal: number;
+  weekendTotal: number;
+}
+
+export interface FootTrafficResponse {
+  restaurantId: number;
+  hourly: HourlyTrafficItem[];
+  daily: DailyTrafficSummary;
+}
+
+export async function getFootTraffic(
+  restaurantId: number,
+): Promise<FootTrafficResponse> {
+  const response = await fetch(
+    `${API_BASE}/visibility/getFootTraffic?restaurantId=${restaurantId}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch foot traffic data");
+  }
+
+  return response.json();
+}
+
+
+// ──────────── Action Suggestions ────────────
+
+export interface ActionSuggestion {
+  issue: string;
+  impact: string;
+  recommendation: string;
+}
+
+export interface ActionSuggestionsResponse {
+  restaurantId: number;
+  suggestions: ActionSuggestion[];
+}
+
+export async function getActionSuggestions(
+  restaurantId: number,
+): Promise<ActionSuggestionsResponse> {
+  const response = await fetch(
+    `${API_BASE}/visibility/getActionSuggestions?restaurantId=${restaurantId}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch suggestions");
+  }
+
+  return response.json();
 }

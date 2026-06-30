@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import {
   Eye,
   Star,
@@ -7,14 +7,11 @@ import {
   TrendingUp,
   MessageSquare,
   AlertCircle,
-  Search,
-  Calendar,
   ExternalLink,
   Lightbulb,
   Megaphone,
   Loader2,
 } from "lucide-react";
-import Instagram from "@/assets/instagram.svg?react";
 import {
   BarChart,
   Bar,
@@ -38,6 +35,8 @@ import {
   getSocialVisibility,
   getSentiment,
   getReviewsByTheme,
+  getFootTraffic,
+  getActionSuggestions,
   formatTrendText,
   trendColorClass,
   type SummaryMetrics,
@@ -46,6 +45,8 @@ import {
   type Sentiment,
   type RestaurantItem,
   type ReviewsByTheme,
+  type FootTrafficResponse,
+  type ActionSuggestionsResponse,
 } from "../services/visibilityApi";
 
 export default function SocialVisibilityDashboard() {
@@ -53,7 +54,7 @@ export default function SocialVisibilityDashboard() {
 
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
 
-  // ── Data state ──
+  // â"€â"€ Data state â"€â"€
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     number | null
@@ -62,14 +63,35 @@ export default function SocialVisibilityDashboard() {
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
   const [social, setSocial] = useState<SocialPlatformCard[]>([]);
   const [sentiment, setSentiment] = useState<Sentiment | null>(null);
+  const [footTraffic, setFootTraffic] = useState<FootTrafficResponse | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Theme reviews popup ──
+  // â"€â"€ Theme reviews popup â"€â"€
   const [themeReviewsData, setThemeReviewsData] =
     useState<ReviewsByTheme | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>("");
   const [loadingReviews, setLoadingReviews] = useState(false);
+
+  // -- Action suggestions --
+  const [actionSuggestions, setActionSuggestions] =
+    useState<ActionSuggestionsResponse | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const handleViewSuggestions = async () => {
+    if (!selectedRestaurantId) return;
+    setShowSuggestions(true);
+    if (!actionSuggestions) {
+      try {
+        const data = await getActionSuggestions(selectedRestaurantId);
+        setActionSuggestions(data);
+      } catch {
+        setActionSuggestions(null);
+      }
+    }
+  };
 
   const handleThemeClick = async (theme: string) => {
     if (!selectedRestaurantId) return;
@@ -85,7 +107,7 @@ export default function SocialVisibilityDashboard() {
     }
   };
 
-  // ── Load restaurant list on mount ──
+  // â"€â"€ Load restaurant list on mount â"€â"€
   useEffect(() => {
     fetchRestaurants()
       .then((data) => {
@@ -99,22 +121,27 @@ export default function SocialVisibilityDashboard() {
       );
   }, []);
 
-  // ── Fetch all dashboard data when restaurant changes ──
+  // â"€â"€ Fetch all dashboard data when restaurant changes â"€â"€
   const loadDashboard = useCallback(async (id: number) => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, funnelRes, socialRes, sentimentRes] =
+      const [summaryRes, funnelRes, socialRes, sentimentRes, trafficRes] =
         await Promise.all([
           getSummaryMetrics(id),
           getFunnelMetrics(id),
           getSocialVisibility(id),
           getSentiment(id),
+          getFootTraffic(id),
         ]);
       setSummary(summaryRes);
       setFunnel(funnelRes.stages);
       setSocial(socialRes.platforms);
       setSentiment(sentimentRes);
+      setFootTraffic(trafficRes);
+      getActionSuggestions(id)
+        .then(setActionSuggestions)
+        .catch(() => {});
     } catch {
       setError("Failed to load dashboard data.");
     } finally {
@@ -128,7 +155,7 @@ export default function SocialVisibilityDashboard() {
     }
   }, [selectedRestaurantId, loadDashboard]);
 
-  // ── Derived chart data ──
+  // â"€â"€ Derived chart data â"€â"€
   const sentimentPieData = sentiment
     ? [
         { name: "Positive", value: sentiment.positivePct, color: "#27AE60" },
@@ -140,21 +167,7 @@ export default function SocialVisibilityDashboard() {
     ? sentiment.complaintThemes.map((c) => ({ theme: c.theme, count: c.count }))
     : [];
 
-  // Freshness: simulated per-week posts from postsPerWeekAvg
-  const freshnessData = sentiment
-    ? Array.from({ length: 4 }, (_, i) => ({
-        week: `W${i + 1}`,
-        posts: Math.max(
-          0,
-          Math.round(sentiment.postsPerWeekAvg + (Math.random() - 0.5) * 2),
-        ),
-        reviews: Math.round(
-          sentiment.postsPerWeekAvg * (Math.random() + 0.5) * 2,
-        ),
-      }))
-    : [];
-
-  // ── Helper: find drop-off stage ──
+  // â"€â"€ Helper: find drop-off stage â"€â"€
   const dropOffStage = funnel.find((s) => s.isDropOff);
 
   const handleQuickFix = (action: string) => {
@@ -175,7 +188,7 @@ export default function SocialVisibilityDashboard() {
       content:
         "Share engaging content to boost your social media presence and reach.",
       suggestedText:
-        "Join us for our famous Spicy Noodle Challenge! 🌶️ Tag us in your food adventures!",
+        "Join us for our famous Spicy Noodle Challenge! 🌶️ Tag us in your food adventures!",
       suggestedHashtags: [
         "#SpicyNoodles",
         "#FoodieChallenge",
@@ -193,7 +206,7 @@ export default function SocialVisibilityDashboard() {
     },
   };
 
-  // ── Loading / Error / Empty states ──
+  // â"€â"€ Loading / Error / Empty states â"€â"€
   if (!selectedRestaurantId && restaurants.length === 0 && !error) {
     return (
       <div className="min-h-screen bg-bs-neutral-100 flex items-center justify-center">
@@ -301,9 +314,7 @@ export default function SocialVisibilityDashboard() {
                     {summary.socialEngagementRate.value}%
                   </span>
                 </div>
-                <h3 className="text-sm text-bs-neutral-600">
-                  Social Engagement Rate
-                </h3>
+                <h3 className="text-sm text-bs-neutral-600">Engagement Rate</h3>
                 <p
                   className={`text-xs mt-1 ${trendColorClass(summary.socialEngagementRate.trend)}`}
                 >
@@ -344,7 +355,11 @@ export default function SocialVisibilityDashboard() {
             </h2>
             <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 mt-4">
               <h3 className="mb-4">Conversion Funnel</h3>
-              <FunnelChart stages={funnel} />
+              <FunnelChart
+                stages={funnel.filter(
+                  (s) => s.name !== "Visits" && s.name !== "Reviews",
+                )}
+              />
 
               {dropOffStage && (
                 <div className="mt-4 p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
@@ -364,34 +379,22 @@ export default function SocialVisibilityDashboard() {
           {/* 3. Social Media Visibility */}
           <section aria-labelledby="social-visibility">
             <h2 id="social-visibility" className="mb-4">
-              Social Media Visibility
+              Google Review Visibility
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-              {social.map((p) => (
-                <SocialMediaCard
-                  key={p.platform}
-                  platform={p.platform}
-                  icon={
-                    p.platform === "Google Reviews" ? (
-                      <Star size={24} />
-                    ) : p.platform === "Instagram" ? (
-                      <Instagram width={24} />
-                    ) : (
-                      <MessageSquare size={24} />
-                    )
-                  }
-                  metrics={p.metrics}
-                  ctaLabel={`Open ${p.platform}`}
-                  url={p.url}
-                  color={
-                    p.platform === "Google Reviews"
-                      ? "text-bs-gold"
-                      : p.platform === "Instagram"
-                        ? "text-bs-red"
-                        : "text-bs-blue"
-                  }
-                />
-              ))}
+              {social
+                .filter((p) => p.platform === "Google Reviews")
+                .map((p) => (
+                  <SocialMediaCard
+                    key={p.platform}
+                    platform={p.platform}
+                    icon={<Star size={24} />}
+                    metrics={p.metrics}
+                    ctaLabel={`Open ${p.platform}`}
+                    url={p.url}
+                    color="text-bs-gold"
+                  />
+                ))}
             </div>
           </section>
 
@@ -496,200 +499,580 @@ export default function SocialVisibilityDashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+            </section>
+          )}
 
-                {/* Brand Awareness */}
-                <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6 lg:col-span-2">
-                  <h3 className="mb-4">Brand Awareness</h3>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-4xl font-bold text-bs-neutral-900">
-                        {sentiment.brandAwarenessPct}%
+          {/* 5. Foot Traffic & Staff Scheduling */}
+          {footTraffic &&
+            (() => {
+              // ── Derived from API ──
+              const days = [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ];
+              const dailyTraffic = days.map((day, i) => ({
+                date: `2026-06-0${i + 1}`,
+                day,
+                visits:
+                  i < 5
+                    ? Math.round(footTraffic.daily.weekdayAvg + (i - 2) * 3)
+                    : Math.round(footTraffic.daily.weekendAvg + (i - 5.5) * 8),
+                type: (i < 5 ? "weekday" : "weekend") as "weekday" | "weekend",
+              }));
+
+              const hours24 = [12, 13, 19];
+              const heatmapTraffic = days.flatMap((day, di) =>
+                hours24.map((h) => ({
+                  date: `2026-06-0${di + 1}`,
+                  day,
+                  hour: h,
+                  visitors: Math.round(
+                    footTraffic.hourly.find((x) => x.hour === h)?.[
+                      di < 5 ? "weekdayAvg" : "weekendAvg"
+                    ] ?? 0,
+                  ),
+                  type: (di < 5 ? "weekday" : "weekend") as
+                    | "weekday"
+                    | "weekend",
+                })),
+              );
+
+              const weekdayTraffic = {
+                value: footTraffic.daily.weekdayAvg,
+                days: 5,
+              };
+              const weekendTraffic = {
+                value: footTraffic.daily.weekendAvg,
+                days: 2,
+              };
+
+              const shiftRows = [
+                {
+                  period: "📅 Weekday",
+                  shift: "11 AM -- 2 PM",
+                  staff: "3",
+                  note: "Lunch peak Mon--Thu -- ~60--95 visitors/hr",
+                  bg: "#EFF6FF",
+                  badge: "#BFDBFE",
+                  badgeText: "#1E3A8A",
+                },
+                {
+                  period: "📅 Weekday",
+                  shift: "6 PM -- 9 PM",
+                  staff: "3--4",
+                  note: "Monday evening spike -- 80 visitors/hr",
+                  bg: "#EFF6FF",
+                  badge: "#BFDBFE",
+                  badgeText: "#1E3A8A",
+                },
+                {
+                  period: "📅 Weekday",
+                  shift: "2 PM -- 5 PM",
+                  staff: "1--2",
+                  note: "Afternoon lull -- minimal coverage",
+                  bg: "#EFF6FF",
+                  badge: "#BFDBFE",
+                  badgeText: "#1E3A8A",
+                },
+                {
+                  period: "🎉 Weekend",
+                  shift: "5 PM -- 9 PM",
+                  staff: "5--6",
+                  note: "Dinner peak Sat 6 PM (120) & Sun 7 PM (140)",
+                  bg: "#FFF7ED",
+                  badge: "#FED7AA",
+                  badgeText: "#9A3412",
+                },
+                {
+                  period: "🎉 Weekend",
+                  shift: "11 AM -- 2 PM",
+                  staff: "4",
+                  note: "Strong weekend lunch -- Sat/Sun 120--130/hr",
+                  bg: "#FFF7ED",
+                  badge: "#FED7AA",
+                  badgeText: "#9A3412",
+                },
+                {
+                  period: "🎉 Weekend",
+                  shift: "9 PM -- close",
+                  staff: "2--3",
+                  note: "Wind-down -- lighter but sustained",
+                  bg: "#FFF7ED",
+                  badge: "#FED7AA",
+                  badgeText: "#9A3412",
+                },
+              ];
+
+              // â"€â"€ Derived heatmap lookup â"€â"€
+              const heatLookup: Record<string, Record<number, number>> = {};
+              heatmapTraffic.forEach(({ date, hour, visitors }) => {
+                if (!heatLookup[date]) heatLookup[date] = {};
+                heatLookup[date][hour] = visitors;
+              });
+              const allHeatVisitors = heatmapTraffic.map((d) => d.visitors);
+              const maxHeat = Math.max(...allHeatVisitors, 1);
+
+              const hourFmt = (h: number) =>
+                h === 0
+                  ? "12a"
+                  : h === 12
+                    ? "12p"
+                    : h < 12
+                      ? `${h}a`
+                      : `${h - 12}p`;
+
+              const weekdayCellColor = (val: number) => {
+                if (val === 0) return "#EFF6FF";
+                const r = val / maxHeat;
+                if (r >= 0.8) return "#1D4ED8";
+                if (r >= 0.55) return "#2D9CDB";
+                if (r >= 0.3) return "#93C5FD";
+                return "#BFDBFE";
+              };
+              const weekendCellColor = (val: number) => {
+                if (val === 0) return "#FFF7ED";
+                const r = val / maxHeat;
+                if (r >= 0.8) return "#C2410C";
+                if (r >= 0.55) return "#EA580C";
+                if (r >= 0.3) return "#FB923C";
+                return "#FED7AA";
+              };
+
+              return (
+                <section aria-labelledby="foot-traffic">
+                  <h2 id="foot-traffic" className="mb-1">
+                    Weekdays vs Weekends Foot Traffic
+                  </h2>
+                  <p className="text-sm text-bs-neutral-500 mb-6">
+                    Daily visit counts & hourly heatmap -- use to design staff
+                    schedules
+                  </p>
+
+                  {/* Chart 1: Daily bar chart */}
+                  <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
+                    <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+                      <div>
+                        <h3 className="font-bold text-bs-neutral-900">
+                          Daily Foot Traffic (Weekdays vs Weekends)
+                        </h3>
+                        <p className="text-xs text-bs-neutral-500 mt-0.5">
+                          Jun 1--7, 2026 · hover bar for date, day & visit count
+                        </p>
                       </div>
-                      <div className="text-sm text-bs-neutral-600 mt-1">
-                        of local customers recognize your brand
+                      <div className="flex items-center gap-4 text-xs text-bs-neutral-600">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-3 h-3 rounded-sm inline-block"
+                            style={{ background: "#2D9CDB" }}
+                          />
+                          Weekday
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className="w-3 h-3 rounded-sm inline-block"
+                            style={{ background: "#F97316" }}
+                          />
+                          Weekend
+                        </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div
-                        className="text-sm font-medium"
-                        style={{
-                          color:
-                            sentiment.brandAwarenessChange >= 0
-                              ? "#27AE60"
-                              : "#FF4C4C",
-                        }}
+
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart
+                        data={dailyTraffic}
+                        barCategoryGap="28%"
+                        margin={{ top: 16, right: 8, left: 0, bottom: 0 }}
                       >
-                        {sentiment.brandAwarenessChange >= 0 ? "↑" : "↓"}{" "}
-                        {Math.abs(sentiment.brandAwarenessChange)}% vs. last
-                        quarter
+                        <CartesianGrid vertical={false} stroke="#E5E5E5" />
+                        <XAxis
+                          dataKey="day"
+                          tickFormatter={(v: string) => v.slice(0, 3)}
+                          tick={{ fontSize: 12, fill: "#525252" }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 11, fill: "#737373" }}
+                          axisLine={false}
+                          tickLine={false}
+                          label={{
+                            value: "visits",
+                            angle: -90,
+                            position: "insideLeft",
+                            offset: 10,
+                            style: { fontSize: 10, fill: "#A3A3A3" },
+                          }}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0]
+                              .payload as (typeof dailyTraffic)[0];
+                            return (
+                              <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg text-xs">
+                                <p className="font-semibold text-gray-800">
+                                  {d.day}, {d.date}
+                                </p>
+                                <p
+                                  style={{
+                                    color:
+                                      d.type === "weekday"
+                                        ? "#2D9CDB"
+                                        : "#F97316",
+                                  }}
+                                >
+                                  {d.visits} visits ·{" "}
+                                  {d.type === "weekday" ? "Weekday" : "Weekend"}
+                                </p>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar
+                          dataKey="visits"
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={64}
+                        >
+                          {dailyTraffic.map((d, i) => (
+                            <Cell
+                              key={`day-${i}`}
+                              fill={
+                                d.type === "weekday" ? "#2D9CDB" : "#F97316"
+                              }
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+
+                    {/* Day-level stat chips */}
+                    <div className="grid grid-cols-7 gap-1 mt-4">
+                      {dailyTraffic.map((d, i) => (
+                        <div
+                          key={i}
+                          className="text-center rounded-lg py-2 px-1"
+                          style={{
+                            background:
+                              d.type === "weekday" ? "#EFF6FF" : "#FFF7ED",
+                          }}
+                        >
+                          <p
+                            className="text-[10px] font-semibold"
+                            style={{
+                              color:
+                                d.type === "weekday" ? "#1D4ED8" : "#C2410C",
+                            }}
+                          >
+                            {d.day.slice(0, 3)}
+                          </p>
+                          <p className="text-sm font-bold text-bs-neutral-900 mt-0.5">
+                            {d.visits}
+                          </p>
+                          <p className="text-[9px] text-bs-neutral-400">
+                            visits
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Chart 2: Daily & Hourly heatmap */}
+                  {/* <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
+                    <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+                      <div>
+                        <h3 className="font-bold text-bs-neutral-900">
+                          Daily & Hourly Foot Traffic Heatmap
+                        </h3>
+                        <p className="text-xs text-bs-neutral-500 mt-0.5">
+                          Dates on rows · hours on columns · hover for details
+                        </p>
                       </div>
-                      <div className="text-xs text-bs-neutral-500 mt-1">
-                        Target: 75% by Q3
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-bs-neutral-600">
+                        {[
+                          ["#BFDBFE", "Weekday low"],
+                          ["#2D9CDB", "Weekday high"],
+                          ["#FED7AA", "Weekend low"],
+                          ["#EA580C", "Weekend high"],
+                        ].map(([c, l]) => (
+                          <span key={l} className="flex items-center gap-1">
+                            <span
+                              className="w-3 h-3 rounded-sm inline-block"
+                              style={{ background: c }}
+                            />
+                            {l}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
 
-          {/* 5. SEO & Long-Term Growth */}
-          {sentiment && (
-            <section aria-labelledby="seo-growth">
-              <h2 id="seo-growth" className="mb-4">
-                SEO & Long-Term Growth
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                {/* Local Search Rank */}
-                <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Search className="text-bs-blue" size={24} />
-                    <h3 className="font-bold text-bs-neutral-900">
-                      Local Search Rank
-                    </h3>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-bs-neutral-900">
-                      #{sentiment.localSearchRank}
-                    </div>
-                    <div className="text-sm text-bs-neutral-600 mt-2">
-                      for "best Thai food near me"
-                    </div>
-                    <div
-                      className={`text-xs mt-1 ${trendColorClass(sentiment.searchRankChange > 0 ? "up" : sentiment.searchRankChange < 0 ? "down" : "flat")}`}
-                    >
-                      {sentiment.searchRankChange >= 0 ? "↑" : "↓"}{" "}
-                      {Math.abs(sentiment.searchRankChange)} positions vs. last
-                      week
-                    </div>
-                  </div>
-                </div>
+                    <div className="overflow-x-auto">
+                      <div style={{ minWidth: 640 }}> */}
+                  {/* Hour axis header */}
+                  {/* <div className="flex mb-1">
+                          <div style={{ width: 80, flexShrink: 0 }} />
+                          <div
+                            className="grid flex-1 gap-px"
+                            style={{ gridTemplateColumns: "repeat(24, 1fr)" }}
+                          >
+                            {Array.from({ length: 24 }, (_, h) => (
+                              <div
+                                key={h}
+                                className="text-center"
+                                style={{ fontSize: 7, color: "#A3A3A3" }}
+                              >
+                                {h % 3 === 0 ? hourFmt(h) : ""}
+                              </div>
+                            ))}
+                          </div>
+                        </div> */}
 
-                {/* Keyword Match Rate */}
-                <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <TrendingUp className="text-bs-green" size={24} />
-                    <h3 className="font-bold text-bs-neutral-900">
-                      Keyword Match Rate
-                    </h3>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-bs-neutral-900">
-                      {sentiment.keywordMatchRate}%
-                    </div>
-                    <div className="text-sm text-bs-neutral-600 mt-2">
-                      menu aligned with trending searches
-                    </div>
-                    <div className="text-xs text-bs-gold mt-1">Target: 80%</div>
-                  </div>
-                </div>
+                  {/* Data rows */}
+                  {/* {dailyTraffic.map((row, ri) => {
+                          const rowHours = heatLookup[row.date] ?? {};
+                          const isWeekend = row.type === "weekend";
+                          return (
+                            <div key={ri} className="flex items-center mb-1"> */}
+                  {/* Row label */}
+                  {/* <div
+                                style={{ width: 80, flexShrink: 0 }}
+                                className="pr-2 text-right"
+                              >
+                                <span
+                                  className="text-[10px] font-semibold"
+                                  style={{
+                                    color: isWeekend ? "#C2410C" : "#1D4ED8",
+                                  }}
+                                >
+                                  {row.day.slice(0, 3)}
+                                </span>
+                                <span className="block text-[9px] text-bs-neutral-400">
+                                  {row.date.slice(5)}
+                                </span>
+                              </div> */}
 
-                {/* Content Freshness */}
-                <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Calendar className="text-bs-gold" size={24} />
-                    <h3 className="font-bold text-bs-neutral-900">
-                      Content Freshness
-                    </h3>
-                  </div>
-                  <ResponsiveContainer width="100%" height={100}>
-                    <BarChart data={freshnessData}>
-                      <XAxis
-                        dataKey="week"
-                        stroke="#737373"
-                        style={{ fontSize: "10px" }}
-                      />
-                      <Tooltip />
-                      <Bar
-                        key="posts"
-                        dataKey="posts"
-                        fill="#FFD700"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className="text-xs text-bs-neutral-600 mt-2 text-center">
-                    Avg: {sentiment.postsPerWeekAvg} posts/week (Target: 3+)
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
+                  {/* Hour cells */}
+                  {/* <div
+                                className="grid flex-1 gap-px"
+                                style={{
+                                  gridTemplateColumns: "repeat(24, 1fr)",
+                                }}
+                              >
+                                {Array.from({ length: 24 }, (_, h) => {
+                                  const val = rowHours[h] ?? 0;
+                                  const bg = isWeekend
+                                    ? weekendCellColor(val)
+                                    : weekdayCellColor(val);
+                                  const hasData = val > 0;
+                                  return (
+                                    <div
+                                      key={h}
+                                      title={
+                                        hasData
+                                          ? `${row.day} ${row.date} · ${hourFmt(h)} · ${val} visitors`
+                                          : `${row.day} · ${hourFmt(h)} · no data`
+                                      }
+                                      className="rounded-sm cursor-default"
+                                      style={{ background: bg, height: 28 }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div> */}
 
-          {/* 6. Action Center */}
-          <section aria-labelledby="action-center">
-            <h2 id="action-center" className="mb-4">
-              Action Center
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-lg border-2 border-bs-red p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <AlertCircle className="text-bs-red" size={24} />
-                  <h3 className="font-bold text-bs-neutral-900">
-                    Top 3 Issues
-                  </h3>
-                </div>
-                <div className="space-y-3">
-                  <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
-                    <div className="font-medium text-bs-neutral-900">
-                      Low Instagram engagement
-                    </div>
-                    <div className="text-sm text-bs-neutral-600 mt-1">
-                      Impact: High
-                    </div>
-                  </div>
-                  <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
-                    <div className="font-medium text-bs-neutral-900">
-                      Negative Google reviews trending
-                    </div>
-                    <div className="text-sm text-bs-neutral-600 mt-1">
-                      Impact: High
-                    </div>
-                  </div>
-                  <div className="p-3 bg-bs-gold/5 border border-bs-gold/20 rounded-lg">
-                    <div className="font-medium text-bs-neutral-900">
-                      Keyword mismatch
-                    </div>
-                    <div className="text-sm text-bs-neutral-600 mt-1">
-                      Impact: Medium
-                    </div>
-                  </div>
-                </div>
-                <button className="w-full mt-4 py-2 bg-bs-blue text-white rounded-lg hover:bg-bs-blue/90 transition-colors">
-                  View Details
-                </button>
-              </div>
+                  {/* <p className="text-xs text-bs-neutral-400 mt-3">
+                      Only hours with recorded data are highlighted -- empty
+                      cells indicate no visitors logged for that hour.
+                    </p>
+                  </div> */}
 
-              <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <Lightbulb className="text-bs-gold" size={24} />
-                  <h3 className="font-bold text-bs-neutral-900">Quick Fixes</h3>
-                </div>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => handleQuickFix("reply-reviews")}
-                    className="w-full py-3 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
-                  >
-                    Reply to Reviews
-                  </button>
-                  <button
-                    onClick={() => handleQuickFix("post-instagram")}
-                    className="w-full py-3 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
-                  >
-                    Post on Instagram
-                  </button>
-                  <button
-                    onClick={() => handleQuickFix("update-keywords")}
-                    className="w-full py-3 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
-                  >
-                    Update Keywords
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
+                  {/* Action Center + Staffing Insight */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left: Action Center */}
+                    <div className="bg-white rounded-xl border-2 border-bs-neutral p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <AlertCircle className="text-bs-red" size={24} />
+                        <h3 className="font-bold text-bs-neutral-900">
+                          Top 3 Issues
+                        </h3>
+                      </div>
+                      <div className="space-y-3">
+                        {actionSuggestions?.suggestions.map((s, i) => (
+                          <div
+                            key={i}
+                            className={`p-3 rounded-lg border ${
+                              s.impact === "High"
+                                ? "bg-bs-red/5 border-bs-red/20"
+                                : s.impact === "Medium"
+                                  ? "bg-bs-gold/5 border-bs-gold/20"
+                                  : "bg-bs-green/5 border-bs-green/20"
+                            }`}
+                          >
+                            <div className="font-medium text-bs-neutral-900 text-sm">
+                              {s.issue}
+                            </div>
+                            <div className="text-xs text-bs-neutral-600 mt-1">
+                              Impact: {s.impact}
+                            </div>
+                          </div>
+                        )) ?? (
+                          <>
+                            <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
+                              <div className="font-medium text-bs-neutral-900">
+                                Low engagement
+                              </div>
+                              <div className="text-sm text-bs-neutral-600 mt-1">
+                                Impact: High
+                              </div>
+                            </div>
+                            <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
+                              <div className="font-medium text-bs-neutral-900">
+                                Negative reviews
+                              </div>
+                              <div className="text-sm text-bs-neutral-600 mt-1">
+                                Impact: High
+                              </div>
+                            </div>
+                            <div className="p-3 bg-bs-gold/5 border border-bs-gold/20 rounded-lg">
+                              <div className="font-medium text-bs-neutral-900">
+                                Keyword mismatch
+                              </div>
+                              <div className="text-sm text-bs-neutral-600 mt-1">
+                                Impact: Medium
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleViewSuggestions}
+                        className="w-full mt-4 py-2 bg-bs-blue text-white rounded-lg hover:bg-bs-blue/90 transition-colors text-sm font-medium"
+                      >
+                        View Suggestions
+                      </button>
+                    </div>
 
-          {/* 7. Promotion Suggestion Cards */}
+                    {/* Right: Staffing Insight */}
+                    <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
+                      <h3 className="font-bold text-bs-neutral-900 mb-4">
+                        Staffing Insight
+                      </h3>
+                      <div className="space-y-3">
+                        <div
+                          className="p-3 rounded-lg border border-blue-200"
+                          style={{ background: "#EFF6FF" }}
+                        >
+                          <p className="text-xs font-bold text-blue-700 mb-1">
+                            📅 Weekdays (Mon--Fri) -- avg {weekdayTraffic.value}{" "}
+                            visitors/day
+                          </p>
+                          <p className="text-sm text-bs-neutral-700">
+                            Lunch peak at{" "}
+                            <strong>1 PM (60 visitors Mon)</strong>. Standard
+                            crew sufficient. Evening at 7 PM adds 80 visitors --
+                            moderate cover needed.
+                          </p>
+                        </div>
+                        <div
+                          className="p-3 rounded-lg border border-orange-200"
+                          style={{ background: "#FFF7ED" }}
+                        >
+                          <p className="text-xs font-bold text-orange-700 mb-1">
+                            🎉 Weekends (Sat--Sun) -- avg {weekendTraffic.value}{" "}
+                            visitors/day
+                          </p>
+                          <p className="text-sm text-bs-neutral-700">
+                            Peak at <strong>7 PM Sunday (140 visitors)</strong>.
+                            Saturday dinner at 6 PM hits 120/hr. Scale up
+                            kitchen + floor staff <strong>5 -- 9 PM</strong>{" "}
+                            both days.
+                          </p>
+                        </div>
+                        <div
+                          className="p-3 rounded-lg border border-bs-neutral-200"
+                          style={{ background: "#F5F5F5" }}
+                        >
+                          <p className="text-xs font-bold text-bs-neutral-600 mb-1">
+                            💡 Scheduling tip
+                          </p>
+                          <p className="text-sm text-bs-neutral-600">
+                            Friday already sees 110 visits -- treat Friday
+                            evenings like a weekend shift. Rotate 1--2 staff
+                            from weekday lulls to cover the weekend surge.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
+                    <h4 className="font-bold text-bs-neutral-800 mb-3">
+                      Recommended Shift Slots
+                      <span className="ml-2 text-xs font-normal text-bs-neutral-500">
+                        (from traffic data above)
+                      </span>
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-bs-neutral-200">
+                            <th className="pb-2 pr-3 text-left text-xs font-semibold text-bs-neutral-500 uppercase tracking-wide">
+                              Period
+                            </th>
+                            <th className="pb-2 pr-3 text-left text-xs font-semibold text-bs-neutral-500 uppercase tracking-wide">
+                              Shift
+                            </th>
+                            <th className="pb-2 pr-3 text-left text-xs font-semibold text-bs-neutral-500 uppercase tracking-wide">
+                              Staff
+                            </th>
+                            <th className="pb-2 text-left text-xs font-semibold text-bs-neutral-500 uppercase tracking-wide">
+                              Reason
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-bs-neutral-100">
+                          {shiftRows.map((row, i) => (
+                            <tr key={i} style={{ background: row.bg }}>
+                              <td className="py-2 pr-3 font-medium text-bs-neutral-800 whitespace-nowrap text-xs">
+                                {row.period}
+                              </td>
+                              <td className="py-2 pr-3 font-mono text-xs text-bs-neutral-700 whitespace-nowrap">
+                                {row.shift}
+                              </td>
+                              <td className="py-2 pr-3 whitespace-nowrap">
+                                <span
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-bold"
+                                  style={{
+                                    background: row.badge,
+                                    color: row.badgeText,
+                                  }}
+                                >
+                                  {row.staff}
+                                </span>
+                              </td>
+                              <td className="py-2 text-xs text-bs-neutral-600">
+                                {row.note}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div> */}
+                  </div>
+                </section>
+              );
+            })()}
+
+          {/* 6. Promotion Suggestion Cards */}
           <section aria-labelledby="promotion-suggestions">
             <h2 id="promotion-suggestions" className="mb-4">
               Promotion Suggestions
@@ -861,6 +1244,77 @@ export default function SocialVisibilityDashboard() {
                 <ExternalLink size={14} />
                 Open full Google Reviews
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions Modal */}
+      {showSuggestions && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center bg-black/50"
+          onClick={() => setShowSuggestions(false)}
+        >
+          <div
+            className="bg-white rounded-xl border-2 border-bs-neutral-200 max-w-lg w-full mx-4 max-h-[80vh] flex flex-col shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-bs-neutral-200">
+              <h3 className="font-bold text-bs-neutral-900">
+                AI-Powered Recommendations
+              </h3>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="text-bs-neutral-500 hover:text-bs-neutral-900 text-xl leading-none"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              <p className="text-xs text-bs-neutral-500 mb-4">
+                Based on your restaurant's visibility metrics, review sentiment,
+                social engagement, and foot traffic patterns.
+              </p>
+              {!actionSuggestions ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-bs-blue" size={24} />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {actionSuggestions.suggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-lg border ${
+                        s.impact === "High"
+                          ? "border-bs-red/30 bg-bs-red/5"
+                          : s.impact === "Medium"
+                            ? "border-bs-gold/30 bg-bs-gold/5"
+                            : "border-bs-green/30 bg-bs-green/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            s.impact === "High"
+                              ? "bg-bs-red/10 text-bs-red"
+                              : s.impact === "Medium"
+                                ? "bg-bs-gold/10 text-bs-gold"
+                                : "bg-bs-green/10 text-bs-green"
+                          }`}
+                        >
+                          {s.impact}
+                        </span>
+                        <span className="font-bold text-bs-neutral-900 text-sm">
+                          {s.issue}
+                        </span>
+                      </div>
+                      <p className="text-sm text-bs-neutral-700 leading-relaxed">
+                        {s.recommendation}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

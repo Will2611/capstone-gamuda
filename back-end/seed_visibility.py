@@ -11,6 +11,8 @@ from src.database.schemas.visibility import (
     SocialPlatformMetricsModel,
     SentimentDataModel,
     ComplaintThemeModel,
+    FootTrafficHourlyModel,
+    FootTrafficDailyModel,
 )
 
 # ── Inline CSV data ──────────────────────────────────────
@@ -111,7 +113,7 @@ CSV_ROWS = [
 ]
 
 
-FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction", "Visits", "Reviews"]
+FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction"]
 
 
 def seed():
@@ -120,6 +122,7 @@ def seed():
         if t.name in {
             "restaurants", "visibility_metrics", "funnel_stages",
             "social_platform_metrics", "sentiment_data", "complaint_themes",
+            "foot_traffic_hourly", "foot_traffic_daily",
         }
     ])
     Base.metadata.create_all(bind=engine)
@@ -172,10 +175,6 @@ def seed():
                  round(row["clicks"] / row["impressions"] * 100, 1), False),
                 (FUNNEL_STAGES[2], row["click_dir"],
                  round(row["click_dir"] / row["clicks"] * 100, 1), True),
-                (FUNNEL_STAGES[3], row["visits"],
-                 round(row["visits"] / row["click_dir"] * 100, 1), False),
-                (FUNNEL_STAGES[4], int(row["visits"] * 0.08),
-                 round((row["visits"] * 0.08) / row["visits"] * 100, 1), False),
             ]
             for name, cnt, conv, drop in counts:
                 db.add(FunnelStageModel(
@@ -183,39 +182,22 @@ def seed():
                     stage_name=name, count=cnt, conversion=conv, is_drop_off=drop,
                 ))
 
-            # ── Social platform metrics ──
-            platforms_data = [
-                ("google", row["avg_rating"], row["reviews_count"],
-                 max(3, int(row["freshness"] * 3)),
-                 round(row["social_eng"] * 0.6, 1),
-                 "https://www.google.com/maps"),
-                ("instagram", None, None,
-                 max(2, int(row["freshness"] * 2)),
-                 round(row["social_eng"] * 0.8, 1),
-                 "https://www.instagram.com"),
-                ("tiktok", None, None,
-                 max(1, int(row["freshness"] * 1.5)),
-                 round(row["social_eng"] * 0.5, 1),
-                 "https://www.tiktok.com"),
-            ]
-            for plat, ar, tr, ptm, er, url in platforms_data:
-                db.add(SocialPlatformMetricsModel(
-                    restaurant=rest, recorded_at=today,
-                    platform=plat, avg_rating=ar, total_reviews=tr,
-                    posts_this_month=ptm, engagement_rate=er, url=url,
-                ))
+            # ── Google Reviews social card ──
+            db.add(SocialPlatformMetricsModel(
+                restaurant=rest, recorded_at=today,
+                platform="google",
+                avg_rating=row["avg_rating"],
+                total_reviews=row["reviews_count"],
+                posts_this_month=max(3, int(row["freshness"] * 3)),
+                engagement_rate=round(row["social_eng"] * 0.6, 1),
+                url="https://www.google.com/maps",
+            ))
 
             # ── Sentiment + Complaint ──
             sent = SentimentDataModel(
                 restaurant=rest, recorded_at=today,
                 positive_pct=row["positive"],
                 negative_pct=row["negative"],
-                brand_awareness_pct=round(row["visibility"] * 0.85, 1),
-                brand_awareness_change=round(row["visibility"] * 0.05, 1),
-                local_search_rank=row["seo_rank"],
-                search_rank_change=(-1 if row["seo_rank"] > 8 else 1 if row["seo_rank"] < 6 else 0),
-                keyword_match_rate=row["keyword_match"],
-                posts_per_week_avg=row["freshness"],
             )
             db.add(sent)
             db.flush()
@@ -231,6 +213,59 @@ def seed():
                 theme=secondary_themes.get(row["complaint_theme"], "Taste"),
                 count=max(1, int((row["negative"] / 100) * 18)),
             ))
+
+            # ── Foot Traffic ──
+            scale = row["visibility"] / 100.0
+            foot_traffic_hourly = [
+                ("Monday", "Weekday", 12, int(45 * scale)),
+                ("Monday", "Weekday", 13, int(55 * scale)),
+                ("Monday", "Weekday", 19, int(80 * scale)),
+                ("Tuesday", "Weekday", 12, int(50 * scale)),
+                ("Tuesday", "Weekday", 13, int(60 * scale)),
+                ("Tuesday", "Weekday", 19, int(85 * scale)),
+                ("Wednesday", "Weekday", 12, int(48 * scale)),
+                ("Wednesday", "Weekday", 13, int(58 * scale)),
+                ("Wednesday", "Weekday", 19, int(82 * scale)),
+                ("Thursday", "Weekday", 12, int(52 * scale)),
+                ("Thursday", "Weekday", 13, int(65 * scale)),
+                ("Thursday", "Weekday", 19, int(90 * scale)),
+                ("Friday", "Weekday", 12, int(60 * scale)),
+                ("Friday", "Weekday", 13, int(70 * scale)),
+                ("Friday", "Weekday", 19, int(100 * scale)),
+                ("Saturday", "Weekend", 12, int(95 * scale)),
+                ("Saturday", "Weekend", 13, int(120 * scale)),
+                ("Saturday", "Weekend", 19, int(160 * scale)),
+                ("Sunday", "Weekend", 12, int(85 * scale)),
+                ("Sunday", "Weekend", 13, int(110 * scale)),
+                ("Sunday", "Weekend", 19, int(145 * scale)),
+            ]
+            for day_n, day_t, hr, vis in foot_traffic_hourly:
+                db.add(FootTrafficHourlyModel(
+                    restaurant=rest,
+                    traffic_date=today,
+                    day_name=day_n,
+                    day_type=day_t,
+                    hour=hr,
+                    visitors=max(1, vis),
+                ))
+
+            foot_traffic_daily = [
+                ("Monday", "Weekday", int(85 * scale)),
+                ("Tuesday", "Weekday", int(92 * scale)),
+                ("Wednesday", "Weekday", int(88 * scale)),
+                ("Thursday", "Weekday", int(95 * scale)),
+                ("Friday", "Weekday", int(110 * scale)),
+                ("Saturday", "Weekend", int(160 * scale)),
+                ("Sunday", "Weekend", int(145 * scale)),
+            ]
+            for day_n, day_t, vis in foot_traffic_daily:
+                db.add(FootTrafficDailyModel(
+                    restaurant=rest,
+                    traffic_date=today,
+                    day_name=day_n,
+                    day_type=day_t,
+                    visits=max(1, vis),
+                ))
 
         db.commit()
         print(f"Seeded {len(CSV_ROWS)} restaurants successfully.")

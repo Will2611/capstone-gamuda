@@ -70,7 +70,7 @@ export function FoodPreferenceForm({
           What&apos;s your food vibe?
         </h1>
         <p className="text-bs-neutral-600">
-          Help us find people who share your taste — friends, dates, or food
+          Help us find people who share your taste -- friends, dates, or food
           buddies.
         </p>
       </motion.div>

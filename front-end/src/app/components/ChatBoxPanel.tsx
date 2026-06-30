@@ -287,7 +287,7 @@ export default function ChatBoxPanel({
         {initChat?.expiresAt && (
           <div className="text-center">
             <span className="text-xs px-3 py-1 rounded-full bg-white text-bs-neutral-500 shadow-sm">
-              Temporary chat — meet safely in public places
+              Temporary chat -- meet safely in public places
             </span>
           </div>
         )}

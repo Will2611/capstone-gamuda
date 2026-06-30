@@ -60,7 +60,7 @@ const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
 };
 
 function formatPref(key: string, value: string) {
-  return PREFERENCE_LABELS[key]?.[value] ?? (value || "—");
+  return PREFERENCE_LABELS[key]?.[value] ?? (value || "--");
 }
 
 export default function UserProfile() {
