@@ -95,14 +95,15 @@ export function useRestaurantMap({
             map.setZoom(MAP_DEFAULT_ZOOM);
           }
           map.resize();
-          setIsLoading(false);
         });
 
         map.on("click", () => {
           onMapBackgroundClickRef.current?.();
         });
-
-        setIsLoading(false);
+        // Force to wait 1 cycle, to re-render anything missing
+        setTimeout(() => {
+          setIsLoading(false);
+        });
         return;
       } else {
         markerEntriesRef.current.forEach(({ root, marker }) => {
@@ -149,7 +150,6 @@ export function useRestaurantMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    console.log("pins");
     if (!map || isLoading) return;
     const entries = markerEntriesRef.current;
     const restaurantIds = new Set(restaurants.map((r) => r.id));
