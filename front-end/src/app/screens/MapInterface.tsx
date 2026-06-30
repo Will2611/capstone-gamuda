@@ -109,10 +109,14 @@ export default function MapInterface() {
     setViewMode("map");
   }, []);
 
-  const { userCenter, locate, isLocating, error: geoError } =
-    useGeolocation(MAP_DEFAULT_CENTER);
+  const {
+    userCenter,
+    locate,
+    isLocating,
+    error: geoError,
+  } = useGeolocation(MAP_DEFAULT_CENTER);
 
-  const { mapContainerRef, isLoading } = useRestaurantMap({
+  const { isLoading, mountAndUnmount } = useRestaurantMap({
     restaurants,
     selectedPin,
     onPinClick: handlePinClick,
@@ -156,13 +160,12 @@ export default function MapInterface() {
           </button>
         </div>
       </div>
-
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 gap-0 lg:gap-4">
         <div className="flex-1 relative min-h-[45vh] lg:min-h-0 rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-bs-neutral-200 shadow-md lg:shadow-lg bg-white">
           {viewMode === "map" ? (
             <>
               <div
-                ref={mapContainerRef}
+                ref={mountAndUnmount}
                 className="absolute inset-0 w-full h-full"
                 aria-label="Restaurant map"
               />
