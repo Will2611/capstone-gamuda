@@ -222,10 +222,9 @@ export default function SocialVisibilityDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="mb-2">Social Visibility & Insights Dashboard</h1>
+              <h1 className="mb-2">Visibility & Insights Dashboard</h1>
               <p className="text-bs-neutral-600">
-                Understand your traffic, visibility, and brand awareness with
-                actionable insights
+                Understand your traffic and visibility with actionable insights
               </p>
             </div>
             {restaurants.length > 0 && (
@@ -610,39 +609,39 @@ export default function SocialVisibilityDashboard() {
               ];
 
               // â"€â"€ Derived heatmap lookup â"€â"€
-              const heatLookup: Record<string, Record<number, number>> = {};
-              heatmapTraffic.forEach(({ date, hour, visitors }) => {
-                if (!heatLookup[date]) heatLookup[date] = {};
-                heatLookup[date][hour] = visitors;
-              });
-              const allHeatVisitors = heatmapTraffic.map((d) => d.visitors);
-              const maxHeat = Math.max(...allHeatVisitors, 1);
+              // const heatLookup: Record<string, Record<number, number>> = {};
+              // heatmapTraffic.forEach(({ date, hour, visitors }) => {
+              //   if (!heatLookup[date]) heatLookup[date] = {};
+              //   heatLookup[date][hour] = visitors;
+              // });
+              // const allHeatVisitors = heatmapTraffic.map((d) => d.visitors);
+              // const maxHeat = Math.max(...allHeatVisitors, 1);
 
-              const hourFmt = (h: number) =>
-                h === 0
-                  ? "12a"
-                  : h === 12
-                    ? "12p"
-                    : h < 12
-                      ? `${h}a`
-                      : `${h - 12}p`;
+              // const hourFmt = (h: number) =>
+              //   h === 0
+              //     ? "12a"
+              //     : h === 12
+              //       ? "12p"
+              //       : h < 12
+              //         ? `${h}a`
+              //         : `${h - 12}p`;
 
-              const weekdayCellColor = (val: number) => {
-                if (val === 0) return "#EFF6FF";
-                const r = val / maxHeat;
-                if (r >= 0.8) return "#1D4ED8";
-                if (r >= 0.55) return "#2D9CDB";
-                if (r >= 0.3) return "#93C5FD";
-                return "#BFDBFE";
-              };
-              const weekendCellColor = (val: number) => {
-                if (val === 0) return "#FFF7ED";
-                const r = val / maxHeat;
-                if (r >= 0.8) return "#C2410C";
-                if (r >= 0.55) return "#EA580C";
-                if (r >= 0.3) return "#FB923C";
-                return "#FED7AA";
-              };
+              // const weekdayCellColor = (val: number) => {
+              //   if (val === 0) return "#EFF6FF";
+              //   const r = val / maxHeat;
+              //   if (r >= 0.8) return "#1D4ED8";
+              //   if (r >= 0.55) return "#2D9CDB";
+              //   if (r >= 0.3) return "#93C5FD";
+              //   return "#BFDBFE";
+              // };
+              // const weekendCellColor = (val: number) => {
+              //   if (val === 0) return "#FFF7ED";
+              //   const r = val / maxHeat;
+              //   if (r >= 0.8) return "#C2410C";
+              //   if (r >= 0.55) return "#EA580C";
+              //   if (r >= 0.3) return "#FB923C";
+              //   return "#FED7AA";
+              // };
 
               return (
                 <section aria-labelledby="foot-traffic">
@@ -650,8 +649,7 @@ export default function SocialVisibilityDashboard() {
                     Weekdays vs Weekends Foot Traffic
                   </h2>
                   <p className="text-sm text-bs-neutral-500 mb-6">
-                    Daily visit counts & hourly heatmap -- use to design staff
-                    schedules
+                    Daily visit counts -- use to design staff schedules
                   </p>
 
                   {/* Chart 1: Daily bar chart */}

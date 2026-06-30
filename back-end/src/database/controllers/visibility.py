@@ -37,6 +37,7 @@ from src.database.calculations import (
     compute_visibility_score,
     compute_social_engagement_rate,
     compute_repeat_visit_rate,
+    compute_average_rating,
 )
 import re
 
@@ -112,6 +113,19 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
     if current is None:
         raise HTTPException(status_code=404, detail="No metrics found for this restaurant")
 
+    # ── Average Rating: computed from aggregate review data ──
+    restaurant = (
+        db.query(RestaurantModel)
+        .filter(RestaurantModel.id == restaurantId)
+        .first()
+    )
+    avg_rating = compute_average_rating(
+        stored_avg=current.average_rating,
+        total_reviews=current.total_reviews,
+        sample_ratings=restaurant.review_ratings if restaurant else None,
+    )
+    total_reviews_count = current.total_reviews
+
     # -- Funnel impressions (for social engagement rate denominator) ----
     funnel_imp_row = (
         db.query(FunnelStageModel)
@@ -152,8 +166,8 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
     pos_pct = sentiment.positive_pct if sentiment else 80.0
     curr_repeat = compute_repeat_visit_rate(
         positive_pct=pos_pct,
-        avg_rating=current.average_rating,
-        total_reviews=current.total_reviews,
+        avg_rating=avg_rating,
+        total_reviews=total_reviews_count,
     )
     prev_repeat = curr_repeat
     if previous and sentiment:
@@ -165,9 +179,7 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
 
     # -- Visibility Score = f(avg_rating, total_reviews, social_rate) ----
     curr_score = round(
-        compute_visibility_score(
-            current.average_rating, current.total_reviews, curr_social
-        ),
+        compute_visibility_score(avg_rating, total_reviews_count, curr_social),
         1,
     )
     prev_score = curr_score
@@ -186,8 +198,8 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
             trend=compute_trend(curr_score, prev_score),
         ),
         averageRating=AverageRatingEntry(
-            value=round(current.average_rating, 1),
-            totalReviews=current.total_reviews,
+            value=avg_rating,
+            totalReviews=total_reviews_count,
             source=current.rating_source,
         ),
         socialEngagementRate=SocialEngagementEntry(

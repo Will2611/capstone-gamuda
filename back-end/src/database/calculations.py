@@ -95,3 +95,25 @@ def compute_visibility_score(
         w["review_rate"] * review_sub
         + w["social_rate"] * social_sub
     )
+
+
+# ---- Average Rating (1.0 - 5.0) ----
+
+def compute_average_rating(
+    stored_avg: float,
+    total_reviews: int,
+    sample_ratings: list[int] | None = None,
+) -> float:
+    """
+    Primary source: stored aggregate rating from all reviews (Google).
+    Fallback: arithmetic mean of sample review ratings if stored value is absent.
+
+    The stored value represents the true aggregate across all reviews
+    (e.g., 4.8 from 1 365 Google reviews), while sample_ratings are
+    the 5 individual reviews shown in the reviews modal.
+    """
+    if stored_avg > 0:
+        return round(stored_avg, 1)
+    if sample_ratings and len(sample_ratings) > 0:
+        return round(sum(sample_ratings) / len(sample_ratings), 1)
+    return 0.0
