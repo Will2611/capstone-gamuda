@@ -245,8 +245,7 @@ export default function ChatBoxPanel({
       const text = input.trim();
       if (!text || isTyping.length > 0) return;
       onSendMessage(text);
-      // if(!wsRef.current) return
-      // wsRef.current.send(text)
+
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
         userName: getUser.profile.displayName,
