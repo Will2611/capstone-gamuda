@@ -53,6 +53,16 @@ export default function SocialVisibilityDashboard() {
   const navigate = useNavigate();
 
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("metrics");
+
+  const tabs = [
+    { id: "metrics", label: "Top Metrics" },
+    { id: "funnel", label: "Traffic & Conversion" },
+    { id: "reviews", label: "Google Reviews" },
+    { id: "sentiment", label: "Sentiment" },
+    { id: "traffic", label: "Foot Traffic" },
+    { id: "promotions", label: "Promotions" },
+  ];
 
   // â"€â"€ Data state â"€â"€
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
@@ -261,7 +271,30 @@ export default function SocialVisibilityDashboard() {
       )}
 
       {!loading && summary && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          {/* Tab Navigation */}
+          <div className="flex gap-1 overflow-x-auto py-4 border-b border-bs-neutral-200 mb-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-white text-bs-blue border border-bs-neutral-200 border-b-white -mb-px"
+                    : "text-bs-neutral-500 hover:text-bs-neutral-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!loading && summary && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-8">
+          {activeTab === "metrics" && (
+          <>  
           {/* 1. Top Summary Metrics */}
           <section aria-labelledby="summary-metrics">
             <h2 id="summary-metrics" className="mb-4">
@@ -346,7 +379,11 @@ export default function SocialVisibilityDashboard() {
               </div>
             </div>
           </section>
+          </>
+          )}
 
+          {activeTab === "funnel" && (
+          <>
           {/* 2. Traffic & Conversion Funnel */}
           <section aria-labelledby="traffic-funnel">
             <h2 id="traffic-funnel" className="mb-4">
@@ -374,7 +411,11 @@ export default function SocialVisibilityDashboard() {
               )}
             </div>
           </section>
+          </>
+          )}
 
+          {activeTab === "reviews" && (
+          <>
           {/* 3. Social Media Visibility */}
           <section aria-labelledby="social-visibility">
             <h2 id="social-visibility" className="mb-4">
@@ -397,6 +438,11 @@ export default function SocialVisibilityDashboard() {
             </div>
           </section>
 
+          </>
+          )}
+
+          {activeTab === "sentiment" && (
+          <>
           {/* 4. Customer Sentiment & Awareness */}
           {sentiment && (
             <section aria-labelledby="sentiment-awareness">
@@ -502,6 +548,11 @@ export default function SocialVisibilityDashboard() {
             </section>
           )}
 
+          </>
+          )}
+
+          {activeTab === "traffic" && (
+          <>
           {/* 5. Foot Traffic & Staff Scheduling */}
           {footTraffic &&
             (() => {
@@ -1069,7 +1120,11 @@ export default function SocialVisibilityDashboard() {
                 </section>
               );
             })()}
+          </>
+          )}
 
+          {activeTab === "promotions" && (
+          <>
           {/* 6. Promotion Suggestion Cards */}
           <section aria-labelledby="promotion-suggestions">
             <h2 id="promotion-suggestions" className="mb-4">
@@ -1146,6 +1201,8 @@ export default function SocialVisibilityDashboard() {
               </div>
             </div>
           </section>
+          </>
+          )}
         </div>
       )}
 
