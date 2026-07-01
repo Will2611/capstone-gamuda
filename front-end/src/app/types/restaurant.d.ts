@@ -19,11 +19,11 @@ export interface Restaurant {
  * Deprecated, use the one from user.d.ts
  */
 export interface SearchPreferences {
-  cuisine: string;
-  priceRange: string;
-  dietary: string;
+  cuisine: string[];
+  priceRange: string[];
+  dietary: string[];
   distance: string;
-  ambience: string;
+  ambience: string[];
   time: string;
 }
 

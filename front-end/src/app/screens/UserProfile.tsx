@@ -7,12 +7,16 @@ import {
   Star,
   MapPin,
   Pencil,
+  Calendar,
+  Languages,
+  Sparkles,
 } from "lucide-react";
 import { ProfileCard } from "../components/ProfileCard";
 import { Button } from "../components/Button";
 import { useUser } from "../context/UserContext";
 import { useAuth } from "../context/AuthContext";
 
+// 最新对齐的配置映射表
 const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
   cuisine: {
     italian: "Italian",
@@ -23,10 +27,11 @@ const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
     indian: "Indian",
   },
   priceRange: {
-    "1": "$ Budget-friendly",
-    "2": "$$ Moderate",
-    "3": "$$$ Upscale",
-    "4": "$$$$ Fine Dining",
+    "1": "$ < RM20",
+    "2": "$$ RM20 - RM60",
+    "3": "$$$ RM60 - RM110",
+    "4": "$$$$ RM110 - RM250",
+    "5": "$$$$$ > RM250",
   },
   dietary: {
     none: "No restrictions",
@@ -45,11 +50,14 @@ const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
   },
   ambience: {
     casual: "Casual",
+    finedining: "Fine Dining",
     romantic: "Romantic",
-    family: "Family-friendly",
+    family: "Family",
     business: "Business",
     trendy: "Trendy",
     quiet: "Quiet",
+    cozy: "Cozy",
+    lively: "Lively",
   },
   time: {
     breakfast: "Breakfast",
@@ -59,22 +67,70 @@ const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
   },
 };
 
-function formatPref(key: string, value: string) {
-  return PREFERENCE_LABELS[key]?.[value] ?? (value || "--");
-}
+// 🟢 语言与性别的显示转换映射
+const GENDER_LABELS: Record<string, string> = {
+  male: "Male",
+  female: "Female",
+};
+const LANG_LABELS: Record<string, string> = {
+  en: "English",
+  ms: "Bahasa Melayu",
+};
 
 export default function UserProfile() {
   const navigate = useNavigate();
   const { profile } = useUser();
   const { user } = useAuth();
 
+  // 🟢 类型断言以防 TS 抱怨没有这些字段
+  const extendedProfile = profile as any;
+
   const displayName = user?.displayName ?? profile.displayName;
   const email = user?.email ?? profile.email;
   const prefs = profile.savedPreferences;
 
+  // 获取新增的注册字段
+  const gender = extendedProfile.gender || "";
+  const birthday = extendedProfile.birthday || "";
+  const religion = extendedProfile.religion || "";
+  const language = extendedProfile.language || "";
+  const personalities = extendedProfile.personalities || [];
+
+  // 动态渲染偏好内容的方法（支持多选数组与单选字符串）
+  const renderPrefValue = (
+    key: string,
+    value: string | string[] | undefined,
+  ) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      return <span className="text-bs-neutral-400">Any / Unspecified</span>;
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          {value.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-bs-gold/10 text-bs-gold border border-bs-gold/20"
+            >
+              {PREFERENCE_LABELS[key]?.[v] ?? v}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <p className="text-sm font-medium text-bs-neutral-800 mt-1">
+        {PREFERENCE_LABELS[key]?.[value] ?? value}
+      </p>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-bs-neutral-100 py-8 md:py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
+        {/* 用户名片区 */}
         <ProfileCard title="" className="!p-0 overflow-hidden">
           <div className="bg-gradient-to-r from-bs-gold/25 via-bs-red/10 to-bs-blue/15 p-6 md:p-8">
             <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -90,59 +146,121 @@ export default function UserProfile() {
                 )}
               </div>
               <div className="text-center sm:text-left flex-1">
-                <h1 className="text-2xl mb-1">{displayName}</h1>
-                <p className="text-bs-neutral-600">{email}</p>
-                <p className="text-sm text-bs-neutral-500 mt-2">
+                <h1 className="text-2xl mb-1 font-semibold text-bs-neutral-900">
+                  {displayName}
+                </h1>
+                <p className="text-bs-neutral-600 text-sm">{email}</p>
+                <p className="text-xs text-bs-neutral-500 mt-2">
                   Food explorer · Member since 2026
                 </p>
               </div>
+
               <Button
                 variant="secondary"
-                className="shrink-0"
-                onClick={() => navigate("/search")}
+                className="shrink-0 text-xs py-2"
+                onClick={() => navigate("/signup?mode=edit")}
               >
-                <Pencil size={16} className="inline mr-2" />
+                <Pencil size={14} className="inline mr-1.5" />
                 Edit Preferences
               </Button>
             </div>
+
+            {/* 🟢 新增点 1：展示 Gender, Birthday, Religion, Language 基本资料网格 */}
+            {(gender || birthday || religion || language) && (
+              <div className="mt-6 pt-6 border-t border-black/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm bg-white/40 p-4 rounded-xl backdrop-blur-sm">
+                <div>
+                  <p className="text-xs text-bs-neutral-500 uppercase font-medium">
+                    Gender
+                  </p>
+                  <p className="font-medium text-bs-neutral-800 capitalize">
+                    {GENDER_LABELS[gender] || gender || "Unspecified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
+                    <Calendar size={12} /> Birthday
+                  </p>
+                  <p className="font-medium text-bs-neutral-800">
+                    {birthday || "Unspecified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-bs-neutral-500 uppercase font-medium">
+                    Religion
+                  </p>
+                  <p className="font-medium text-bs-neutral-800">
+                    {religion || "Unspecified"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
+                    <Languages size={12} /> Language
+                  </p>
+                  <p className="font-medium text-bs-neutral-800">
+                    {LANG_LABELS[language] || language || "Unspecified"}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </ProfileCard>
 
+        {/* 最新偏好列表 */}
         <ProfileCard
           title="Saved Preferences"
           action={<Settings size={18} className="text-bs-neutral-500" />}
         >
           {prefs ? (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {(
-                [
-                  ["Cuisine", "cuisine"],
-                  ["Price Range", "priceRange"],
-                  ["Dietary", "dietary"],
-                  ["Max Distance", "distance"],
-                  ["Ambience", "ambience"],
-                  ["Visit Time", "time"],
-                ] as const
-              ).map(([label, key]) => (
-                <div
-                  key={key}
-                  className="bg-bs-neutral-100 rounded-lg px-4 py-3"
-                >
-                  <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide mb-1">
-                    {label}
+            <div className="space-y-6">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {(
+                  [
+                    ["Cuisine", "cuisine"],
+                    ["Price Range", "priceRange"],
+                    ["Dietary", "dietary"],
+                    ["Max Distance", "distance"],
+                    ["Ambience", "ambience"],
+                    ["Visit Time", "time"],
+                  ] as const
+                ).map(([label, key]) => (
+                  <div
+                    key={key}
+                    className="bg-bs-neutral-100/60 border border-bs-neutral-200/50 rounded-lg px-4 py-3 flex flex-col justify-between"
+                  >
+                    <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide font-medium">
+                      {label}
+                    </dt>
+                    <dd>{renderPrefValue(key, prefs[key])}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              {/* 🟢 新增点 2：在偏好设置卡片底部，追加渲染 Food Personality 标签云 */}
+              {personalities.length > 0 && (
+                <div className="pt-4 border-t border-bs-neutral-200">
+                  <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide font-semibold mb-2 flex items-center gap-1">
+                    <Sparkles size={14} className="text-bs-blue" /> Food
+                    Personality
                   </dt>
-                  <dd className="text-sm font-medium text-bs-neutral-800">
-                    {formatPref(key, prefs[key])}
+                  <dd className="flex flex-wrap gap-2">
+                    {personalities.map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-bs-blue/10 text-bs-blue border border-bs-blue/20"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </dd>
                 </div>
-              ))}
-            </dl>
+              )}
+            </div>
           ) : (
             <p className="text-bs-neutral-600 text-sm">
               No preferences saved yet.{" "}
               <button
-                onClick={() => navigate("/search")}
-                className="text-bs-gold hover:underline"
+                onClick={() => navigate("/signup?mode=edit")}
+                className="text-bs-gold hover:underline font-medium"
               >
                 Set your preferences
               </button>
@@ -150,6 +268,7 @@ export default function UserProfile() {
           )}
         </ProfileCard>
 
+        {/* 历史记录区 */}
         <ProfileCard
           title="Search History"
           action={<History size={18} className="text-bs-neutral-500" />}
@@ -183,6 +302,7 @@ export default function UserProfile() {
           )}
         </ProfileCard>
 
+        {/* 收藏美食店 */}
         <ProfileCard
           title="Favorite Restaurants"
           action={<Heart size={18} className="text-bs-red" />}
@@ -192,7 +312,7 @@ export default function UserProfile() {
               {profile.favoriteRestaurants.map((r) => (
                 <li
                   key={r.id}
-                  className="flex items-center gap-4 p-3 rounded-lg border border-bs-neutral-200 hover:shadow-md transition-shadow cursor-pointer"
+                  className="flex items-center gap-4 p-3 rounded-lg border border-bs-neutral-200 hover:shadow-md transition-shadow cursor-pointer bg-white"
                   onClick={() => navigate("/map")}
                 >
                   {r.image && (
@@ -203,7 +323,9 @@ export default function UserProfile() {
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{r.name}</p>
+                    <p className="font-medium text-sm truncate text-bs-neutral-900">
+                      {r.name}
+                    </p>
                     <div className="flex items-center gap-3 text-xs text-bs-neutral-600 mt-1">
                       <span className="flex items-center gap-0.5">
                         <Star size={12} className="text-bs-gold fill-bs-gold" />
