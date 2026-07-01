@@ -71,7 +71,7 @@ export default function PreferenceForm() {
         <div className="bg-white rounded-lg p-8 shadow-lg">
           <h1 className="mb-2 text-center">Find Your Perfect Match</h1>
           <p className="text-bs-neutral-600 text-center mb-8">
-            Tell us what you&apos;re craving — or skip straight to the map
+            Tell us what you&apos;re craving -- or skip straight to the map
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -184,7 +184,7 @@ export default function PreferenceForm() {
                 Find Restaurant
               </Button>
               <p className="text-center text-xs text-bs-neutral-500">
-                Goes straight to the map — preferences are optional
+                Goes straight to the map -- preferences are optional
               </p>
             </div>
           </form>
