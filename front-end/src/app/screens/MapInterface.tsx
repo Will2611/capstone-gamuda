@@ -422,6 +422,16 @@ export default function MapInterface() {
               </div>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={locate}
+            disabled={isLocating}
+            aria-label="Locate me on the map"
+            className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+          >
+            <PersonPin />
+          </button>
         </div>
 
         <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col p-4 min-h-[320px] max-h-[50vh] lg:min-h-0 lg:max-h-full overflow-y-hidden">

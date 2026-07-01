@@ -150,6 +150,30 @@ export function useRestaurantMap({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || isLoading || !userCenter) return;
+
+    if (!userMarkerRef.current) {
+      const el = document.createElement("div");
+      el.className = "user-location-marker";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = "#2563eb";
+      el.style.border = "3px solid white";
+      el.style.boxShadow = "0 0 6px rgba(0,0,0,0.35)";
+
+      userMarkerRef.current = new MapLibreMarker({ element: el })
+        .setLngLat(userCenter)
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(userCenter);
+    }
+
+    fitMapAroundUser(map, userCenter, restaurants);
+  }, [userCenter, isLoading, restaurants]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     if (!map || isLoading) return;
     const entries = markerEntriesRef.current;
     const restaurantIds = new Set(restaurants.map((r) => r.id));
