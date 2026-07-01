@@ -72,6 +72,59 @@ export default function MapInterface() {
       promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
     })),
   );
+  type SuggestedRestaurant = Restaurant & { description: string };
+
+  // Randomizer useMemo
+  function getRandomRestaurants<T>(items: T[], count: number) {
+    return [...items].sort(() => Math.random() - 0.5).slice(0, count);
+  }
+
+  const handleLlmResponse = useCallback(
+    (_replyText: string, searchResults: any[]) => {
+      if (searchResults && searchResults.length > 0) {
+        const topIndex = searchResults.reduce((bestIdx, r, i, arr) => {
+          const rating = r.rating ?? 4.0;
+          const bestRating = arr[bestIdx].rating ?? 4.0;
+          return rating > bestRating ? i : bestIdx;
+        }, 0);
+
+        const mapped = searchResults.map((r, index) => {
+          const rating = r.rating || 4.0;
+          const mockMatch = MOCK_RESTAURANTS.find(
+            (m) =>
+              m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase(),
+          );
+          return {
+            id: r.id,
+            name: r.name,
+            rating,
+            cuisine: r.cuisine || "Any",
+            distance: mockMatch?.distance || "1.2 km",
+            dietary: mockMatch?.dietary || "Halal",
+            isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
+            type: index === topIndex ? ("gold" as const) : ("red" as const),
+            coordinates:
+              r.longitude && r.latitude
+                ? [r.longitude, r.latitude]
+                : mockMatch?.coordinates || [101.71, 3.15],
+            image: mockMatch?.image,
+            promotions: mockPromotions.filter((promo) => promo.id === r.id),
+          } as Restaurant;
+        });
+        setDisplayedRestaurants(mapped);
+      } else {
+        setDisplayedRestaurants(
+          MOCK_RESTAURANTS.map((restaurant) => ({
+            ...restaurant,
+            promotions: mockPromotions.filter(
+              (promo) => promo.id === restaurant.id,
+            ),
+          })),
+        );
+      }
+    },
+    [],
+  );
 
   const filteredRestaurants = useMemo(() => {
     return displayedRestaurants.filter((restaurant) => {
@@ -144,13 +197,6 @@ export default function MapInterface() {
   // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
   const restaurants = filteredRestaurants;
 
-  type SuggestedRestaurant = Restaurant & { description: string };
-
-  // Randomizer useMemo
-  function getRandomRestaurants<T>(items: T[], count: number) {
-    return [...items].sort(() => Math.random() - 0.5).slice(0, count);
-  }
-
   const suggestions = useMemo<SuggestedRestaurant[]>(
     () =>
       restaurants.map((restaurant) => ({
@@ -172,52 +218,6 @@ export default function MapInterface() {
     ? suggestionResults
     : suggestions.slice(0, 3);
 
-  const handleLlmResponse = useCallback(
-    (_replyText: string, searchResults: any[]) => {
-      if (searchResults && searchResults.length > 0) {
-        const topIndex = searchResults.reduce((bestIdx, r, i, arr) => {
-          const rating = r.rating ?? 4.0;
-          const bestRating = arr[bestIdx].rating ?? 4.0;
-          return rating > bestRating ? i : bestIdx;
-        }, 0);
-
-        const mapped = searchResults.map((r, index) => {
-          const rating = r.rating || 4.0;
-          const mockMatch = MOCK_RESTAURANTS.find(
-            (m) =>
-              m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase(),
-          );
-          return {
-            id: r.id,
-            name: r.name,
-            rating,
-            cuisine: r.cuisine || "Any",
-            distance: mockMatch?.distance || "1.2 km",
-            dietary: mockMatch?.dietary || "Halal",
-            isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
-            type: index === topIndex ? ("gold" as const) : ("red" as const),
-            coordinates:
-              r.longitude && r.latitude
-                ? [r.longitude, r.latitude]
-                : mockMatch?.coordinates || [101.71, 3.15],
-            image: mockMatch?.image,
-            promotions: mockPromotions.filter((promo) => promo.id === r.id),
-          } as Restaurant;
-        });
-        setDisplayedRestaurants(mapped);
-      } else {
-        setDisplayedRestaurants(
-          MOCK_RESTAURANTS.map((restaurant) => ({
-            ...restaurant,
-            promotions: mockPromotions.filter(
-              (promo) => promo.id === restaurant.id,
-            ),
-          })),
-        );
-      }
-    },
-    [],
-  );
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
   const handlePinClick = useCallback((id: number) => {
@@ -264,7 +264,8 @@ export default function MapInterface() {
             Dining Discovery
           </h2>
           <p className="text-sm text-bs-neutral-600">
-            Explore your cuisine between a live map and curated restaurant suggestions.
+            Explore your cuisine between a live map and curated restaurant
+            suggestions.
           </p>
         </div>
         <div className="inline-flex rounded-full bg-white p-1 shadow-sm border border-bs-neutral-200">
@@ -370,8 +371,8 @@ export default function MapInterface() {
                     Suggested restaurants
                   </h3>
                   <p className="text-sm text-bs-neutral-600">
-                    Browse suggested restaurants near you with photos, descriptions,
-                    and quick actions.
+                    Browse suggested restaurants near you with photos,
+                    descriptions, and quick actions.
                   </p>
                 </div>
                 <Button
