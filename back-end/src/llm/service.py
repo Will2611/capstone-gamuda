@@ -41,9 +41,12 @@ async def chat(messages: list[dict]) -> str:
     llm = get_llm()
     response = await llm.ainvoke(_to_langchain_messages(trimmed))
     content = response.content
-    if isinstance(content, str):
-        return content
-    return str(content)
+    if isinstance(content, list):
+        content = "".join([
+            c["text"] if (isinstance(c, dict) and "text" in c) else str(c)
+            for c in content
+        ])
+    return content if isinstance(content, str) else str(content)
 
 async def get_top_restaurants(db, cuisines: list[str], limit: int = 3) -> list[dict]:
     if not cuisines:

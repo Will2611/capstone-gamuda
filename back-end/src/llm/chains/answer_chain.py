@@ -44,4 +44,9 @@ async def generate_answer(llm, user_message: str, restaurants: list[dict]) -> st
     })
 
     content = response.content
+    if isinstance(content, list):
+        content = "".join([
+            c["text"] if (isinstance(c, dict) and "text" in c) else str(c)
+            for c in content
+        ])
     return content if isinstance(content, str) else str(content)
