@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Megaphone, Calendar, Image as ImageIcon, Link as LinkIcon, Clock } from "lucide-react";
+import { Megaphone, Calendar, Image as ImageIcon, Link as LinkIcon, Clock, Upload } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
 import { mockPromotions } from "../data/mockPromotions";
@@ -27,6 +27,23 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const [isAllDay, setIsAllDay] = useState(
     initialData ? (initialData.startTime === "" && initialData.endTime === "") : true
   );
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert("Image size should be less than 5MB");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          setImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = () => {
     const promotion: Promotion = {
@@ -156,30 +173,71 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               />
             </div>
 
-            {/* Image URL */}
+            {/* Image Upload Area */}
             <div>
               <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                <ImageIcon size={16} className="text-bs-neutral-500" />
-                Image URL
+                <Upload size={16} className="text-bs-neutral-500" />
+                Promotion Banner Image
               </label>
+              
               <input
-                className="
-                  w-full
-                  border border-bs-neutral-300
-                  hover:border-bs-neutral-400
-                  focus:border-bs-gold
-                  focus:ring-2 focus:ring-bs-gold/20
-                  rounded-xl
-                  p-3
-                  outline-none
-                  text-bs-neutral-800
-                  transition-all
-                  placeholder:text-bs-neutral-400
-                "
-                placeholder="https://images.unsplash.com/photo-..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
+                type="file"
+                id="promo-image-upload"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
               />
+
+              <div
+                onClick={() => document.getElementById("promo-image-upload")?.click()}
+                className={`
+                  border-2 border-dashed rounded-2xl p-6
+                  flex flex-col items-center justify-center
+                  cursor-pointer transition-all duration-200
+                  ${imageUrl 
+                    ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10" 
+                    : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"}
+                `}
+              >
+                {imageUrl ? (
+                  <div className="text-center space-y-3">
+                    <img 
+                      src={imageUrl} 
+                      alt="Upload Preview" 
+                      className="max-h-32 rounded-lg mx-auto shadow-sm object-cover" 
+                    />
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Image Loaded Successfully
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setImageUrl("");
+                        }}
+                        className="text-xs font-bold text-rose-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-2">
+                    <div className="p-3 bg-white border border-bs-neutral-200 rounded-xl inline-block text-bs-neutral-500 shadow-sm">
+                      <Upload size={22} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-bs-neutral-800">
+                        Click to upload promotion image
+                      </p>
+                      <p className="text-xs text-bs-neutral-400 mt-1">
+                        PNG, JPG, JPEG up to 5MB (Base64 encoded)
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Website URL */}
