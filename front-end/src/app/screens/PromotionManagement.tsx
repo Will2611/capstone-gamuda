@@ -52,20 +52,20 @@ export default function PromotionManagement() {
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 pb-16">
       
-      {/* Premium Header with Stats Dashboard */}
-      <div className="bg-gradient-to-br from-bs-neutral-900 via-bs-neutral-950 to-bs-neutral-900 border-b border-bs-neutral-800 text-white">
+      {/* Premium Bright Header with Stats Dashboard */}
+      <div className="bg-gradient-to-br from-[#FFFCEB] via-white to-[#FFFDF0] border-b border-bs-neutral-200">
         <div className="max-w-7xl mx-auto px-6 py-10 md:py-14">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <div>
               <div className="flex items-center gap-3.5 mb-2">
-                <div className="p-2.5 bg-bs-gold/10 rounded-xl text-bs-gold border border-bs-gold/20 shadow-lg">
+                <div className="p-2.5 bg-bs-gold/15 rounded-xl text-bs-gold border border-bs-gold/25 shadow-sm">
                   <Megaphone size={26} />
                 </div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-white">
+                <h1 className="text-3xl font-extrabold tracking-tight text-bs-neutral-900">
                   Promotion Management
                 </h1>
               </div>
-              <p className="text-bs-neutral-400 text-sm md:text-base max-w-xl">
+              <p className="text-bs-neutral-600 text-sm md:text-base max-w-xl leading-relaxed">
                 Create, customize, and coordinate your restaurant's special offers. Boost visibility on client search maps and attract new diners.
               </p>
             </div>
@@ -81,9 +81,10 @@ export default function PromotionManagement() {
                 font-bold text-sm
                 px-5 py-3.5
                 rounded-xl
-                shadow-lg hover:shadow-xl
+                shadow-md hover:shadow-lg
                 transition-all duration-200
                 transform active:scale-[0.98]
+                border border-bs-gold/20
               "
             >
               <Plus size={18} />
@@ -94,27 +95,27 @@ export default function PromotionManagement() {
           {/* Stats Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10">
             {/* Total */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+            <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
-                <span className="text-xs font-semibold text-bs-neutral-400 uppercase tracking-wider block mb-1">
+                <span className="text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider block mb-1">
                   Total Offers
                 </span>
-                <span className="text-3xl font-black text-white">{totalCount}</span>
+                <span className="text-3xl font-black text-bs-neutral-900">{totalCount}</span>
               </div>
-              <div className="p-2 bg-white/5 rounded-xl text-white/80">
+              <div className="p-2.5 bg-bs-neutral-100 rounded-xl text-bs-neutral-500">
                 <Sparkles size={20} />
               </div>
             </div>
 
             {/* Active */}
-            <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+            <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
-                <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider block mb-1">
+                <span className="text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider block mb-1">
                   Active Now
                 </span>
-                <span className="text-3xl font-black text-emerald-400">{activeCount}</span>
+                <span className="text-3xl font-black text-emerald-600">{activeCount}</span>
               </div>
-              <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400">
+              <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-500">
                 <span className="flex h-2.5 w-2.5 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -123,14 +124,14 @@ export default function PromotionManagement() {
             </div>
 
             {/* Expired */}
-            <div className="bg-rose-500/5 border border-rose-500/10 rounded-2xl p-5 backdrop-blur-sm flex items-center justify-between">
+            <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-5 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
               <div>
-                <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider block mb-1">
+                <span className="text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider block mb-1">
                   Expired / Scheduled
                 </span>
-                <span className="text-3xl font-black text-rose-400">{expiredCount}</span>
+                <span className="text-3xl font-black text-rose-500">{expiredCount}</span>
               </div>
-              <div className="p-2 bg-rose-500/10 rounded-xl text-rose-400">
+              <div className="p-2.5 bg-rose-50 rounded-xl text-rose-500">
                 <AlertCircle size={20} />
               </div>
             </div>
