@@ -1,4 +1,4 @@
-import type { Promotion } from "../types/promotion";
+import type { Promotion } from "../types/promotion";
 import { isPromotionActive } from "../utils/promotionUtils";
 import { Calendar, Clock, ExternalLink, Edit2, Trash2 } from "lucide-react";
 
@@ -39,18 +39,16 @@ export function PromotionCard({
           }}
         />
         
-        {/* Floating Active Status Badge */}
+        {/* Floating Active Status Badge (White background, Green/Red text) */}
         <div className={`
           absolute top-3 right-3
           flex items-center gap-1.5
-          px-3 py-1 rounded-full
-          text-xs font-semibold
-          backdrop-blur-md shadow-sm border
-          ${isActive 
-            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
-            : "bg-rose-500/10 text-rose-600 border-rose-500/20"}
+          px-3 py-1.5 rounded-full
+          text-xs font-bold
+          bg-white shadow-md border border-bs-neutral-200
+          ${isActive ? "text-emerald-600" : "text-rose-600"}
         `}>
-          <span className={`w-2 h-2 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
           {isActive ? "Active" : "Expired"}
         </div>
       </div>
