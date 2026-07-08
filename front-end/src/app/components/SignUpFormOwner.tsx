@@ -1,4 +1,5 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect } from "react";
+import type { SubmitEvent as ReactSubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Mail,
@@ -253,7 +254,7 @@ export function SignUpFormOwner() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: ReactSubmitEvent) => {
     e.preventDefault();
 
     const allTouched = {

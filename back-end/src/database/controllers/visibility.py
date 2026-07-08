@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, desc
 from src.database.connection import db_dependency
 from src.database.schemas.visibility import (
-    RestaurantModel,
+    RestaurantVisbilityModel,
     VisibilityMetricsModel,
     FunnelStageModel,
     SocialPlatformMetricsModel,
@@ -74,7 +74,7 @@ def _build_platform_metrics(platform_row, colour_class: str) -> list[PlatformMet
 
 @router.get("/restaurants", response_model=list[RestaurantListItemResponse])
 async def list_restaurants(db: db_dependency):
-    rows = db.query(RestaurantModel).order_by(RestaurantModel.name).all()
+    rows = db.query(RestaurantVisbilityModel).order_by(RestaurantVisbilityModel.name).all()
     return [RestaurantListItemResponse(id=r.id, name=r.name, cuisines=r.cuisines) for r in rows]
 
 
@@ -115,8 +115,8 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
 
     # ── Average Rating: computed from aggregate review data ──
     restaurant = (
-        db.query(RestaurantModel)
-        .filter(RestaurantModel.id == restaurantId)
+        db.query(RestaurantVisbilityModel)
+        .filter(RestaurantVisbilityModel.id == restaurantId)
         .first()
     )
     avg_rating = compute_average_rating(
@@ -343,7 +343,7 @@ async def get_reviews_by_theme(
     restaurantId: int = Query(...),
     theme: str = Query("Wait Time"),
 ):
-    restaurant = db.query(RestaurantModel).filter(RestaurantModel.id == restaurantId).first()
+    restaurant = db.query(RestaurantVisbilityModel).filter(RestaurantVisbilityModel.id == restaurantId).first()
     if not restaurant or not restaurant.sample_reviews:
         raise HTTPException(status_code=404, detail="No reviews found")
 

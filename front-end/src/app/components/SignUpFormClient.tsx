@@ -1,4 +1,5 @@
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { SubmitEvent as ReactSubmitEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   User,
@@ -212,7 +213,7 @@ export function SignUpFormClient() {
     setErrors(nextErrors);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: ReactSubmitEvent) => {
     e.preventDefault();
 
     const allTouched = {
