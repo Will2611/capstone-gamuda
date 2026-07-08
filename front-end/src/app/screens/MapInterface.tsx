@@ -10,6 +10,7 @@ import { MAP_DEFAULT_CENTER, MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
+import { getSentiment, type Sentiment } from "../services/visibilityApi";
 import type { Restaurant, SearchPreferences } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
@@ -209,6 +210,9 @@ export default function MapInterface() {
   const [suggestionResults, setSuggestionResults] = useState<
     SuggestedRestaurant[]
   >(() => getRandomRestaurants(suggestions, 3));
+  const [sentiment, setSentiment] = useState<Sentiment | null>(null);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
+  const [sentimentError, setSentimentError] = useState<string | null>(null);
 
   useEffect(() => {
     setSuggestionResults(getRandomRestaurants(suggestions, 3));
@@ -240,6 +244,34 @@ export default function MapInterface() {
     setSelectedPin(restaurant.id);
     setViewMode("map");
   }, []);
+
+  useEffect(() => {
+    if (!selectedRestaurant) {
+      setSentiment(null);
+      setSentimentLoading(false);
+      setSentimentError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSentimentLoading(true);
+    setSentimentError(null);
+
+    getSentiment(selectedRestaurant.id)
+      .then((data) => {
+        if (!cancelled) setSentiment(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSentimentError("Failed to load sentiment data");
+      })
+      .finally(() => {
+        if (!cancelled) setSentimentLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRestaurant]);
 
   const {
     userCenter,
@@ -353,6 +385,9 @@ export default function MapInterface() {
                     <RestaurantPopupCard
                       restaurant={selectedRestaurant}
                       isFavorite={isFavorite(selectedRestaurant.id)}
+                      sentiment={sentiment}
+                      sentimentLoading={sentimentLoading}
+                      sentimentError={sentimentError}
                       onClose={() => setSelectedPin(null)}
                       onToggleFavorite={() =>
                         toggleFavorite(selectedRestaurant)
