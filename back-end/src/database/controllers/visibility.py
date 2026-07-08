@@ -2,13 +2,17 @@ from fastapi import APIRouter, Query, HTTPException
 from datetime import date, timedelta
 from sqlalchemy import func, desc
 from src.database.connection import db_dependency
-from src.database.schemas.visibility import (
+from src.database.models.visibility import (
     RestaurantVisbilityModel,
     VisibilityMetricsModel,
     FunnelStageModel,
     SocialPlatformMetricsModel,
     SentimentDataModel,
     ComplaintThemeModel,
+    FootTrafficHourlyModel,
+    FootTrafficDailyModel
+)
+from src.database.schemas.visibility import (
     SummaryMetricsResponse,
     VisibilityScoreEntry,
     AverageRatingEntry,
@@ -24,8 +28,6 @@ from src.database.schemas.visibility import (
     RestaurantListItemResponse,
     ReviewsByThemeResponse,
     ReviewItemResponse,
-    FootTrafficHourlyModel,
-    FootTrafficDailyModel,
     HourlyTrafficItem,
     DailyTrafficSummary,
     FootTrafficResponse,

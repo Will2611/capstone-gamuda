@@ -1,4 +1,5 @@
-from sqlalchemy import  DateTime, func, Uuid, ARRAY, String
+from sqlalchemy import  DateTime, func, Uuid, String
+from sqlalchemy.dialects.postgresql import ARRAY
 import uuid_utils.compat as uuid
 from sqlalchemy.orm import mapped_column, Mapped
 from datetime import datetime
@@ -33,9 +34,9 @@ class DBBaseModelIdMixin(MappedAsDataclass, kw_only=True):
 class RestaurantDetailsTableMixin(MappedAsDataclass, kw_only=True):
     # Determine list 
     # its not default=[] in case of multiple instantiation and creating shared memory, JIC
-    cuisine:Mapped[List[str]] = mapped_column(ARRAY(String), default=list)
-    dietary:Mapped[List[str]] = mapped_column(ARRAY(String), default=list)
-    ambience:Mapped[List[str]] = mapped_column(ARRAY(String), default=list) 
+    cuisine:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
+    dietary:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
+    ambience:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list) 
 
 class GeohashHelper:
      @staticmethod

@@ -1,7 +1,7 @@
 from langchain_core.tools import tool
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, desc
-from src.database.schemas.test import TestModel
+from sqlalchemy import desc, func
+from src.database.models.restaurants import RestaurantModel
 
 def make_restaurant_search_tool(db: Session):
     @tool
@@ -12,21 +12,30 @@ def make_restaurant_search_tool(db: Session):
         Example cuisine values: Japanese, Malaysian, Italian, Indian.
         """
         rows = (
-            db.query(TestModel)
-            .filter(TestModel.cuisine.ilike(f"%{cuisine.strip()}%"))
-            .filter(TestModel.rating.isnot(None))
-            .order_by(desc(TestModel.rating))
+            db.query(RestaurantModel)
+            .filter(func.array_to_string(RestaurantModel.cuisine, ',').ilike(f"%{cuisine.strip()}%"))
+            .filter(RestaurantModel.rating.isnot(None))
+            .order_by(desc(RestaurantModel.rating))
             .limit(limit)
             .all()
         )
 
+        # rows = (
+        #     db.query(TestModel)
+        #     .filter(TestModel.cuisine.ilike(f"%{cuisine.strip()}%"))
+        #     .filter(TestModel.rating.isnot(None))
+        #     .order_by(desc(TestModel.rating))
+        #     .limit(limit)
+        #     .all()
+        # )
+        
         return [
             {
                 "id":r.id,
                 "name":r.name,
-                "cuisine":r.cuisine,
+                "cuisine":','.join([str(r.cuisine)]),
                 "rating":r.rating,
-                "address":r.address,
+                "address":','.join([str(r.address)]),
                 "latitude":r.latitude,
                 "longitude":r.longitude,
             }

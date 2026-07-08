@@ -1,10 +1,10 @@
 from src.database.connection import Base
 from sqlalchemy import String,Uuid, Boolean, DateTime,ARRAY, Integer
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import ForeignKey, text, CheckConstraint
 import uuid_utils.compat as uuid
 from sqlalchemy.orm import mapped_column, Mapped
 from sqlalchemy.sql import expression
-from pydantic import Field
 from typing import Literal,  List
 from datetime import datetime
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
