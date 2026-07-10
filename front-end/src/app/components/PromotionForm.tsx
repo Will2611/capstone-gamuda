@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Megaphone, Calendar, Image as ImageIcon, Link as LinkIcon, Clock, Upload } from "lucide-react";
+import {
+  Megaphone,
+  Calendar,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Clock,
+  Upload,
+} from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
 import { mockPromotions } from "../data/mockPromotions";
@@ -14,7 +21,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState(initialData?.title ?? "");
-  const [description, setDescription] = useState(initialData?.description ?? "");
+  const [description, setDescription] = useState(
+    initialData?.description ?? "",
+  );
   const [imageUrl, setImageUrl] = useState(initialData?.imageUrl ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl ?? "");
 
@@ -25,7 +34,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const [endTime, setEndTime] = useState(initialData?.endTime ?? "");
 
   const [isAllDay, setIsAllDay] = useState(
-    initialData ? (initialData.startTime === "" && initialData.endTime === "") : true
+    initialData
+      ? initialData.startTime === "" && initialData.endTime === ""
+      : true,
   );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +78,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
     // Update the in-memory mock promotions list
     if (initialData) {
-      const idx = mockPromotions.findIndex((p) => p.promoId === initialData.promoId);
+      const idx = mockPromotions.findIndex(
+        (p) => p.promoId === initialData.promoId,
+      );
       if (idx !== -1) {
         mockPromotions[idx] = promotion;
       }
@@ -84,11 +97,19 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     promoId: initialData?.promoId ?? "preview-id",
     id: initialData?.id ?? 1,
     title: title || "Your Promotion Title",
-    description: description || "Write a brief and catchy description of your special offer here.",
-    imageUrl: imageUrl || "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&auto=format&fit=crop",
+    description:
+      description ||
+      "Write a brief and catchy description of your special offer here.",
+    imageUrl:
+      imageUrl ||
+      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800&auto=format&fit=crop",
     websiteUrl: websiteUrl || "#",
     startDate: startDate || new Date().toISOString().split("T")[0],
-    endDate: endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+    endDate:
+      endDate ||
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
     startTime: isAllDay ? "" : startTime,
     endTime: isAllDay ? "" : endTime,
     isAllDay,
@@ -97,7 +118,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6">
       <div className="max-w-6xl mx-auto">
-        
         {/* Header Block */}
         <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-6 mb-8 shadow-sm">
           <div className="flex items-center gap-3.5 mb-2">
@@ -109,7 +129,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 {initialData ? "Edit Promotion" : "Create Promotion"}
               </h1>
               <p className="text-sm text-bs-neutral-500">
-                Design custom marketing promotions to boost your restaurant's visibility.
+                Design custom marketing promotions to boost your restaurant's
+                visibility.
               </p>
             </div>
           </div>
@@ -117,10 +138,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
         {/* Dynamic Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
           {/* Form Controls (Left Column) */}
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
-            
             {/* Title */}
             <div>
               <label className="block mb-1.5 text-sm font-semibold text-bs-neutral-800">
@@ -179,7 +198,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <Upload size={16} className="text-bs-neutral-500" />
                 Promotion Banner Image
               </label>
-              
+
               <input
                 type="file"
                 id="promo-image-upload"
@@ -189,22 +208,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               />
 
               <div
-                onClick={() => document.getElementById("promo-image-upload")?.click()}
+                onClick={() =>
+                  document.getElementById("promo-image-upload")?.click()
+                }
                 className={`
                   border-2 border-dashed rounded-2xl p-6
                   flex flex-col items-center justify-center
                   cursor-pointer transition-all duration-200
-                  ${imageUrl 
-                    ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10" 
-                    : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"}
+                  ${
+                    imageUrl
+                      ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+                  }
                 `}
               >
                 {imageUrl ? (
                   <div className="text-center space-y-3">
-                    <img 
-                      src={imageUrl} 
-                      alt="Upload Preview" 
-                      className="max-h-32 rounded-lg mx-auto shadow-sm object-cover" 
+                    <img
+                      src={imageUrl}
+                      alt="Upload Preview"
+                      className="max-h-32 rounded-lg mx-auto shadow-sm object-cover"
                     />
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
@@ -276,7 +299,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               {/* Date Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider">
+                  <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
                     Start Date
                   </label>
                   <input
@@ -298,7 +321,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 </div>
 
                 <div>
-                  <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider">
+                  <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
                     End Date
                   </label>
                   <input
@@ -351,7 +374,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 {!isAllDay && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
                     <div>
-                      <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider">
+                      <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
                         <Clock size={12} /> Start Time
                       </label>
                       <input
@@ -373,7 +396,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     </div>
 
                     <div>
-                      <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 uppercase tracking-wider">
+                      <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
                         <Clock size={12} /> End Time
                       </label>
                       <input
@@ -432,7 +455,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 {initialData ? "Update Promotion" : "Create Promotion"}
               </button>
             </div>
-
           </div>
 
           {/* Live Preview (Right Column - Sticky) */}
@@ -441,31 +463,33 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <h2 className="text-xs font-bold uppercase tracking-wider text-bs-neutral-400">
                 Live Card Preview
               </h2>
-              
-              <div className="
+
+              <div
+                className="
                 p-2
                 bg-bs-neutral-200/40
                 rounded-3xl
                 border border-bs-neutral-200
                 shadow-inner
-              ">
+              "
+              >
                 <PromotionCard
                   promotion={currentPromoState}
                   onDelete={() => {}}
                   onEdit={() => {}}
                 />
               </div>
-              
+
               <div className="p-4 bg-amber-50 border border-amber-200/50 rounded-xl">
                 <p className="text-xs text-amber-800 leading-relaxed">
-                  <strong>Note:</strong> What you see here is exactly how your promotion will appear on the interactive search map and restaurant details popups.
+                  <strong>Note:</strong> What you see here is exactly how your
+                  promotion will appear on the interactive search map and
+                  restaurant details popups.
                 </p>
               </div>
             </div>
           </div>
-
         </div>
-        
       </div>
     </div>
   );

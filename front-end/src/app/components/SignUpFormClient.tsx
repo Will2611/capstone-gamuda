@@ -97,12 +97,10 @@ export function SignUpFormClient() {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const genderOptions = [
-    { label: "Select Gender", value: "" },
     { label: "Male", value: "male" },
     { label: "Female", value: "female" },
   ];
   const religionOptions = [
-    { value: "", label: "Select Religion" },
     { value: "Islam", label: "Islam" },
     { value: "Christianity", label: "Christianity" },
     { value: "Buddhism", label: "Buddhism" },
@@ -110,7 +108,6 @@ export function SignUpFormClient() {
     { value: "Others", label: "Others" },
   ];
   const langOptions = [
-    { value: "", label: "Select Language" },
     { value: "en", label: "English" },
     { value: "ms", label: "Bahasa Melayu" },
   ];
@@ -270,7 +267,6 @@ export function SignUpFormClient() {
       return;
     }
 
-    //new user
     const formData = {
       profileImage,
       fullName,
@@ -389,6 +385,7 @@ export function SignUpFormClient() {
           error={touched.gender ? errors.gender : undefined}
           disabled={isLoading}
           icon={<User size={18} />}
+          placeholder="Select a gender"
         />
         <FormField
           label="Birthday"
@@ -415,6 +412,7 @@ export function SignUpFormClient() {
           options={religionOptions}
           error={touched.religion ? errors.religion : undefined}
           disabled={isLoading}
+          placeholder="Select a religion"
         />
         <SelectField
           label="Preferred Language"
@@ -426,6 +424,7 @@ export function SignUpFormClient() {
           options={langOptions}
           error={touched.language ? errors.language : undefined}
           disabled={isLoading}
+          placeholder="Select a language"
         />
       </div>
 
@@ -441,7 +440,7 @@ export function SignUpFormClient() {
           </span>
         </div>
       </div>
-      <p className="text-xs text-bs-neutral-500 -mt-2">
+      <p className="text-xs text-bs-neutral-500 -mt-8">
         Help us customize your BiteScouts recommendation feed immediately.
       </p>
 
@@ -527,6 +526,12 @@ export function SignUpFormClient() {
             />
             <span>I agree to the Privacy Policy and Terms of Service</span>
           </label>
+          <p className="text-xs text-bs-neutral-500">
+            By creating an account, you agree to how we process your data.{" "}
+            <Link to="/privacy" className="text-bs-gold hover:underline">
+              View Privacy Policy
+            </Link>
+          </p>
           {touched.consent && errors.consent && (
             <p className="text-xs text-bs-red">{errors.consent}</p>
           )}
@@ -548,7 +553,7 @@ export function SignUpFormClient() {
             : "Registering..."
           : isEditMode
             ? "Save Preferences"
-            : "Create Client Account"}
+            : "Create Personal Account"}
       </Button>
 
       {!isEditMode && (
