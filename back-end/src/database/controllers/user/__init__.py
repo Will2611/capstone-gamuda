@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from src.database.connection import db_dependency
-from src.database.schemas.user import UserModel, UserRequest
 import os
 from src.database.controllers.utils import get_subcontrollers
 
@@ -11,7 +10,7 @@ async def get_users_base(db: db_dependency):
     return {'ping':'pong'}
 
 @user_router.post('/validate-user-test')
-async def post_users_base(db: db_dependency, inputUser:UserRequest):
+async def post_users_base(db: db_dependency):
     return {'ping':'pong'}
 
 

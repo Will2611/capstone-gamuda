@@ -1,7 +1,10 @@
-import type {
-  InputHTMLAttributes,
-  SelectHTMLAttributes,
-  ReactNode,
+import {
+  useState,
+  useRef,
+  useEffect,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
+  type ReactNode,
 } from "react";
 import { ChevronDown } from "lucide-react";
 
@@ -16,27 +19,32 @@ export function FormField({
   icon,
   error,
   className = "",
+  disabled,
   ...props
 }: FormFieldProps) {
-  const baseStyles =
-    "w-full px-4 py-3 rounded-lg border-2 transition-all duration-200";
-  const stateStyles = error
-    ? "border-bs-red focus:border-bs-red focus:ring-2 focus:ring-bs-red/20"
-    : "border-bs-neutral-300 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20";
+  // Matches the exact borders, heights, and padding formats used in SelectField
+  const borderStyles = error
+    ? "border-bs-red"
+    : "border-bs-neutral-300 focus:border-bs-neutral-400";
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${label ? "space-y-1.5" : ""}`}>
       {label && (
-        <label className="block mb-2 text-bs-neutral-700">{label}</label>
+        <label className="block text-sm font-medium text-bs-neutral-700">
+          {label}
+        </label>
       )}
-      <div className="relative">
+      <div className="relative w-full flex items-center">
         {icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-bs-neutral-500">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-bs-neutral-500 pointer-events-none z-10 flex items-center">
             {icon}
           </div>
         )}
         <input
-          className={`${baseStyles} ${stateStyles} ${icon ? "pl-10" : ""} ${className} disabled:bg-bs-neutral-200 disabled:cursor-not-allowed`}
+          disabled={disabled}
+          className={`w-full bg-white border rounded-md px-3 py-2 text-sm text-bs-neutral-800 placeholder:text-bs-neutral-400 min-h-[38px] transition-colors duration-200 focus:outline-none ${borderStyles} ${
+            icon ? "pl-9" : ""
+          } ${disabled ? "bg-bs-neutral-200 cursor-not-allowed opacity-60" : ""} ${className}`}
           {...props}
         />
       </div>
@@ -45,18 +53,22 @@ export function FormField({
   );
 }
 
-interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
-  label?: string;
-  icon?: ReactNode;
-  options: { value: string; label: string }[];
-  error?: string;
+interface Option {
+  value: string;
+  label: string;
 }
 
-interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectFieldProps extends Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  "onChange" | "value"
+> {
   label?: string;
   icon?: ReactNode;
-  options: { value: string; label: string }[];
+  options: Option[];
   error?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: { target: { value: string } }) => void;
 }
 
 export function SelectField({
@@ -64,50 +76,96 @@ export function SelectField({
   icon,
   options,
   error,
-  className = "", // 外部传入的 w-[125px] shrink-0 就在这里
-  ...props
+  placeholder = "Please select...",
+  value,
+  onChange,
+  className = "",
+  disabled,
 }: SelectFieldProps) {
-  // 🟢 1. 像素级对齐：修改高度为 h-9 (36px)，边框改为 border (1px)，圆角改为 rounded-md，字号 text-xs
-  const baseStyles =
-    "w-full px-3 rounded-md border transition-all duration-200 appearance-none bg-white h-9 text-xs text-bs-neutral-800 focus:outline-none";
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // 🟢 2. 状态边框同步改为单倍边框
-  const stateStyles = error
-    ? "border-bs-red focus:border-bs-red focus:ring-2 focus:ring-bs-red/20"
-    : "border-bs-neutral-300 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20";
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectOption = (optionValue: string) => {
+    if (disabled) return;
+    onChange({ target: { value: optionValue } });
+    setIsOpen(false);
+  };
+
+  const getDisplayLabel = () => {
+    if (!value) return placeholder;
+    return options.find((o) => o.value === value)?.label || placeholder;
+  };
+
+  const borderStyles = error
+    ? "border-bs-red"
+    : "border-bs-neutral-300 hover:border-bs-neutral-400";
 
   return (
-    // 🚨 3. 核心修正：把外部的 className 挂到最外层 Div 上，去掉硬编码的 w-full！
-    // 这样外部的 w-[125px] 就能直接锁死整个组件的宽度
-    <div className={`relative ${className}`}>
+    <div
+      className={`relative ${label ? "space-y-1.5" : ""} ${className}`}
+      ref={containerRef}
+    >
       {label && (
-        <label className="block mb-2 text-bs-neutral-700 text-xs font-medium">
+        <label className="block text-sm font-medium text-bs-neutral-700">
           {label}
         </label>
       )}
-      <div className="relative w-full flex items-center">
-        {icon && (
-          // 🟢 4. 纠正图标在 36px 高度下的居中位置
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-bs-neutral-500 pointer-events-none z-10 flex items-center">
-            {icon}
-          </div>
-        )}
-        <select
-          className={`${baseStyles} ${stateStyles} ${icon ? "pl-8" : "pl-3"} pr-8 disabled:bg-bs-neutral-200 disabled:cursor-not-allowed`}
-          {...props}
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
 
-        {/* 🟢 5. 纠正右侧小箭头的尺寸和垂直居中 */}
-        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-bs-neutral-400 pointer-events-none flex items-center">
-          <ChevronDown size={14} />
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`flex items-center justify-between bg-white border rounded-md px-3 py-2 text-sm select-none min-h-[38px] ${borderStyles} ${
+          disabled
+            ? "bg-bs-neutral-200 cursor-not-allowed opacity-60"
+            : "cursor-pointer"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate text-bs-neutral-800">
+          {icon && <span className="text-bs-neutral-500 shrink-0">{icon}</span>}
+          <span className="truncate">{getDisplayLabel()}</span>
         </div>
+        <ChevronDown
+          size={16}
+          className={`text-bs-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+        />
       </div>
+
+      {isOpen && !disabled && (
+        <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-bs-neutral-200 rounded-md shadow-lg py-1">
+          {options.map((option) => {
+            const isSelected = value === option.value;
+            return (
+              <div
+                key={option.value}
+                onClick={() => handleSelectOption(option.value)}
+                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-bs-neutral-100 cursor-pointer"
+              >
+                <span
+                  className={
+                    isSelected
+                      ? "font-medium text-bs-gold"
+                      : "text-bs-neutral-700"
+                  }
+                >
+                  {option.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {error && <p className="mt-1 text-sm text-bs-red">{error}</p>}
     </div>
   );

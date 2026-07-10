@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { Marker as MapLibreMarker, Map as MapLibreMap, NavigationControl as MapLibreNavigationControl } from "maplibre-gl";
+import {
+  Marker as MapLibreMarker,
+  Map as MapLibreMap,
+  NavigationControl as MapLibreNavigationControl,
+} from "maplibre-gl";
 import { MapPinButton } from "../components/MapPin";
 import { MAP_DEFAULT_CENTER, MAP_DEFAULT_ZOOM } from "../data/mockRestaurants";
 import type { Restaurant } from "../types/restaurant";
@@ -48,7 +52,6 @@ export function useRestaurantMap({
   onMapBackgroundClick,
   userCenter = null,
 }: UseRestaurantMapOptions) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const userMarkerRef = useRef<MapLibreMarker | null>(null);
   const markerEntriesRef = useRef<Map<number, MarkerEntry>>(new Map());
@@ -65,52 +68,85 @@ export function useRestaurantMap({
     onPinClickRef.current(id);
   }, []);
 
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-
-    const map = new MapLibreMap({
-      container: mapContainerRef.current,
-      style: MAP_STYLE,
-      center: MAP_DEFAULT_CENTER,
-      zoom: MAP_DEFAULT_ZOOM,
-    });
-
-    map.addControl(new MapLibreNavigationControl(), "top-right");
-    mapRef.current = map;
-
-    map.on("load", () => {
-      const bounds = getRestaurantBounds(restaurants);
-      if (bounds) {
-        map.fitBounds(bounds, {
-          padding: 80,
-          maxZoom: 14,
-          duration: 0,
+  // Mounting and unmounting
+  const mountAndUnmount = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node) {
+        setIsLoading(true);
+        const map = new MapLibreMap({
+          container: node,
+          style: MAP_STYLE,
+          center: MAP_DEFAULT_CENTER,
+          zoom: MAP_DEFAULT_ZOOM,
         });
+
+        map.addControl(new MapLibreNavigationControl(), "top-right");
+        mapRef.current = map;
+        map.on("load", () => {
+          const bounds = getRestaurantBounds(restaurants);
+          if (bounds) {
+            map.fitBounds(bounds, {
+              padding: 80,
+              maxZoom: 14,
+              duration: 0,
+            });
+          } else {
+            map.setCenter(MAP_DEFAULT_CENTER);
+            map.setZoom(MAP_DEFAULT_ZOOM);
+          }
+          map.resize();
+        });
+
+        map.on("click", () => {
+          onMapBackgroundClickRef.current?.();
+        });
+        // Force to wait 1 cycle, to re-render anything missing
+        setTimeout(() => {
+          setIsLoading(false);
+        });
+        return;
       } else {
-        map.setCenter(MAP_DEFAULT_CENTER);
-        map.setZoom(MAP_DEFAULT_ZOOM);
+        markerEntriesRef.current.forEach(({ root, marker }) => {
+          setTimeout(() => {
+            root.unmount();
+          }, 0);
+          marker.remove();
+        });
+        markerEntriesRef.current.clear();
+        prevSelectedPinRef.current = null;
+        userMarkerRef.current?.remove();
+        userMarkerRef.current = null;
+        mapRef.current?.remove();
+        mapRef.current = null;
       }
-      map.resize();
-      setIsLoading(false);
-    });
+    },
+    [restaurants],
+  );
 
-    map.on("click", () => {
-      onMapBackgroundClickRef.current?.();
-    });
+  // User centre
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || isLoading || !userCenter) return;
 
-    return () => {
-      markerEntriesRef.current.forEach(({ root, marker }) => {
-        root.unmount();
-        marker.remove();
-      });
-      markerEntriesRef.current.clear();
-      prevSelectedPinRef.current = null;
-      userMarkerRef.current?.remove();
-      userMarkerRef.current = null;
-      map.remove();
-      mapRef.current = null;
-    };
-  }, [restaurants]);
+    if (!userMarkerRef.current) {
+      const el = document.createElement("div");
+      el.className = "user-location-marker";
+      el.style.width = "16px";
+      el.style.height = "16px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = "#2563eb";
+      el.style.border = "3px solid white";
+      el.style.boxShadow = "0 0 6px rgba(0,0,0,0.35)";
+
+      userMarkerRef.current = new MapLibreMarker({ element: el })
+        .setLngLat(userCenter)
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat(userCenter);
+    }
+
+    fitMapAroundUser(map, userCenter, restaurants);
+  }, [userCenter, isLoading, restaurants]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -139,10 +175,8 @@ export function useRestaurantMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || isLoading) return;
-
     const entries = markerEntriesRef.current;
     const restaurantIds = new Set(restaurants.map((r) => r.id));
-
     entries.forEach((entry, id) => {
       if (!restaurantIds.has(id)) {
         entry.root.unmount();
@@ -211,6 +245,7 @@ export function useRestaurantMap({
     prevSelectedPinRef.current = selectedPin;
   }, [selectedPin, isLoading, handlePinClickStable]);
 
+  // Just to fly map
   useEffect(() => {
     const map = mapRef.current;
     if (!map || isLoading || selectedPin === null) return;
@@ -225,5 +260,5 @@ export function useRestaurantMap({
     });
   }, [selectedPin, isLoading, restaurants]);
 
-  return { mapContainerRef, isLoading };
+  return { isLoading, mountAndUnmount };
 }

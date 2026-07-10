@@ -41,9 +41,6 @@ export default function FoodMatch() {
 
   const { profile: userProfile } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>("discover"); //starting tab is discover
-  const [dragDirection, setDragDirection] = useState<"left" | "right" | null>( //direction of the swipe
-    null,
-  );
   const [newMatch, setNewMatch] = useState<FoodMatchType | null>(null); //new match
   const [activeChat, setActiveChat] = useState<FoodMatchType | null>(null); //active chat
   const [plannerMatch, setPlannerMatch] = useState<FoodMatchType | null>(null); //planner match
@@ -56,10 +53,8 @@ export default function FoodMatch() {
   //Swipe Left to Pass
   const handlePass = () => {
     if (!currentUser) return; //if there is no current user, return
-    setDragDirection("left");
     setTimeout(() => {
       passUser(currentUser.id); //pass the user
-      setDragDirection(null); //reset the drag direction
       setSafetyTarget(null); //reset the safety target
     }, 300); //wait 300ms before resetting the drag direction and safety target
   };
@@ -67,11 +62,9 @@ export default function FoodMatch() {
   //Swipe Right to Like
   const handleLike = () => {
     if (!currentUser) return;
-    setDragDirection("right");
     setTimeout(() => {
       const match = likeUser(currentUser);
       if (match) setNewMatch(match);
-      setDragDirection(null);
       setSafetyTarget(null);
     }, 300);
   };
@@ -181,7 +174,7 @@ export default function FoodMatch() {
 
         {/* Discover Tab and Action */}
         {activeTab === "discover" && (
-          <div className="py-4">
+          <div className="py-4 overflow-x-hidden">
             {!profile.profileVisible ? (
               <div className="text-center py-16 bg-white/70 rounded-2xl border border-bs-neutral-200">
                 <Users className="w-12 h-12 mx-auto text-bs-neutral-400 mb-4" />
@@ -200,7 +193,6 @@ export default function FoodMatch() {
                   onLike={handleLike}
                   onPass={handlePass}
                   onSave={handleSave}
-                  dragDirection={dragDirection}
                 />
               </AnimatePresence>
             ) : (

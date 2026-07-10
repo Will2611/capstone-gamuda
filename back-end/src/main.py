@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # Important for creating tables, to import the base model
-from .database.schemas import *
+from .database.models import *
 from src.database.connection import create_tables, drop_tables
 from src.database.controllers import routers
 from src.llm.router import router as llm_router
@@ -13,7 +13,7 @@ create_tables()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FE_HOST")],
+    allow_origins=[os.getenv("FE_HOST", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]

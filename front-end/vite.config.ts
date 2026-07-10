@@ -88,7 +88,7 @@ export default defineConfig(({ mode }) => {
       watch: {
         usePolling: env.NODE_ENV === "development",
       },
-      allowedHosts: ["gulf-hanky-tubeless.ngrok-free.dev"],
+      allowedHosts: env.NODE_ENV === "development" || undefined,
     },
   };
 });

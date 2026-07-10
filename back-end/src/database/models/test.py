@@ -1,9 +1,9 @@
 from sqlalchemy import String, Float, Integer, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from src.database.connection import Base
-from .base_model import DBBaseModelMixIn
+from .base_model import DBBaseModelTimeMixIn
 
-class TestModel(DBBaseModelMixIn, Base):
+class TestModel(DBBaseModelTimeMixIn, Base):
     __tablename__ = "shops"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)

@@ -1,4 +1,5 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect } from "react";
+import type { SubmitEvent as ReactSubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Mail,
@@ -10,19 +11,22 @@ import {
   Camera,
   Phone,
   Link as LinkIcon,
+  Utensils,
+  DollarSign,
+  Coffee,
+  Leaf,
+  Upload,
 } from "lucide-react";
 
 import { FormField, SelectField } from "./FormField";
+import { MultiSelectField } from "./MultiSelectField";
 import { Button } from "./Button";
-
-const priceRangeOptions = [
-  { value: "", label: "Any Price" },
-  { value: "1", label: "$ < RM20 / person" },
-  { value: "2", label: "$$ RM20 - RM60 / person" },
-  { value: "3", label: "$$$ RM60 - RM110 / person" },
-  { value: "4", label: "$$$$ RM110 - RM250 / person" },
-  { value: "5", label: "$$$$$ > RM250 / person" },
-];
+import {
+  CUISINE_OPTIONS,
+  PRICE_OPTIONS,
+  DIETARY_OPTIONS,
+  AMBIENCE_OPTIONS,
+} from "./config/FilterOption";
 
 export function SignUpFormOwner() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -62,18 +66,16 @@ export function SignUpFormOwner() {
     setIsSearchingLocation(true);
     try {
       let cleanStreet1 = street
-        .replace(/no\.?\s*\d+[-–\/]*\d*\w*/gi, "") // remove eg: No. 12, No 12-A
-        .replace(/lot\.?\s*\d+/gi, "") // remove eg: Lot 123
-        .replace(/block\s*\w+/gi, "") // remove eg: Block A
-        .replace(/flat\s*\w+/gi, "") // remove eg: Flat B
-        .replace(/level\s*\d+/gi, "") // remove eg: Level 3
-        .replace(/floor\s*\d+/gi, "") // remove eg: 3rd Floor
-        .replace(/[\s,]+/g, " ") // remove comma ,
+        .replace(/no\.?\s*\d+[-–\/]*\d*\w*/gi, "")
+        .replace(/lot\.?\s*\d+/gi, "")
+        .replace(/block\s*\w+/gi, "")
+        .replace(/flat\s*\w+/gi, "")
+        .replace(/level\s*\d+/gi, "")
+        .replace(/floor\s*\d+/gi, "")
+        .replace(/[\s,]+/g, " ")
         .trim();
 
       if (!cleanStreet1) cleanStreet1 = street.trim();
-
-      console.log("Address after removing the house number:", cleanStreet1);
 
       let params = new URLSearchParams({
         format: "json",
@@ -113,8 +115,6 @@ export function SignUpFormOwner() {
       }
 
       if (cleanStreet2 && cleanStreet2 !== cleanStreet1) {
-        console.log("Address after removing the house street:", cleanStreet2);
-
         let tamanParams = new URLSearchParams({
           format: "json",
           street: cleanStreet2,
@@ -137,7 +137,6 @@ export function SignUpFormOwner() {
         }
       }
 
-      console.error("Location not found. ");
       setLatitude(null);
       setLongitude(null);
     } catch (error) {
@@ -253,7 +252,7 @@ export function SignUpFormOwner() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: ReactSubmitEvent) => {
     e.preventDefault();
 
     const allTouched = {
@@ -436,9 +435,7 @@ export function SignUpFormOwner() {
         </button>
       </div>
 
-      <br />
       <hr />
-      <br />
 
       <FormField
         label="Restaurant Name"
@@ -468,27 +465,6 @@ export function SignUpFormOwner() {
         disabled={isLoading}
       />
 
-      <div className="space-y-3">
-        <label className="block text-sm font-medium">Restaurant Images</label>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleRestaurantImagesUpload}
-          disabled={isLoading}
-        />
-        <div className="grid grid-cols-3 gap-3">
-          {restaurantImages.map((image, index) => (
-            <img
-              key={index}
-              src={image}
-              alt={`Restaurant ${index}`}
-              className="w-full h-24 object-cover rounded-lg border"
-            />
-          ))}
-        </div>
-      </div>
-
       <FormField
         label="Restaurant Website URL"
         type="text"
@@ -503,144 +479,171 @@ export function SignUpFormOwner() {
         disabled={isLoading}
       />
 
-      {/* Cuisine Types */}
-      <div className="space-y-2">
-        <label className="block font-medium">
-          Cuisine Types (Select all that apply)
+      <div>
+        <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
+          <Upload size={16} className="text-bs-neutral-500" />
+          Restaurant Images
         </label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {[
-            "Japanese",
-            "Korean",
-            "Western",
-            "Chinese",
-            "Malay",
-            "Indian",
-            "Fusion",
-            "Italian",
-            "Mexican",
-            "Asian",
-            "American",
-            "Mediteranean",
-          ].map((item) => (
-            <label
-              key={item}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={cuisineType.includes(item)}
-                disabled={isLoading}
-                onBlur={() => handleBlur("cuisineType")}
-                onChange={(e) => {
-                  let updated: string[];
-                  if (e.target.checked) {
-                    updated = [...cuisineType, item];
-                  } else {
-                    updated = cuisineType.filter((c) => c !== item);
-                  }
-                  setCuisineType(updated);
-                  if (touched.cuisineType) setTimeout(() => validate(), 0);
-                }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-        {touched.cuisineType && errors.cuisineType && (
-          <p className="text-sm text-bs-red">{errors.cuisineType}</p>
-        )}
-      </div>
 
-      {/* Price Range */}
-      <SelectField
-        label="Price Range"
-        value={priceRange}
-        onChange={(e) =>
-          handleChange(e.target.value, setPriceRange, "priceRange")
-        }
-        onBlur={() => handleBlur("priceRange")}
-        disabled={isLoading}
-        error={touched.priceRange ? errors.priceRange : undefined}
-        options={priceRangeOptions}
-      />
+        {/* Fixed id tag name to link accurately with triggering label layout */}
+        <input
+          type="file"
+          id="restaurant-image-upload"
+          accept="image/*"
+          multiple
+          onChange={handleRestaurantImagesUpload}
+          className="hidden"
+          disabled={isLoading}
+        />
 
-      <div className="space-y-2">
-        <label className="block font-medium">
-          Restaurant Ambience (Select all that apply)
-        </label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {[
-            "Casual",
-            "Fine Dining",
-            "Romantic",
-            "Family",
-            "Business",
-            "Trendy",
-            "Quiet",
-            "Cozy",
-            "Lively",
-          ].map((item) => (
-            <label
-              key={item}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={ambience.includes(item)}
-                disabled={isLoading}
-                onBlur={() => handleBlur("ambience")}
-                onChange={(e) => {
-                  let updated: string[];
-                  if (e.target.checked) {
-                    updated = [...ambience, item];
-                  } else {
-                    updated = ambience.filter((a) => a !== item);
-                  }
-                  setAmbience(updated);
-                  if (touched.ambience) setTimeout(() => validate(), 0);
-                }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-        {touched.ambience && errors.ambience && (
-          <p className="text-sm text-bs-red">{errors.ambience}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block font-medium">Supported Dietary Needs</label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Kosher"].map(
-            (item) => (
-              <label
-                key={item}
-                className="flex items-center gap-2 text-sm cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={dietaryNeeds.includes(item)}
-                  disabled={isLoading}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setDietaryNeeds([...dietaryNeeds, item]);
-                    } else {
-                      setDietaryNeeds(dietaryNeeds.filter((d) => d !== item));
-                    }
+        <div
+          onClick={() =>
+            document.getElementById("restaurant-image-upload")?.click()
+          }
+          className={`
+            border-2 border-dashed rounded-2xl p-6
+            flex flex-col items-center justify-center
+            cursor-pointer transition-all duration-200
+            ${
+              restaurantImages.length > 0
+                ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+            }
+          `}
+        >
+          {restaurantImages.length > 0 ? (
+            <div className="text-center space-y-4 w-full">
+              {/* Added a clean gallery layout grid display supporting multi-image arrays */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                {restaurantImages.map((imgUrl, index) => (
+                  <div
+                    key={index}
+                    className="relative group/thumb h-20 rounded-md overflow-hidden shadow-sm"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRestaurantImages(
+                          restaurantImages.filter((_, i) => i !== index),
+                        );
+                      }}
+                      className="absolute inset-0 bg-black/40 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  {restaurantImages.length} Image(s) Loaded
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRestaurantImages([]);
                   }}
-                />
-                {item}
-              </label>
-            ),
+                  className="text-xs font-bold text-rose-600 hover:underline"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-2">
+              <div className="p-3 bg-white border border-bs-neutral-200 rounded-xl inline-block text-bs-neutral-500 shadow-sm">
+                <Upload size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-bs-neutral-800">
+                  Click to upload restaurant images
+                </p>
+                <p className="text-xs text-bs-neutral-400 mt-1">
+                  PNG, JPG, JPEG up to 5MB (Supports selection of multiple
+                  files)
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cuisine Types */}
+        <div className="space-y-2">
+          <MultiSelectField
+            label="Cuisine Type"
+            value={cuisineType}
+            onChange={(val) => {
+              setCuisineType(val);
+              if (touched.cuisineType) setTimeout(() => validate(), 0);
+            }}
+            options={CUISINE_OPTIONS}
+            disabled={isLoading}
+            icon={<Utensils size={18} />}
+            placeholder="Any Cuisine"
+          />
+          {touched.cuisineType && errors.cuisineType && (
+            <p className="text-sm text-bs-red">{errors.cuisineType}</p>
+          )}
+        </div>
+
+        {/* Price Range */}
+        <SelectField
+          label="Price Range"
+          value={priceRange}
+          icon={<DollarSign size={18} />}
+          onChange={(e) =>
+            handleChange(e.target.value, setPriceRange, "priceRange")
+          }
+          onBlur={() => handleBlur("priceRange")}
+          options={PRICE_OPTIONS}
+          disabled={isLoading}
+          error={touched.priceRange ? errors.priceRange : undefined}
+          placeholder="Any Price"
+        />
+
+        {/* Vibe / Ambience */}
+        <div className="space-y-2">
+          <MultiSelectField
+            label="Vibe / Ambience"
+            value={ambience}
+            onChange={(val) => {
+              setAmbience(val);
+              if (touched.ambience) setTimeout(() => validate(), 0);
+            }}
+            options={AMBIENCE_OPTIONS}
+            disabled={isLoading}
+            icon={<Coffee size={18} />}
+            placeholder="Any Vibe"
+          />
+          {touched.ambience && errors.ambience && (
+            <p className="text-sm text-bs-red">{errors.ambience}</p>
+          )}
+        </div>
+
+        {/* Dietary Requirements */}
+        <MultiSelectField
+          label="Dietary Requirements"
+          value={dietaryNeeds}
+          onChange={(val) => setDietaryNeeds(val)}
+          options={DIETARY_OPTIONS}
+          disabled={isLoading}
+          icon={<Leaf size={18} />}
+          placeholder="No Restrictions"
+        />
+      </div>
+
       <br />
       <div className="space-y-2">
-        <label className="block text-sm font-medium">
+        <label className="block text-m font-medium">
           Default Operating Hours
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -705,9 +708,8 @@ export function SignUpFormOwner() {
         </div>
       </div>
 
-      <br />
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-bs-neutral-800">
+        <label className="block text-m font-medium text-bs-neutral-800 mb-2">
           Restaurant Location
         </label>
 

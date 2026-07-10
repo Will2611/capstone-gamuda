@@ -4,6 +4,8 @@ from langchain_ollama import ChatOllama
 from src.llm.tools.restaurant_tool import make_restaurant_search_tool
 from src.llm.chains.intent_chain import extract_intent
 from src.llm.chains.answer_chain import generate_answer
+from langchain_core.messages.base import BaseMessage
+from src.llm.schemas import RestaurantResult
 
 from . import config
 
@@ -27,7 +29,7 @@ def get_llm():
 
 
 def _to_langchain_messages(messages: list[dict]) -> list:
-    lc_messages = [SystemMessage(content=SYSTEM_PROMPT)]
+    lc_messages:list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
     for msg in messages:
         if msg["role"] == "assistant":
             lc_messages.append(AIMessage(content=msg["content"]))
@@ -41,24 +43,27 @@ async def chat(messages: list[dict]) -> str:
     llm = get_llm()
     response = await llm.ainvoke(_to_langchain_messages(trimmed))
     content = response.content
-    if isinstance(content, str):
-        return content
-    return str(content)
+    if isinstance(content, list):
+        content = "".join([
+            c["text"] if (isinstance(c, dict) and "text" in c) else str(c)
+            for c in content
+        ])
+    return content if isinstance(content, str) else str(content)
 
-async def get_top_restaurants(db, cuisines: list[str], limit: int = 3) -> list[dict]:
+async def get_top_restaurants(db, cuisines: list[str], limit: int = 3) -> list[RestaurantResult]:
     if not cuisines:
         return[]
     
     tool = make_restaurant_search_tool(db)
-    all_results: list[dict] = []
+    all_results: list[RestaurantResult] = []
 
     for cuisine in cuisines:
         result = tool.invoke({"cuisine": cuisine, "limit": limit})
         all_results.extend(result)
 
-    by_id = {r["id"]: r for r in all_results}
+    by_id = {r.id: r for r in all_results}
 
-    sorted_results = sorted(by_id.values(), key=lambda r: r["rating"], reverse=True)
+    sorted_results = sorted(by_id.values(), key=lambda r: r.rating, reverse=True)
     return sorted_results[:limit]
 
 async def chat_with_restaurant_search(messages: list[dict],db) -> tuple[str, list[dict]]:
@@ -76,7 +81,7 @@ async def chat_with_restaurant_search(messages: list[dict],db) -> tuple[str, lis
     intent = await extract_intent(llm, latest_user)
 
      # 3. DB search (only when needed)
-    restaurants: list[dict] = []
+    restaurants: list[RestaurantResult] = []
     if intent.needs_restaurant_search and intent.cuisines:
         restaurants = await get_top_restaurants(db, intent.cuisines, limit=3)
     
