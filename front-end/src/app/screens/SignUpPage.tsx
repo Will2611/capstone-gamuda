@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Navigate, useSearchParams } from "react-router";
+import { Navigate, useSearchParams, useNavigate } from "react-router";
 import { useAuth, type Role } from "../context/AuthContext";
-
+import { ArrowLeft } from "lucide-react";
 import { SignUpFormClient } from "../components/SignUpFormClient";
 import { SignUpFormOwner } from "../components/SignUpFormOwner";
 
 export default function SignUpPage() {
   const { isAuthenticated } = useAuth();
   const [searchParams] = useSearchParams();
-
+  const navigate = useNavigate();
   const [selectedRole, setSelectedRole] = useState<Role>("client");
 
   const isEditMode = searchParams.get("mode") === "edit";
@@ -33,6 +33,17 @@ export default function SignUpPage() {
         </div>
 
         <div className="bg-white rounded-2xl p-8 shadow-xl border border-bs-neutral-200">
+          {/* Back Button Container */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={() => navigate(-1)} // Navigates one step backwards in history
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-bs-neutral-600 border border-bs-neutral-200 bg-white hover:bg-bs-neutral-50 hover:text-bs-neutral-800 transition-colors cursor-pointer shadow-sm"
+            >
+              <ArrowLeft size={16} />
+              Back
+            </button>
+          </div>
           {!isEditMode && (
             <div className="flex gap-4 mb-8">
               <button
@@ -44,7 +55,7 @@ export default function SignUpPage() {
                     : "border-bs-neutral-300 hover:border-bs-gold"
                 }`}
               >
-                Client
+                Personal Acocunt
               </button>
 
               <button
