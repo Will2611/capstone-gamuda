@@ -14,6 +14,7 @@ import {
   DollarSign,
   Coffee,
   Leaf,
+  Upload,
 } from "lucide-react";
 
 import { FormField, SelectField } from "./FormField";
@@ -433,9 +434,7 @@ export function SignUpFormOwner() {
         </button>
       </div>
 
-      <br />
       <hr />
-      <br />
 
       <FormField
         label="Restaurant Name"
@@ -465,27 +464,6 @@ export function SignUpFormOwner() {
         disabled={isLoading}
       />
 
-      <div className="space-y-3">
-        <label className="block text-sm font-medium">Restaurant Images</label>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleRestaurantImagesUpload}
-          disabled={isLoading}
-        />
-        <div className="grid grid-cols-3 gap-3">
-          {restaurantImages.map((image, index) => (
-            <img
-              key={index}
-              src={image}
-              alt={`Restaurant ${index}`}
-              className="w-full h-24 object-cover rounded-lg border"
-            />
-          ))}
-        </div>
-      </div>
-
       <FormField
         label="Restaurant Website URL"
         type="text"
@@ -499,6 +477,102 @@ export function SignUpFormOwner() {
         error={touched.restaurantURL ? errors.restaurantURL : undefined}
         disabled={isLoading}
       />
+
+      <div>
+        <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
+          <Upload size={16} className="text-bs-neutral-500" />
+          Restaurant Images
+        </label>
+
+        {/* Fixed id tag name to link accurately with triggering label layout */}
+        <input
+          type="file"
+          id="restaurant-image-upload"
+          accept="image/*"
+          multiple
+          onChange={handleRestaurantImagesUpload}
+          className="hidden"
+          disabled={isLoading}
+        />
+
+        <div
+          onClick={() =>
+            document.getElementById("restaurant-image-upload")?.click()
+          }
+          className={`
+            border-2 border-dashed rounded-2xl p-6
+            flex flex-col items-center justify-center
+            cursor-pointer transition-all duration-200
+            ${
+              restaurantImages.length > 0
+                ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+            }
+          `}
+        >
+          {restaurantImages.length > 0 ? (
+            <div className="text-center space-y-4 w-full">
+              {/* Added a clean gallery layout grid display supporting multi-image arrays */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                {restaurantImages.map((imgUrl, index) => (
+                  <div
+                    key={index}
+                    className="relative group/thumb h-20 rounded-md overflow-hidden shadow-sm"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRestaurantImages(
+                          restaurantImages.filter((_, i) => i !== index),
+                        );
+                      }}
+                      className="absolute inset-0 bg-black/40 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  {restaurantImages.length} Image(s) Loaded
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRestaurantImages([]);
+                  }}
+                  className="text-xs font-bold text-rose-600 hover:underline"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-2">
+              <div className="p-3 bg-white border border-bs-neutral-200 rounded-xl inline-block text-bs-neutral-500 shadow-sm">
+                <Upload size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-bs-neutral-800">
+                  Click to upload restaurant images
+                </p>
+                <p className="text-xs text-bs-neutral-400 mt-1">
+                  PNG, JPG, JPEG up to 5MB (Supports selection of multiple
+                  files)
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cuisine Types */}
@@ -514,7 +588,6 @@ export function SignUpFormOwner() {
             disabled={isLoading}
             icon={<Utensils size={18} />}
             placeholder="Any Cuisine"
-            // removed error prop from here
           />
           {touched.cuisineType && errors.cuisineType && (
             <p className="text-sm text-bs-red">{errors.cuisineType}</p>
@@ -569,7 +642,7 @@ export function SignUpFormOwner() {
 
       <br />
       <div className="space-y-2">
-        <label className="block text-sm font-medium">
+        <label className="block text-m font-medium">
           Default Operating Hours
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -634,9 +707,8 @@ export function SignUpFormOwner() {
         </div>
       </div>
 
-      <br />
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-bs-neutral-800">
+        <label className="block text-m font-medium text-bs-neutral-800 mb-2">
           Restaurant Location
         </label>
 

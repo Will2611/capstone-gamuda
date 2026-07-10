@@ -440,7 +440,7 @@ export function SignUpFormClient() {
           </span>
         </div>
       </div>
-      <p className="text-xs text-bs-neutral-500 -mt-2">
+      <p className="text-xs text-bs-neutral-500 -mt-8">
         Help us customize your BiteScouts recommendation feed immediately.
       </p>
 
