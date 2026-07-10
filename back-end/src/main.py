@@ -13,7 +13,7 @@ create_tables()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FE_HOST")],
+    allow_origins=[os.getenv("FE_HOST", "http://localhost:5173")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
