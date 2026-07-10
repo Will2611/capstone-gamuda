@@ -1,5 +1,5 @@
 sqlalchemy
-psycopg2
+psycopg2-binary
 fastapi[standard]
 uvicorn[standard]
 email_validator
@@ -10,4 +10,8 @@ langchain-core
 langchain-google-genai
 langchain-ollama
 langchain
+pygeohash
+proximityhash
+
 uuid-utils
+tzdata

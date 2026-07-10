@@ -1,8 +1,9 @@
 from typing import Optional
 from src.database.connection import Base
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
-from sqlalchemy import String, Uuid, ARRAY,ForeignKey
-from sqlalchemy import  CheckConstraint, and_, or_
+from sqlalchemy import String, Uuid,ForeignKey
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import  CheckConstraint, or_
 from uuid_utils.compat import UUID
 from typing import Literal
 from sqlalchemy.orm import mapped_column, Mapped

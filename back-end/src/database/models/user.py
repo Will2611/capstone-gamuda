@@ -1,6 +1,7 @@
 from src.database.connection import Base
 # types
-from sqlalchemy import String, ForeignKey,Uuid, Float, Boolean, ARRAY, Date, Time
+from sqlalchemy import String, ForeignKey,Uuid, Float, Boolean, Date, Time
+from sqlalchemy.dialects.postgresql import ARRAY
 # functions
 from sqlalchemy import Index, text, CheckConstraint, and_, or_
 import datetime
@@ -10,6 +11,7 @@ from pydantic import EmailStr
 from typing import Literal, Optional, List
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin, RestaurantDetailsTableMixin, GeohashHelper
 import hashlib
+import hmac
 import os
 
 
@@ -36,11 +38,11 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
         # return salt.hex(), password_hash.hex(), iterations
 
     @staticmethod
-    def comparePasswords( hashed_password:str, input:str):
+    def comparePasswords( stored_password:str, input:str):
         # algo for hashing type tracking
-        _,salt,pw_hash,iters = hashed_password.split('$',4)
+        _,salt,pw_hash,iters = stored_password.split('$',4)
         _,_,new_hash,_ = UserModel.hash_password(input,salt=bytes.fromhex(salt),iterations=int(iters)).split('$')
-        return new_hash==pw_hash
+        return hmac.compare_digest(new_hash,pw_hash)
     
 
     __mapper_args__ = {'polymorphic_on': user_type}
