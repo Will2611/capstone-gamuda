@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+import uuid_utils.compat as uuid
 
 class ChatTurn(BaseModel):
     role: str = Field(description="'user' or 'assistant'")
@@ -11,7 +11,7 @@ class ChatRequest(BaseModel):
 
 
 class RestaurantResult(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     cuisine: str
     rating: float

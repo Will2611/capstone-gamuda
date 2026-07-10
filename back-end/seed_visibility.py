@@ -4,8 +4,8 @@ Run from the back-end folder with:  myenv\Scripts\python seed_visibility.py
 """
 from datetime import date, timedelta
 from src.database.connection import SessionLocal, engine, Base
-from src.database.schemas.visibility import (
-    RestaurantModel,
+from src.database.models.visibility import (
+    RestaurantVisbilityModel,
     VisibilityMetricsModel,
     FunnelStageModel,
     SocialPlatformMetricsModel,
@@ -120,7 +120,7 @@ def seed():
     Base.metadata.drop_all(bind=engine, tables=[
         t for t in Base.metadata.sorted_tables
         if t.name in {
-            "restaurants", "visibility_metrics", "funnel_stages",
+            "restaurants_measured", "visibility_metrics", "funnel_stages",
             "social_platform_metrics", "sentiment_data", "complaint_themes",
             "foot_traffic_hourly", "foot_traffic_daily",
         }
@@ -134,7 +134,7 @@ def seed():
 
         for row in CSV_ROWS:
             # ── Restaurant ──
-            rest = RestaurantModel(
+            rest = RestaurantVisbilityModel(
                 name=row["name"],
                 cuisines=row["cuisines"],
                 latitude=row["latitude"],

@@ -55,11 +55,11 @@ export function RestaurantPopupCard({
       />
 
       <div
-        className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 opacity-100 transition-all duration-300 ease-out translate-y-0 md:absolute md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:w-96 md:-translate-x-0 md:-translate-y-1/2"
+        className="fixed bottom-4 mt-8 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 opacity-100 transition-all duration-300 ease-out translate-y-0 md:absolute md:bottom-auto md:left-auto md:right-6 md:top-1/2 md:w-96 md:-translate-x-0 md:-translate-y-1/2"
         role="dialog"
         aria-labelledby="restaurant-popup-title"
       >
-        <div className="rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl max-h-[65vh] overflow-y-auto">
           <div className="relative h-40 bg-bs-neutral-200">
             {restaurant.image ? (
               <img

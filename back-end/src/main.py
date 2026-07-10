@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # Important for creating tables, to import the base model
-from .database.schemas import *
+from .database.models import *
 from src.database.connection import create_tables, drop_tables
 from src.database.controllers import routers
 from src.llm.router import router as llm_router
