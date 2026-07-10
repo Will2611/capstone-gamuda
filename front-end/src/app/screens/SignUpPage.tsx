@@ -44,7 +44,7 @@ export default function SignUpPage() {
                     : "border-bs-neutral-300 hover:border-bs-gold"
                 }`}
               >
-                Client
+                Personal Acocunt
               </button>
 
               <button
