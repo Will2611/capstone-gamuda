@@ -198,6 +198,7 @@ def seed():
                 restaurant=rest, recorded_at=today,
                 positive_pct=row["positive"],
                 negative_pct=row["negative"],
+                neutral_pct=row["neutral"]
             )
             db.add(sent)
             db.flush()
