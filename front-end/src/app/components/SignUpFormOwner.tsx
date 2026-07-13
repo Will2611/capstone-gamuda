@@ -11,6 +11,7 @@ import {
   Camera,
   Phone,
   Link as LinkIcon,
+  Image as ImageIcon,
   Utensils,
   DollarSign,
   Coffee,
@@ -161,6 +162,7 @@ export function SignUpFormOwner() {
     restaurantName?: string;
     contactNo?: string;
     restaurantURL?: string;
+    restaurantImages?: string;
     cuisineType?: string;
     priceRange?: string;
     ambience?: string;
@@ -182,6 +184,7 @@ export function SignUpFormOwner() {
     restaurantName: false,
     contactNo: false,
     restaurantURL: false,
+    restaurantImages: false,
     cuisineType: false,
     priceRange: false,
     ambience: false,
@@ -226,6 +229,10 @@ export function SignUpFormOwner() {
       }
     }
 
+    if (restaurantImages.length === 0) {
+      next.restaurantImages = "At least one restaurant image must be uploaded";
+    }
+
     if (!contactNo.trim()) {
       next.contactNo = "Restaurant contact number is required";
     } else if (contactNo.length < 10) {
@@ -262,6 +269,7 @@ export function SignUpFormOwner() {
       restaurantName: true,
       contactNo: true,
       restaurantURL: true,
+      restaurantImages: true,
       cuisineType: true,
       priceRange: true,
       ambience: true,
@@ -334,8 +342,31 @@ export function SignUpFormOwner() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Only JPG, PNG, and WEBP image formats are allowed for the profile picture.",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        const { form, ...rest } = prev;
+        return rest;
+      });
+
       const imageUrl = URL.createObjectURL(file);
       setProfileImage(imageUrl);
+    }
+  };
+
+  const handleImageRemove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profileImage) {
+      URL.revokeObjectURL(profileImage);
+      setProfileImage(null);
     }
   };
 
@@ -343,14 +374,35 @@ export function SignUpFormOwner() {
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = Array.from(e.target.files || []);
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    const hasInvalidType = files.some(
+      (file) => !allowedTypes.includes(file.type),
+    );
+
+    if (hasInvalidType) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "Only JPG, PNG, and WEBP image formats are allowed",
+      }));
+      setTouched((t) => ({ ...t, restaurantImages: true }));
+      return;
+    }
+
     const imageUrls = files.map((file) => URL.createObjectURL(file));
+
+    setErrors((prev) => {
+      const { restaurantImages, ...rest } = prev;
+      return rest;
+    });
+
     setRestaurantImages((prev) => [...prev, ...imageUrls]);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <div className="relative">
+        <div className="relative group/container">
           <label htmlFor="profile-upload" className="cursor-pointer group">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-bs-gold bg-bs-neutral-100 flex items-center justify-center">
               {profileImage ? (
@@ -363,10 +415,31 @@ export function SignUpFormOwner() {
                 <User size={40} className="text-bs-neutral-400" />
               )}
             </div>
-            <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
-              <Camera size={16} />
-            </div>
+
+            {/* Camera Icon Overlay (Hidden if there is an image, or remains as preferred) */}
+            {!profileImage && (
+              <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
+                <Camera size={16} />
+              </div>
+            )}
           </label>
+
+          {/* Remove Image Button (Appears only when profileImage exists) */}
+          {profileImage && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              disabled={isLoading}
+              className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Remove Profile Picture"
+            >
+              {/* Using a simple 'x' character, or you can import { X } from "lucide-react" */}
+              <span className="text-xs font-bold leading-none w-3 h-3 flex items-center justify-center">
+                ✕
+              </span>
+            </button>
+          )}
+
           <input
             id="profile-upload"
             type="file"
@@ -481,11 +554,10 @@ export function SignUpFormOwner() {
 
       <div>
         <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-          <Upload size={16} className="text-bs-neutral-500" />
+          <ImageIcon size={16} className="text-bs-neutral-500" />
           Restaurant Images
         </label>
 
-        {/* Fixed id tag name to link accurately with triggering label layout */}
         <input
           type="file"
           id="restaurant-image-upload"
@@ -497,23 +569,25 @@ export function SignUpFormOwner() {
         />
 
         <div
-          onClick={() =>
-            document.getElementById("restaurant-image-upload")?.click()
-          }
+          onClick={() => {
+            setTouched((t) => ({ ...t, restaurantImages: true }));
+            document.getElementById("restaurant-image-upload")?.click();
+          }}
           className={`
             border-2 border-dashed rounded-2xl p-6
             flex flex-col items-center justify-center
             cursor-pointer transition-all duration-200
             ${
-              restaurantImages.length > 0
-                ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
-                : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+              touched.restaurantImages && errors.restaurantImages
+                ? "border-bs-red bg-bs-red/5"
+                : restaurantImages.length > 0
+                  ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                  : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
             }
           `}
         >
           {restaurantImages.length > 0 ? (
             <div className="text-center space-y-4 w-full">
-              {/* Added a clean gallery layout grid display supporting multi-image arrays */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
                 {restaurantImages.map((imgUrl, index) => (
                   <div
@@ -529,9 +603,17 @@ export function SignUpFormOwner() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setRestaurantImages(
-                          restaurantImages.filter((_, i) => i !== index),
+                        const updated = restaurantImages.filter(
+                          (_, i) => i !== index,
                         );
+                        setRestaurantImages(updated);
+                        if (updated.length === 0) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            restaurantImages:
+                              "At least one restaurant image must be uploaded",
+                          }));
+                        }
                       }}
                       className="absolute inset-0 bg-black/40 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
                     >
@@ -549,6 +631,11 @@ export function SignUpFormOwner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setRestaurantImages([]);
+                    setErrors((prev) => ({
+                      ...prev,
+                      restaurantImages:
+                        "At least one restaurant image must be uploaded",
+                    }));
                   }}
                   className="text-xs font-bold text-rose-600 hover:underline"
                 >
@@ -573,6 +660,12 @@ export function SignUpFormOwner() {
             </div>
           )}
         </div>
+
+        {touched.restaurantImages && errors.restaurantImages && (
+          <p className="text-sm text-bs-red mt-1 animate-fadeIn">
+            {errors.restaurantImages}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -248,16 +248,6 @@ export function SignUpFormClient() {
       try {
         await updatePreferences(preferences);
 
-        // await updateFullProfile({
-        //   fullName,
-        //   gender,
-        //   birthday,
-        //   religion,
-        //   language,
-        //   personalities,
-        //   avatarUrl: profileImage
-        // });
-
         setSuccess(true);
         setTimeout(() => navigate("/profile"), 1500);
       } catch (error) {
@@ -286,35 +276,84 @@ export function SignUpFormClient() {
     setTimeout(() => navigate("/login"), 1500);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Only JPG, PNG, and WEBP image formats are allowed for the profile picture.",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        const { form, ...rest } = prev;
+        return rest;
+      });
+
+      const imageUrl = URL.createObjectURL(file);
+      setProfileImage(imageUrl);
+    }
+  };
+
+  const handleImageRemove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profileImage) {
+      URL.revokeObjectURL(profileImage);
+      setProfileImage(null);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <div className="relative">
+        <div className="relative group/container">
           <label htmlFor="profile-upload" className="cursor-pointer group">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-bs-gold bg-bs-neutral-100 flex items-center justify-center">
               {profileImage ? (
                 <img
                   src={profileImage}
-                  alt="Preview"
+                  alt="Profile Preview"
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <User size={40} className="text-bs-neutral-400" />
               )}
             </div>
-            <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md">
-              <Camera size={16} />
-            </div>
+
+            {/* Camera Icon Overlay (Hidden if there is an image, or remains as preferred) */}
+            {!profileImage && (
+              <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
+                <Camera size={16} />
+              </div>
+            )}
           </label>
+
+          {/* Remove Image Button (Appears only when profileImage exists) */}
+          {profileImage && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              disabled={isLoading}
+              className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Remove Profile Picture"
+            >
+              {/* Using a simple 'x' character, or you can import { X } from "lucide-react" */}
+              <span className="text-xs font-bold leading-none w-3 h-3 flex items-center justify-center">
+                ✕
+              </span>
+            </button>
+          )}
+
           <input
             id="profile-upload"
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) =>
-              e.target.files?.[0] &&
-              setProfileImage(URL.createObjectURL(e.target.files[0]))
-            }
+            onChange={handleImageUpload}
             disabled={isLoading}
           />
         </div>
