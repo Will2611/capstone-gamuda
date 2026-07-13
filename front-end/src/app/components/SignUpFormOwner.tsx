@@ -31,7 +31,6 @@ import {
 
 export function SignUpFormOwner() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
-
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,6 +59,49 @@ export function SignUpFormOwner() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const [errors, setErrors] = useState<{
+    ownerName?: string;
+    email?: string;
+    password?: string;
+    restaurantName?: string;
+    contactNo?: string;
+    restaurantURL?: string;
+    restaurantImages?: string;
+    cuisineType?: string;
+    priceRange?: string;
+    ambience?: string;
+    openTime?: string;
+    closeTime?: string;
+    street?: string;
+    postcode?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    consent?: string;
+    form?: string;
+  }>({});
+
+  const [touched, setTouched] = useState({
+    ownerName: false,
+    email: false,
+    password: false,
+    restaurantName: false,
+    contactNo: false,
+    restaurantURL: false,
+    restaurantImages: false,
+    cuisineType: false,
+    priceRange: false,
+    ambience: false,
+    openTime: false,
+    closeTime: false,
+    street: false,
+    postcode: false,
+    city: false,
+    state: false,
+    country: false,
+    consent: false,
+  });
 
   const fetchCoordinatesFromAddress = async () => {
     if (!street.trim() || !postcode.trim() || !city.trim()) return;
@@ -154,49 +196,6 @@ export function SignUpFormOwner() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [street, postcode, city, state, country]);
-
-  const [errors, setErrors] = useState<{
-    ownerName?: string;
-    email?: string;
-    password?: string;
-    restaurantName?: string;
-    contactNo?: string;
-    restaurantURL?: string;
-    restaurantImages?: string;
-    cuisineType?: string;
-    priceRange?: string;
-    ambience?: string;
-    openTime?: string;
-    closeTime?: string;
-    street?: string;
-    postcode?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    consent?: string;
-    form?: string;
-  }>({});
-
-  const [touched, setTouched] = useState({
-    ownerName: false,
-    email: false,
-    password: false,
-    restaurantName: false,
-    contactNo: false,
-    restaurantURL: false,
-    restaurantImages: false,
-    cuisineType: false,
-    priceRange: false,
-    ambience: false,
-    openTime: false,
-    closeTime: false,
-    street: false,
-    postcode: false,
-    city: false,
-    state: false,
-    country: false,
-    consent: false,
-  });
 
   const validate = () => {
     const next: typeof errors = {};
@@ -336,7 +335,8 @@ export function SignUpFormOwner() {
 
   const handleBlur = (field: keyof typeof touched) => {
     setTouched((t) => ({ ...t, [field]: true }));
-    validate();
+    // Deferred validation execution fixes edge-cases when elements blur due to system dialogues opening
+    setTimeout(() => validate(), 0);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,6 +376,8 @@ export function SignUpFormOwner() {
     const files = Array.from(e.target.files || []);
     const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
+    setTouched((t) => ({ ...t, restaurantImages: true }));
+
     const hasInvalidType = files.some(
       (file) => !allowedTypes.includes(file.type),
     );
@@ -385,18 +387,22 @@ export function SignUpFormOwner() {
         ...prev,
         restaurantImages: "Only JPG, PNG, and WEBP image formats are allowed",
       }));
-      setTouched((t) => ({ ...t, restaurantImages: true }));
       return;
     }
 
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-
-    setErrors((prev) => {
-      const { restaurantImages, ...rest } = prev;
-      return rest;
-    });
-
-    setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    if (files.length > 0) {
+      const imageUrls = files.map((file) => URL.createObjectURL(file));
+      setErrors((prev) => {
+        const { restaurantImages, ...rest } = prev;
+        return rest;
+      });
+      setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    } else if (restaurantImages.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "At least one restaurant image must be uploaded",
+      }));
+    }
   };
 
   return (
@@ -416,7 +422,6 @@ export function SignUpFormOwner() {
               )}
             </div>
 
-            {/* Camera Icon Overlay (Hidden if there is an image, or remains as preferred) */}
             {!profileImage && (
               <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
                 <Camera size={16} />
@@ -424,7 +429,6 @@ export function SignUpFormOwner() {
             )}
           </label>
 
-          {/* Remove Image Button (Appears only when profileImage exists) */}
           {profileImage && (
             <button
               type="button"
@@ -433,7 +437,6 @@ export function SignUpFormOwner() {
               className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
               title="Remove Profile Picture"
             >
-              {/* Using a simple 'x' character, or you can import { X } from "lucide-react" */}
               <span className="text-xs font-bold leading-none w-3 h-3 flex items-center justify-center">
                 ✕
               </span>
@@ -570,13 +573,14 @@ export function SignUpFormOwner() {
 
         <div
           onClick={() => {
-            setTouched((t) => ({ ...t, restaurantImages: true }));
             document.getElementById("restaurant-image-upload")?.click();
           }}
+          onBlur={() => handleBlur("restaurantImages")}
+          tabIndex={0}
           className={`
             border-2 border-dashed rounded-2xl p-6
             flex flex-col items-center justify-center
-            cursor-pointer transition-all duration-200
+            cursor-pointer transition-all duration-200 focus:outline-none
             ${
               touched.restaurantImages && errors.restaurantImages
                 ? "border-bs-red bg-bs-red/5"
@@ -607,7 +611,7 @@ export function SignUpFormOwner() {
                           (_, i) => i !== index,
                         );
                         setRestaurantImages(updated);
-                        if (updated.length === 0) {
+                        if (updated.length === 0 && touched.restaurantImages) {
                           setErrors((prev) => ({
                             ...prev,
                             restaurantImages:
@@ -631,11 +635,13 @@ export function SignUpFormOwner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setRestaurantImages([]);
-                    setErrors((prev) => ({
-                      ...prev,
-                      restaurantImages:
-                        "At least one restaurant image must be uploaded",
-                    }));
+                    if (touched.restaurantImages) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        restaurantImages:
+                          "At least one restaurant image must be uploaded",
+                      }));
+                    }
                   }}
                   className="text-xs font-bold text-rose-600 hover:underline"
                 >
@@ -670,7 +676,7 @@ export function SignUpFormOwner() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cuisine Types */}
-        <div className="space-y-2">
+        <div className="space-y-2" onBlur={() => handleBlur("cuisineType")}>
           <MultiSelectField
             label="Cuisine Type"
             value={cuisineType}
@@ -704,7 +710,7 @@ export function SignUpFormOwner() {
         />
 
         {/* Vibe / Ambience */}
-        <div className="space-y-2">
+        <div className="space-y-2" onBlur={() => handleBlur("ambience")}>
           <MultiSelectField
             label="Vibe / Ambience"
             value={ambience}
@@ -903,12 +909,15 @@ export function SignUpFormOwner() {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" onBlur={() => handleBlur("consent")}>
         <label className="flex items-start gap-2 text-sm text-bs-neutral-700 cursor-pointer">
           <input
             type="checkbox"
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onChange={(e) => {
+              setConsent(e.target.checked);
+              if (touched.consent) setTimeout(() => validate(), 0);
+            }}
             className="mt-1"
             disabled={isLoading}
           />
