@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import {
   Eye,
   Star,
@@ -23,6 +23,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  LabelList,
 } from "recharts";
 import { SocialMediaCard } from "../components/visibility-dashboard/SocialMediaCard";
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
@@ -136,14 +137,38 @@ export default function SocialVisibilityDashboard() {
     setLoading(true);
     setError(null);
     try {
+      const results = await Promise.allSettled([
+        getSummaryMetrics(id),
+        getFunnelMetrics(id),
+        getSocialVisibility(id),
+        getSentiment(id),
+        getFootTraffic(id),
+      ]);
+
+      const labels = [
+        "summary metrics",
+        "funnel metrics",
+        "social visibility",
+        "sentiment",
+        "foot traffic",
+      ];
+      const failed = results
+        .map((r, i) => (r.status === "rejected" ? labels[i] : null))
+        .filter(Boolean);
+
+      if (failed.length > 0) {
+        throw new Error(`Failed: ${failed.join(", ")}`);
+      }
+
       const [summaryRes, funnelRes, socialRes, sentimentRes, trafficRes] =
-        await Promise.all([
-          getSummaryMetrics(id),
-          getFunnelMetrics(id),
-          getSocialVisibility(id),
-          getSentiment(id),
-          getFootTraffic(id),
-        ]);
+        results.map((r) => (r as PromiseFulfilledResult<unknown>).value) as [
+          SummaryMetrics,
+          { stages: FunnelStage[] },
+          { platforms: SocialPlatformCard[] },
+          Sentiment,
+          FootTrafficResponse,
+        ];
+
       setSummary(summaryRes);
       setFunnel(funnelRes.stages);
       setSocial(socialRes.platforms);
@@ -151,9 +176,15 @@ export default function SocialVisibilityDashboard() {
       setFootTraffic(trafficRes);
       getActionSuggestions(id)
         .then(setActionSuggestions)
-        .catch(() => { });
-    } catch {
-      setError("Failed to load dashboard data.");
+        .catch(() => {});
+    } catch (err) {
+      const detail =
+        err instanceof Error ? err.message : "Failed to load dashboard data.";
+      setError(
+        detail.startsWith("Failed:")
+          ? `${detail}. Re-run seed_visibility.py and restart the backend.`
+          : "Failed to load dashboard data. Re-run seed_visibility.py and restart the backend.",
+      );
     } finally {
       setLoading(false);
     }
@@ -168,9 +199,10 @@ export default function SocialVisibilityDashboard() {
   // â"€â"€ Derived chart data â"€â"€
   const sentimentPieData = sentiment
     ? [
-      { name: "Positive", value: sentiment.positivePct, color: "#27AE60" },
-      { name: "Negative", value: sentiment.negativePct, color: "#FF4C4C" },
-    ]
+        { name: "Positive", value: sentiment.positivePct, color: "#27AE60" },
+        { name: "Negative", value: sentiment.negativePct, color: "#FF4C4C" },
+        { name: "Neutral", value: sentiment.neutralPct, color: "#F59E0B" },
+      ]
     : [];
 
   const complaintThemeData = sentiment
@@ -278,10 +310,11 @@ export default function SocialVisibilityDashboard() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${activeTab === tab.id
-                  ? "bg-white text-bs-blue border border-bs-neutral-200 border-b-white -mb-px"
-                  : "text-bs-neutral-500 hover:text-bs-neutral-700"
-                  }`}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-white text-bs-blue border border-bs-neutral-200 border-b-white -mb-px"
+                    : "text-bs-neutral-500 hover:text-bs-neutral-700"
+                }`}
               >
                 {tab.label}
               </button>
@@ -330,7 +363,9 @@ export default function SocialVisibilityDashboard() {
                         {summary.averageRating.value}
                       </span>
                     </div>
-                    <h3 className="text-sm text-bs-neutral-600">Average Rating</h3>
+                    <h3 className="text-sm text-bs-neutral-600">
+                      Average Rating
+                    </h3>
                     <p className="text-xs text-bs-green mt-1">
                       {summary.averageRating.totalReviews}{" "}
                       {summary.averageRating.source} Reviews
@@ -345,7 +380,9 @@ export default function SocialVisibilityDashboard() {
                         {summary.socialEngagementRate.value}%
                       </span>
                     </div>
-                    <h3 className="text-sm text-bs-neutral-600">Engagement Rate</h3>
+                    <h3 className="text-sm text-bs-neutral-600">
+                      Engagement Rate
+                    </h3>
                     <p
                       className={`text-xs mt-1 ${trendColorClass(summary.socialEngagementRate.trend)}`}
                     >
@@ -436,7 +473,6 @@ export default function SocialVisibilityDashboard() {
                     ))}
                 </div>
               </section>
-
             </>
           )}
 
@@ -476,7 +512,7 @@ export default function SocialVisibilityDashboard() {
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="grid grid-cols-3 gap-4 mt-4">
                         <div className="text-center">
                           <div className="text-2xl font-bold text-bs-green">
                             {sentiment.positivePct}%
@@ -493,6 +529,14 @@ export default function SocialVisibilityDashboard() {
                             Negative
                           </div>
                         </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-[#F59E0B]">
+                            {sentiment.neutralPct}%
+                          </div>
+                          <div className="text-sm text-bs-neutral-600">
+                            Neutral
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -504,7 +548,10 @@ export default function SocialVisibilityDashboard() {
                       </p>
                       <ResponsiveContainer width="100%" height={200}>
                         <BarChart data={complaintThemeData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#E5E5E5"
+                          />
                           <XAxis dataKey="theme" stroke="#737373" />
                           <YAxis stroke="#737373" />
                           <Tooltip />
@@ -546,7 +593,6 @@ export default function SocialVisibilityDashboard() {
                   </div>
                 </section>
               )}
-
             </>
           )}
 
@@ -571,8 +617,12 @@ export default function SocialVisibilityDashboard() {
                     visits:
                       i < 5
                         ? Math.round(footTraffic.daily.weekdayAvg + (i - 2) * 3)
-                        : Math.round(footTraffic.daily.weekendAvg + (i - 5.5) * 8),
-                    type: (i < 5 ? "weekday" : "weekend") as "weekday" | "weekend",
+                        : Math.round(
+                            footTraffic.daily.weekendAvg + (i - 5.5) * 8,
+                          ),
+                    type: (i < 5 ? "weekday" : "weekend") as
+                      | "weekday"
+                      | "weekend",
                   }));
 
                   const hours24 = [12, 13, 19];
@@ -583,7 +633,7 @@ export default function SocialVisibilityDashboard() {
                       hour: h,
                       visitors: Math.round(
                         footTraffic.hourly.find((x) => x.hour === h)?.[
-                        di < 5 ? "weekdayAvg" : "weekendAvg"
+                          di < 5 ? "weekdayAvg" : "weekendAvg"
                         ] ?? 0,
                       ),
                       type: (di < 5 ? "weekday" : "weekend") as
@@ -658,41 +708,6 @@ export default function SocialVisibilityDashboard() {
                     },
                   ];
 
-                  // â"€â"€ Derived heatmap lookup â"€â"€
-                  // const heatLookup: Record<string, Record<number, number>> = {};
-                  // heatmapTraffic.forEach(({ date, hour, visitors }) => {
-                  //   if (!heatLookup[date]) heatLookup[date] = {};
-                  //   heatLookup[date][hour] = visitors;
-                  // });
-                  // const allHeatVisitors = heatmapTraffic.map((d) => d.visitors);
-                  // const maxHeat = Math.max(...allHeatVisitors, 1);
-
-                  // const hourFmt = (h: number) =>
-                  //   h === 0
-                  //     ? "12a"
-                  //     : h === 12
-                  //       ? "12p"
-                  //       : h < 12
-                  //         ? `${h}a`
-                  //         : `${h - 12}p`;
-
-                  // const weekdayCellColor = (val: number) => {
-                  //   if (val === 0) return "#EFF6FF";
-                  //   const r = val / maxHeat;
-                  //   if (r >= 0.8) return "#1D4ED8";
-                  //   if (r >= 0.55) return "#2D9CDB";
-                  //   if (r >= 0.3) return "#93C5FD";
-                  //   return "#BFDBFE";
-                  // };
-                  // const weekendCellColor = (val: number) => {
-                  //   if (val === 0) return "#FFF7ED";
-                  //   const r = val / maxHeat;
-                  //   if (r >= 0.8) return "#C2410C";
-                  //   if (r >= 0.55) return "#EA580C";
-                  //   if (r >= 0.3) return "#FB923C";
-                  //   return "#FED7AA";
-                  // };
-
                   return (
                     <section aria-labelledby="foot-traffic">
                       <h2 id="foot-traffic" className="mb-1">
@@ -710,7 +725,8 @@ export default function SocialVisibilityDashboard() {
                               Daily Foot Traffic (Weekdays vs Weekends)
                             </h3>
                             <p className="text-xs text-bs-neutral-500 mt-0.5">
-                              Jun 1--7, 2026 · hover bar for date, day & visit count
+                              Jun 1--7, 2026 · hover bar for date, day & visit
+                              count
                             </p>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-bs-neutral-600">
@@ -776,7 +792,9 @@ export default function SocialVisibilityDashboard() {
                                       }}
                                     >
                                       {d.visits} visits ·{" "}
-                                      {d.type === "weekday" ? "Weekday" : "Weekend"}
+                                      {d.type === "weekday"
+                                        ? "Weekday"
+                                        : "Weekend"}
                                     </p>
                                   </div>
                                 );
@@ -814,7 +832,9 @@ export default function SocialVisibilityDashboard() {
                                 className="text-[10px] font-semibold"
                                 style={{
                                   color:
-                                    d.type === "weekday" ? "#1D4ED8" : "#C2410C",
+                                    d.type === "weekday"
+                                      ? "#1D4ED8"
+                                      : "#C2410C",
                                 }}
                               >
                                 {d.day.slice(0, 3)}
@@ -830,118 +850,266 @@ export default function SocialVisibilityDashboard() {
                         </div>
                       </div>
 
-                      {/* Chart 2: Daily & Hourly heatmap */}
-                      {/* <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
-                    <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
-                      <div>
-                        <h3 className="font-bold text-bs-neutral-900">
-                          Daily & Hourly Foot Traffic Heatmap
-                        </h3>
-                        <p className="text-xs text-bs-neutral-500 mt-0.5">
-                          Dates on rows · hours on columns · hover for details
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 flex-wrap text-xs text-bs-neutral-600">
-                        {[
-                          ["#BFDBFE", "Weekday low"],
-                          ["#2D9CDB", "Weekday high"],
-                          ["#FED7AA", "Weekend low"],
-                          ["#EA580C", "Weekend high"],
-                        ].map(([c, l]) => (
-                          <span key={l} className="flex items-center gap-1">
-                            <span
-                              className="w-3 h-3 rounded-sm inline-block"
-                              style={{ background: c }}
-                            />
-                            {l}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                      {/* ── Stacked column chart ── */}
+                      {(() => {
+                        const stackedData = [
+                          {
+                            label: "Mon Jun 1",
+                            morning: 20,
+                            lunch: 30,
+                            afternoon: 10,
+                            dinner: 20,
+                            lateNight: 5,
+                            total: 85,
+                          },
+                          {
+                            label: "Tue Jun 2",
+                            morning: 22,
+                            lunch: 35,
+                            afternoon: 10,
+                            dinner: 20,
+                            lateNight: 5,
+                            total: 92,
+                          },
+                          {
+                            label: "Wed Jun 3",
+                            morning: 18,
+                            lunch: 32,
+                            afternoon: 12,
+                            dinner: 20,
+                            lateNight: 6,
+                            total: 88,
+                          },
+                          {
+                            label: "Thu Jun 4",
+                            morning: 25,
+                            lunch: 35,
+                            afternoon: 10,
+                            dinner: 20,
+                            lateNight: 5,
+                            total: 95,
+                          },
+                          {
+                            label: "Fri Jun 5",
+                            morning: 30,
+                            lunch: 40,
+                            afternoon: 15,
+                            dinner: 20,
+                            lateNight: 5,
+                            total: 110,
+                          },
+                          {
+                            label: "Sat Jun 6",
+                            morning: 40,
+                            lunch: 60,
+                            afternoon: 20,
+                            dinner: 30,
+                            lateNight: 10,
+                            total: 160,
+                          },
+                          {
+                            label: "Sun Jun 7",
+                            morning: 35,
+                            lunch: 55,
+                            afternoon: 20,
+                            dinner: 25,
+                            lateNight: 10,
+                            total: 145,
+                          },
+                        ];
 
-                    <div className="overflow-x-auto">
-                      <div style={{ minWidth: 640 }}> */}
-                      {/* Hour axis header */}
-                      {/* <div className="flex mb-1">
-                          <div style={{ width: 80, flexShrink: 0 }} />
-                          <div
-                            className="grid flex-1 gap-px"
-                            style={{ gridTemplateColumns: "repeat(24, 1fr)" }}
-                          >
-                            {Array.from({ length: 24 }, (_, h) => (
-                              <div
-                                key={h}
-                                className="text-center"
-                                style={{ fontSize: 7, color: "#A3A3A3" }}
-                              >
-                                {h % 3 === 0 ? hourFmt(h) : ""}
-                              </div>
-                            ))}
-                          </div>
-                        </div> */}
+                        const segments = [
+                          {
+                            key: "morning",
+                            label: "Morning (8–11 AM)",
+                            color: "#93C5FD",
+                          },
+                          {
+                            key: "lunch",
+                            label: "Lunch (12–3 PM)",
+                            color: "#22C55E",
+                          },
+                          {
+                            key: "afternoon",
+                            label: "Afternoon (3–5 PM)",
+                            color: "#86EFAC",
+                          },
+                          {
+                            key: "dinner",
+                            label: "Dinner (6–9 PM)",
+                            color: "#F97316",
+                          },
+                          {
+                            key: "lateNight",
+                            label: "Late Night (9–11 PM)",
+                            color: "#374151",
+                          },
+                        ] as const;
 
-                      {/* Data rows */}
-                      {/* {dailyTraffic.map((row, ri) => {
-                          const rowHours = heatLookup[row.date] ?? {};
-                          const isWeekend = row.type === "weekend";
+                        // Custom label rendered inside each segment
+                        const renderLabel = (props: any) => {
+                          const { x, y, width, height, value } = props;
+                          if (!value || height < 14) return null;
                           return (
-                            <div key={ri} className="flex items-center mb-1"> */}
-                      {/* Row label */}
-                      {/* <div
-                                style={{ width: 80, flexShrink: 0 }}
-                                className="pr-2 text-right"
-                              >
-                                <span
-                                  className="text-[10px] font-semibold"
-                                  style={{
-                                    color: isWeekend ? "#C2410C" : "#1D4ED8",
-                                  }}
-                                >
-                                  {row.day.slice(0, 3)}
-                                </span>
-                                <span className="block text-[9px] text-bs-neutral-400">
-                                  {row.date.slice(5)}
-                                </span>
-                              </div> */}
+                            <text
+                              x={x + width / 2}
+                              y={y + height / 2 + 4}
+                              textAnchor="middle"
+                              fontSize={9}
+                              fontWeight={600}
+                              fill="#fff"
+                            >
+                              {value}
+                            </text>
+                          );
+                        };
 
-                      {/* Hour cells */}
-                      {/* <div
-                                className="grid flex-1 gap-px"
-                                style={{
-                                  gridTemplateColumns: "repeat(24, 1fr)",
+                        // Custom total label above each column
+                        const renderTotal = (props: any) => {
+                          const { x, y, width, value } = props;
+                          if (!value) return null;
+                          return (
+                            <text
+                              x={x + width / 2}
+                              y={y - 4}
+                              textAnchor="middle"
+                              fontSize={10}
+                              fontWeight={700}
+                              fill="#262626"
+                            >
+                              {value}
+                            </text>
+                          );
+                        };
+
+                        return (
+                          <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
+                            <h3 className="font-bold text-bs-neutral-900 mb-1">
+                              Hourly Foot Traffic (Jun 1–7, 2026)
+                            </h3>
+                            <p className="text-xs text-bs-neutral-500 mb-4">
+                              Restaurant visits per day broken down by time
+                              period
+                            </p>
+
+                            {/* Legend */}
+                            <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5">
+                              {segments.map((s) => (
+                                <span
+                                  key={s.key}
+                                  className="flex items-center gap-1.5 text-xs text-bs-neutral-700"
+                                >
+                                  <span
+                                    className="w-3 h-3 rounded-sm inline-block flex-shrink-0"
+                                    style={{ background: s.color }}
+                                  />
+                                  {s.label}
+                                </span>
+                              ))}
+                            </div>
+
+                            <ResponsiveContainer width="100%" height={320}>
+                              <BarChart
+                                data={stackedData}
+                                barCategoryGap="22%"
+                                margin={{
+                                  top: 24,
+                                  right: 8,
+                                  left: 0,
+                                  bottom: 0,
                                 }}
                               >
-                                {Array.from({ length: 24 }, (_, h) => {
-                                  const val = rowHours[h] ?? 0;
-                                  const bg = isWeekend
-                                    ? weekendCellColor(val)
-                                    : weekdayCellColor(val);
-                                  const hasData = val > 0;
-                                  return (
-                                    <div
-                                      key={h}
-                                      title={
-                                        hasData
-                                          ? `${row.day} ${row.date} · ${hourFmt(h)} · ${val} visitors`
-                                          : `${row.day} · ${hourFmt(h)} · no data`
-                                      }
-                                      className="rounded-sm cursor-default"
-                                      style={{ background: bg, height: 28 }}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div> */}
+                                <CartesianGrid
+                                  vertical={false}
+                                  stroke="#E5E5E5"
+                                />
+                                <XAxis
+                                  dataKey="label"
+                                  tick={{ fontSize: 10, fill: "#525252" }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                />
+                                <YAxis
+                                  domain={[0, 180]}
+                                  tick={{ fontSize: 11, fill: "#737373" }}
+                                  axisLine={false}
+                                  tickLine={false}
+                                  label={{
+                                    value: "Visits",
+                                    angle: -90,
+                                    position: "insideLeft",
+                                    offset: 12,
+                                    style: { fontSize: 10, fill: "#A3A3A3" },
+                                  }}
+                                />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (!active || !payload?.length)
+                                      return null;
+                                    const total = (payload as any[]).reduce(
+                                      (s: number, p: any) => s + (p.value ?? 0),
+                                      0,
+                                    );
+                                    return (
+                                      <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg text-xs min-w-[160px]">
+                                        <p className="font-bold text-gray-800 mb-1">
+                                          {label}
+                                        </p>
+                                        {[...(payload as any[])]
+                                          .reverse()
+                                          .map((p: any) => (
+                                            <p
+                                              key={p.dataKey}
+                                              style={{ color: p.fill }}
+                                              className="flex justify-between gap-4"
+                                            >
+                                              <span>{p.name}</span>
+                                              <span className="font-semibold">
+                                                {p.value}
+                                              </span>
+                                            </p>
+                                          ))}
+                                        <p className="border-t border-gray-100 mt-1 pt-1 font-bold text-gray-800 flex justify-between">
+                                          <span>Total</span>
+                                          <span>{total}</span>
+                                        </p>
+                                      </div>
+                                    );
+                                  }}
+                                />
 
-                      {/* <p className="text-xs text-bs-neutral-400 mt-3">
-                      Only hours with recorded data are highlighted -- empty
-                      cells indicate no visitors logged for that hour.
-                    </p>
-                  </div> */}
+                                {segments.map((s, si) => (
+                                  <Bar
+                                    key={s.key}
+                                    dataKey={s.key}
+                                    stackId="stack"
+                                    fill={s.color}
+                                    name={s.label}
+                                    radius={
+                                      si === segments.length - 1
+                                        ? [4, 4, 0, 0]
+                                        : [0, 0, 0, 0]
+                                    }
+                                  >
+                                    <LabelList
+                                      dataKey={s.key}
+                                      content={renderLabel}
+                                    />
+                                    {/* Render total above the full stack on the topmost segment only */}
+                                    {si === segments.length - 1 && (
+                                      <LabelList
+                                        dataKey="total"
+                                        position="top"
+                                        content={renderTotal}
+                                      />
+                                    )}
+                                  </Bar>
+                                ))}
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        );
+                      })()}
 
                       {/* Action Center + Staffing Insight */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -957,12 +1125,13 @@ export default function SocialVisibilityDashboard() {
                             {actionSuggestions?.suggestions.map((s, i) => (
                               <div
                                 key={i}
-                                className={`p-3 rounded-lg border ${s.impact === "High"
-                                  ? "bg-bs-red/5 border-bs-red/20"
-                                  : s.impact === "Medium"
-                                    ? "bg-bs-gold/5 border-bs-gold/20"
-                                    : "bg-bs-green/5 border-bs-green/20"
-                                  }`}
+                                className={`p-3 rounded-lg border ${
+                                  s.impact === "High"
+                                    ? "bg-bs-red/5 border-bs-red/20"
+                                    : s.impact === "Medium"
+                                      ? "bg-bs-gold/5 border-bs-gold/20"
+                                      : "bg-bs-green/5 border-bs-green/20"
+                                }`}
                               >
                                 <div className="font-medium text-bs-neutral-900 text-sm">
                                   {s.issue}
@@ -972,33 +1141,33 @@ export default function SocialVisibilityDashboard() {
                                 </div>
                               </div>
                             )) ?? (
-                                <>
-                                  <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
-                                    <div className="font-medium text-bs-neutral-900">
-                                      Low engagement
-                                    </div>
-                                    <div className="text-sm text-bs-neutral-600 mt-1">
-                                      Impact: High
-                                    </div>
+                              <>
+                                <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
+                                  <div className="font-medium text-bs-neutral-900">
+                                    Low engagement
                                   </div>
-                                  <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
-                                    <div className="font-medium text-bs-neutral-900">
-                                      Negative reviews
-                                    </div>
-                                    <div className="text-sm text-bs-neutral-600 mt-1">
-                                      Impact: High
-                                    </div>
+                                  <div className="text-sm text-bs-neutral-600 mt-1">
+                                    Impact: High
                                   </div>
-                                  <div className="p-3 bg-bs-gold/5 border border-bs-gold/20 rounded-lg">
-                                    <div className="font-medium text-bs-neutral-900">
-                                      Keyword mismatch
-                                    </div>
-                                    <div className="text-sm text-bs-neutral-600 mt-1">
-                                      Impact: Medium
-                                    </div>
+                                </div>
+                                <div className="p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
+                                  <div className="font-medium text-bs-neutral-900">
+                                    Negative reviews
                                   </div>
-                                </>
-                              )}
+                                  <div className="text-sm text-bs-neutral-600 mt-1">
+                                    Impact: High
+                                  </div>
+                                </div>
+                                <div className="p-3 bg-bs-gold/5 border border-bs-gold/20 rounded-lg">
+                                  <div className="font-medium text-bs-neutral-900">
+                                    Keyword mismatch
+                                  </div>
+                                  <div className="text-sm text-bs-neutral-600 mt-1">
+                                    Impact: Medium
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
                           <button
                             onClick={handleViewSuggestions}
@@ -1019,14 +1188,14 @@ export default function SocialVisibilityDashboard() {
                               style={{ background: "#EFF6FF" }}
                             >
                               <p className="text-xs font-bold text-blue-700 mb-1">
-                                📅 Weekdays (Mon--Fri) -- avg {weekdayTraffic.value}{" "}
-                                visitors/day
+                                📅 Weekdays (Mon--Fri) -- avg{" "}
+                                {weekdayTraffic.value} visitors/day
                               </p>
                               <p className="text-sm text-bs-neutral-700">
                                 Lunch peak at{" "}
-                                <strong>1 PM (60 visitors Mon)</strong>. Standard
-                                crew sufficient. Evening at 7 PM adds 80 visitors --
-                                moderate cover needed.
+                                <strong>1 PM (60 visitors Mon)</strong>.
+                                Standard crew sufficient. Evening at 7 PM adds
+                                80 visitors -- moderate cover needed.
                               </p>
                             </div>
                             <div
@@ -1034,11 +1203,12 @@ export default function SocialVisibilityDashboard() {
                               style={{ background: "#FFF7ED" }}
                             >
                               <p className="text-xs font-bold text-orange-700 mb-1">
-                                🎉 Weekends (Sat--Sun) -- avg {weekendTraffic.value}{" "}
-                                visitors/day
+                                🎉 Weekends (Sat--Sun) -- avg{" "}
+                                {weekendTraffic.value} visitors/day
                               </p>
                               <p className="text-sm text-bs-neutral-700">
-                                Peak at <strong>7 PM Sunday (140 visitors)</strong>.
+                                Peak at{" "}
+                                <strong>7 PM Sunday (140 visitors)</strong>.
                                 Saturday dinner at 6 PM hits 120/hr. Scale up
                                 kitchen + floor staff <strong>5 -- 9 PM</strong>{" "}
                                 both days.
@@ -1139,7 +1309,8 @@ export default function SocialVisibilityDashboard() {
                           </h3>
                         </div>
                         <p className="text-sm text-bs-neutral-700 mb-4">
-                          Offer a 10% discount for families at 8 PM so that you can eat with your loved ones.
+                          Offer a 10% discount for families at 8 PM so that you
+                          can eat with your loved ones.
                         </p>
                       </div>
                       <button
@@ -1159,8 +1330,8 @@ export default function SocialVisibilityDashboard() {
                           </h3>
                         </div>
                         <p className="text-sm text-bs-neutral-700 mb-4">
-                          Add "Spicy Noodles" to your menu description to match trending
-                          searches.
+                          Add "Spicy Noodles" to your menu description to match
+                          trending searches.
                         </p>
                       </div>
                       <button
@@ -1200,7 +1371,8 @@ export default function SocialVisibilityDashboard() {
                       </h3>
                     </div>
                     <p className="text-sm text-bs-neutral-700">
-                      Create, edit and manage your restaurant promotions. Set up new deals, schedule campaigns, and track active discounts.
+                      Create, edit and manage your restaurant promotions. Set up
+                      new deals, schedule campaigns, and track active discounts.
                     </p>
                     <div>
                       <button
@@ -1274,10 +1446,11 @@ export default function SocialVisibilityDashboard() {
                       {themeReviewsData.reviews.map((rev, i) => (
                         <div
                           key={i}
-                          className={`p-3 rounded-lg border ${rev.matched
-                            ? "border-bs-red/30 bg-bs-red/5"
-                            : "border-bs-neutral-100 bg-bs-neutral-50"
-                            }`}
+                          className={`p-3 rounded-lg border ${
+                            rev.matched
+                              ? "border-bs-red/30 bg-bs-red/5"
+                              : "border-bs-neutral-100 bg-bs-neutral-50"
+                          }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-sm font-medium text-bs-gold">
@@ -1350,21 +1523,23 @@ export default function SocialVisibilityDashboard() {
                   {actionSuggestions.suggestions.map((s, i) => (
                     <div
                       key={i}
-                      className={`p-4 rounded-lg border ${s.impact === "High"
-                        ? "border-bs-red/30 bg-bs-red/5"
-                        : s.impact === "Medium"
-                          ? "border-bs-gold/30 bg-bs-gold/5"
-                          : "border-bs-green/30 bg-bs-green/5"
-                        }`}
+                      className={`p-4 rounded-lg border ${
+                        s.impact === "High"
+                          ? "border-bs-red/30 bg-bs-red/5"
+                          : s.impact === "Medium"
+                            ? "border-bs-gold/30 bg-bs-gold/5"
+                            : "border-bs-green/30 bg-bs-green/5"
+                      }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${s.impact === "High"
-                            ? "bg-bs-red/10 text-bs-red"
-                            : s.impact === "Medium"
-                              ? "bg-bs-gold/10 text-bs-gold"
-                              : "bg-bs-green/10 text-bs-green"
-                            }`}
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            s.impact === "High"
+                              ? "bg-bs-red/10 text-bs-red"
+                              : s.impact === "Medium"
+                                ? "bg-bs-gold/10 text-bs-gold"
+                                : "bg-bs-green/10 text-bs-green"
+                          }`}
                         >
                           {s.impact}
                         </span>

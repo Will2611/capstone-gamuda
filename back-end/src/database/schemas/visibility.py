@@ -97,6 +97,7 @@ class ComplaintThemeEntry(BaseModel):
 class SentimentResponse(BaseModel):
     positivePct: float
     negativePct: float
+    neutralPct: float
     complaintThemes: list[ComplaintThemeEntry]
 
     model_config = {"from_attributes": True}

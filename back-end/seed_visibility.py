@@ -1,9 +1,14 @@
 """
 Seed script — populates visibility dashboard tables with in-house restaurant CSV data.
-Run from the back-end folder with:  myenv\Scripts\python seed_visibility.py
+Run from the back-end folder with:  python seed_visibility.py
 """
+import csv
+from collections import defaultdict
 from datetime import date, timedelta
+from pathlib import Path
+
 from src.database.connection import SessionLocal, engine, Base
+from src.database.migrate_visibility import ensure_visibility_schema
 from src.database.models.visibility import (
     RestaurantVisbilityModel,
     VisibilityMetricsModel,
@@ -14,6 +19,8 @@ from src.database.models.visibility import (
     FootTrafficHourlyModel,
     FootTrafficDailyModel,
 )
+
+REVIEWS_CSV_PATH = Path(__file__).parent / "src" / "seed" / "restaurant-reviews.csv"
 
 # ── Inline CSV data ──────────────────────────────────────
 CSV_ROWS = [
@@ -116,6 +123,49 @@ CSV_ROWS = [
 FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction"]
 
 
+def load_reviews_by_restaurant() -> dict[str, list[dict]]:
+    """Group restaurant-reviews.csv rows by restaurant name."""
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    if not REVIEWS_CSV_PATH.exists():
+        return grouped
+
+    with REVIEWS_CSV_PATH.open(encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            name = row["Restaurant"].strip()
+            grouped[name].append({
+                "text": row["Sample Reviews"].strip(),
+                "rating": int(row["Rating_Value"]),
+                "sentiment": row["Sentiment"].strip(),
+                "theme": row["Complaint Theme"].strip(),
+            })
+    return grouped
+
+
+def compute_sentiment_pcts(reviews: list[dict]) -> tuple[float, float, float]:
+    total = len(reviews)
+    if total == 0:
+        return 0.0, 0.0, 0.0
+
+    positive = sum(1 for r in reviews if r["sentiment"] == "Positive")
+    negative = sum(1 for r in reviews if r["sentiment"] == "Negative")
+    neutral = sum(1 for r in reviews if r["sentiment"] == "Neutral")
+
+    return (
+        round(positive / total * 100, 1),
+        round(negative / total * 100, 1),
+        round(neutral / total * 100, 1),
+    )
+
+
+def compute_complaint_theme_counts(reviews: list[dict]) -> list[tuple[str, int]]:
+    counts: dict[str, int] = defaultdict(int)
+    for review in reviews:
+        if review["sentiment"] in ("Negative", "Neutral"):
+            counts[review["theme"]] += 1
+    return sorted(counts.items(), key=lambda item: item[1], reverse=True)
+
+
 def seed():
     Base.metadata.drop_all(bind=engine, tables=[
         t for t in Base.metadata.sorted_tables
@@ -126,8 +176,10 @@ def seed():
         }
     ])
     Base.metadata.create_all(bind=engine)
+    ensure_visibility_schema(engine)
 
     db = SessionLocal()
+    reviews_by_restaurant = load_reviews_by_restaurant()
     try:
         today = date.today()
         prev_month = today - timedelta(days=30)
@@ -139,8 +191,6 @@ def seed():
                 cuisines=row["cuisines"],
                 latitude=row["latitude"],
                 longitude=row["longitude"],
-                sample_reviews=row["reviews"],
-                review_ratings=row.get("ratings", [5, 4, 3, 5, 3]),
             )
             db.add(rest)
             db.flush()
@@ -193,26 +243,50 @@ def seed():
                 url="https://www.google.com/maps",
             ))
 
-            # ── Sentiment + Complaint ──
+            # ── Sentiment + Complaint (reviews from restaurant-reviews.csv) ──
+            restaurant_reviews = reviews_by_restaurant.get(row["name"], [])
+            if restaurant_reviews:
+                positive_pct, negative_pct, neutral_pct = compute_sentiment_pcts(
+                    restaurant_reviews
+                )
+            else:
+                positive_pct = row["positive"]
+                negative_pct = row["negative"]
+                neutral_pct = round(100 - positive_pct - negative_pct, 1)
+
             sent = SentimentDataModel(
-                restaurant=rest, recorded_at=today,
-                positive_pct=row["positive"],
-                negative_pct=row["negative"],
+                restaurant=rest,
+                recorded_at=today,
+                restaurant_name=row["name"],
+                positive_pct=positive_pct,
+                negative_pct=negative_pct,
+                neutral_pct=neutral_pct,
+                reviews=restaurant_reviews or None,
             )
             db.add(sent)
             db.flush()
 
-            db.add(ComplaintThemeModel(
-                sentiment=sent, theme=row["complaint_theme"],
-                count=max(2, int((row["negative"] / 100) * 30)),
-            ))
-            # Secondary complaint
-            secondary_themes = {"Wait Time": "Service", "Taste": "Wait Time", "Service": "Taste"}
-            db.add(ComplaintThemeModel(
-                sentiment=sent,
-                theme=secondary_themes.get(row["complaint_theme"], "Taste"),
-                count=max(1, int((row["negative"] / 100) * 18)),
-            ))
+            theme_counts = compute_complaint_theme_counts(restaurant_reviews)
+            if theme_counts:
+                for theme, count in theme_counts[:5]:
+                    db.add(ComplaintThemeModel(
+                        sentiment=sent, theme=theme, count=count,
+                    ))
+            else:
+                db.add(ComplaintThemeModel(
+                    sentiment=sent, theme=row["complaint_theme"],
+                    count=max(2, int((row["negative"] / 100) * 30)),
+                ))
+                secondary_themes = {
+                    "Wait Time": "Service",
+                    "Taste": "Wait Time",
+                    "Service": "Taste",
+                }
+                db.add(ComplaintThemeModel(
+                    sentiment=sent,
+                    theme=secondary_themes.get(row["complaint_theme"], "Taste"),
+                    count=max(1, int((row["negative"] / 100) * 18)),
+                ))
 
             # ── Foot Traffic ──
             scale = row["visibility"] / 100.0
