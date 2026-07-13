@@ -66,6 +66,7 @@ export interface ComplaintThemeItem {
 export interface Sentiment {
   positivePct: number;
   negativePct: number;
+  neutralPct: number;
   complaintThemes: ComplaintThemeItem[];
 }
 

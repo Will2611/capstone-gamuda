@@ -13,8 +13,6 @@ class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
     cuisines: Mapped[str] = mapped_column(String(200), nullable=False)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
-    sample_reviews: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    review_ratings: Mapped[Optional[list[int]]] = mapped_column(JSON, nullable=True)
 
     metrics: Mapped[list["VisibilityMetricsModel"]] = relationship(
         "VisibilityMetricsModel", back_populates="restaurant", cascade="all, delete-orphan", default_factory=list
@@ -87,9 +85,12 @@ class SentimentDataModel(DBBaseModelTimeMixIn, Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
     restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
+    restaurant_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
 
     positive_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    neutral_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    reviews: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     complaint_themes: Mapped[list["ComplaintThemeModel"]] = relationship(
         "ComplaintThemeModel", back_populates="sentiment", cascade="all, delete-orphan", default_factory=list

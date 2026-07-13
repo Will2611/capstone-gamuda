@@ -11,7 +11,7 @@ export function Navigation() {
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Find Restaurants", path: "/map" },
-    { label: "Food Buddy", path: "/food-match" },
+    // { label: "Food Buddy", path: "/food-match" },
     { label: "User Profile", path: "/profile" },
     // { label: "For Owners", path: "/dashboard" },
     { label: "Dashboard", path: "/social-visibility" },
@@ -71,9 +71,9 @@ export function Navigation() {
             )}
             <NavLink
               className="bg-bs-gold text-bs-neutral-900 px-5 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors text-sm font-medium"
-              to={"/business"}
+              to={"/food-match"}
             >
-              Join Pilot
+              Food Buddy
             </NavLink>
           </div>
 
@@ -143,9 +143,9 @@ export function Navigation() {
             <NavLink
               className="block w-full text-center mt-4 bg-bs-gold text-bs-neutral-900 px-6 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
               onClick={() => setMenuOpen(false)}
-              to={"/business"}
+              to={"/food-match"}
             >
-              Join Pilot
+              Food Buddy
             </NavLink>
           </ul>
         )}

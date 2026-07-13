@@ -41,9 +41,14 @@ from src.database.calculations import (
     compute_repeat_visit_rate,
     compute_average_rating,
 )
-import re
 
 router = APIRouter(prefix="/visibility", tags=["visibility"])
+
+
+def _ratings_from_sentiment(sentiment: SentimentDataModel | None) -> list[int] | None:
+    if not sentiment or not sentiment.reviews:
+        return None
+    return [review["rating"] for review in sentiment.reviews]
 
 
 def _to_platform_label(platform: str) -> str:
@@ -115,16 +120,10 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
     if current is None:
         raise HTTPException(status_code=404, detail="No metrics found for this restaurant")
 
-    # ── Average Rating: computed from aggregate review data ──
-    restaurant = (
-        db.query(RestaurantVisbilityModel)
-        .filter(RestaurantVisbilityModel.id == restaurantId)
-        .first()
-    )
     avg_rating = compute_average_rating(
         stored_avg=current.average_rating,
         total_reviews=current.total_reviews,
-        sample_ratings=restaurant.review_ratings if restaurant else None,
+        sample_ratings=_ratings_from_sentiment(sentiment),
     )
     total_reviews_count = current.total_reviews
 
@@ -302,41 +301,12 @@ async def get_sentiment(db: db_dependency, restaurantId: int = Query(...)):
     return SentimentResponse(
         positivePct=round(row.positive_pct, 1),
         negativePct=round(row.negative_pct, 1),
+        neutralPct=round(row.neutral_pct, 1),
         complaintThemes=[
             ComplaintThemeEntry(theme=c.theme, count=c.count)
             for c in complaint_rows
         ],
     )
-
-
-# ------ Theme → Review Keyword Map ----
-
-THEME_KEYWORDS: dict[str, list[str]] = {
-    "Wait Time": ["wait", "waited", "longer", "slow", "rushed", "delay", "crowded"],
-    "Taste": ["taste", "flavor", "average", "inconsistent", "bland", "spoil", "didn't match", "tasteless"],
-    "Service": ["slow service", "inattentive", "rude", "unfriendly", "ignored", "mistake", "wrong order"],
-}
-
-
-def _parse_reviews(raw: str, ratings: list[int] | None = None) -> list[dict]:
-    """Split sample_reviews text into individual review dicts with stars and text."""
-    results = []
-    parts = re.split(r"\s*\|\s*", raw)
-    for i, part in enumerate(parts):
-        part = part.strip()
-        if not part:
-            continue
-        # Strip leading number and quotes
-        text = re.sub(r"^\d+\.\s*", "", part).strip()
-        text = text.strip('"').strip("'")
-        stars = ratings[i] if ratings and i < len(ratings) else 3
-        results.append({"stars": stars, "text": text})
-    return results
-
-
-def _keyword_match(text: str, keywords: list[str]) -> bool:
-    lower = text.lower()
-    return any(kw.lower() in lower for kw in keywords)
 
 
 @router.get("/getReviewsByTheme", response_model=ReviewsByThemeResponse)
@@ -345,24 +315,31 @@ async def get_reviews_by_theme(
     restaurantId: int = Query(...),
     theme: str = Query("Wait Time"),
 ):
-    restaurant = db.query(RestaurantVisbilityModel).filter(RestaurantVisbilityModel.id == restaurantId).first()
-    if not restaurant or not restaurant.sample_reviews:
+    sentiment = (
+        db.query(SentimentDataModel)
+        .filter(SentimentDataModel.restaurant_id == restaurantId)
+        .order_by(desc(SentimentDataModel.recorded_at))
+        .first()
+    )
+    if not sentiment or not sentiment.reviews:
         raise HTTPException(status_code=404, detail="No reviews found")
 
-    reviews = _parse_reviews(restaurant.sample_reviews, restaurant.review_ratings)
-    keywords = THEME_KEYWORDS.get(theme, THEME_KEYWORDS.get("Wait Time", []))
-
-    # Only negative (≤3 stars) reviews belong in a complaint-themed view
-    negative_reviews = [r for r in reviews if r["stars"] <= 3]
+    negative_reviews = [
+        review for review in sentiment.reviews if review["rating"] <= 3
+    ]
     matched_count = 0
     total_negative = len(negative_reviews)
 
     items: list[ReviewItemResponse] = []
-    for r in negative_reviews:
-        matched = _keyword_match(r["text"], keywords)
+    for review in negative_reviews:
+        matched = review["theme"] == theme
         if matched:
             matched_count += 1
-        items.append(ReviewItemResponse(stars=r["stars"], text=r["text"], matched=matched))
+        items.append(ReviewItemResponse(
+            stars=review["rating"],
+            text=review["text"],
+            matched=matched,
+        ))
 
     return ReviewsByThemeResponse(
         theme=theme,
