@@ -18,7 +18,7 @@ export const mockPromotions: Promotion[] = [
 
     startDate: "2026-06-01",
 
-    endDate: "2026-06-30",
+    endDate: "2026-08-31",
 
     startTime: "12:00",
 
