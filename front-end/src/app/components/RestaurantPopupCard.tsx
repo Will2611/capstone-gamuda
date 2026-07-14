@@ -417,27 +417,6 @@ export function RestaurantPopupCard({
                     Sentiment data is not available for this restaurant yet.
                   </div>
                 )}
-
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlide(0)}
-                    disabled={activeSlide === 0}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-bs-neutral-300 bg-white px-4 py-2 text-sm text-bs-neutral-700 transition hover:border-bs-neutral-900 hover:text-bs-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ChevronLeft size={16} />
-                    Restaurant
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSlide(1)}
-                    disabled={activeSlide === 1}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-bs-neutral-300 bg-white px-4 py-2 text-sm text-bs-neutral-700 transition hover:border-bs-neutral-900 hover:text-bs-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Sentiment
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
               </div>
             </div>
           </div>
