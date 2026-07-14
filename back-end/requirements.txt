@@ -15,3 +15,4 @@ proximityhash
 
 uuid-utils
 tzdata
+nltk

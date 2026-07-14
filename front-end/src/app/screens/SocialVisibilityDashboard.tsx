@@ -1118,7 +1118,7 @@ export default function SocialVisibilityDashboard() {
                           <div className="flex items-center gap-3 mb-4">
                             <AlertCircle className="text-bs-red" size={24} />
                             <h3 className="font-bold text-bs-neutral-900">
-                              Top 3 Issues
+                              Troubleshoot Center
                             </h3>
                           </div>
                           <div className="space-y-3">
@@ -1177,10 +1177,10 @@ export default function SocialVisibilityDashboard() {
                           </button>
                         </div>
 
-                        {/* Right: Staffing Insight */}
+                        {/* Right: Traffic Insight */}
                         <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
                           <h3 className="font-bold text-bs-neutral-900 mb-4">
-                            Staffing Insight
+                            Traffic Insight
                           </h3>
                           <div className="space-y-3">
                             <div

@@ -2,3 +2,4 @@ myenv/
 venv/
 __pycache__/
 .env
+data/sentiment_llm_cache.json
