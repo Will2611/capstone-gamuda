@@ -66,15 +66,15 @@ def seed():
                     latitude=float(row["Latitude"]),
                     longitude=float(row["Longitude"]),
                     address=address,
-                    opening_hours=opening_hours,
+                    # opening_hours=opening_hours,
                     google_place_id=row.get("Place Id"),
                     contact_no= contact_no,
                     timezone=castTimeZone,
                     timezone_offset=480,
                     opening_hours_struct=days_shift_dict,
-                    start_time=None,
-                    close_time=None,
-                    days_opened=days_opened,
+                    # start_time=None,
+                    # close_time=None,
+                    # days_opened=days_opened,
                 )
                 db.add(shop)
         db.commit()

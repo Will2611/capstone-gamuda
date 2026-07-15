@@ -87,15 +87,16 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
     address:Mapped[list[str]] = mapped_column(ARRAY(String,zero_indexes=False, dimensions=1), nullable=True)
 
     # also a '$'separated list?
-    opening_hours:Mapped[str] = mapped_column(Text, nullable=False)
+    # opening_hours:Mapped[str] = mapped_column(Text, nullable=False)
     # Alt
-    start_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
-    close_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
-    days_opened:Mapped[list[DAYS_OF_WEEK_TYPE]] = mapped_column(ARRAY(String(9)), nullable=False)
+    # start_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
+    # close_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
+    # days_opened:Mapped[list[DAYS_OF_WEEK_TYPE]] = mapped_column(ARRAY(String(9)), nullable=False)
     timezone:Mapped[Optional[ZoneInfo]] = mapped_column(String(64), nullable=True)
     # In Minutes
     timezone_offset:Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     opening_hours_struct:Mapped[Dict[DAYS_OF_WEEK_TYPE,List[Tuple[datetime.time,datetime.time]]]] = mapped_column(OpeningHoursType, default_factory=dict)
+    source: Mapped[str] = mapped_column(String(20), default="seed")
 
     # Maybe change to remove column
     google_place_id:Mapped[Optional[str]]= mapped_column(String, nullable=True, default=None)
