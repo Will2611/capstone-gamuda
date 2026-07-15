@@ -33,11 +33,13 @@ export function SocialMediaCard({
       </div>
 
       <div className="space-y-3 mb-4">
-        {metrics.map((metric, index) => (
+        {(metrics ?? []).map((metric, index) => (
           <div key={index} className="flex items-center justify-between">
             <span className="text-sm text-bs-neutral-600">{metric.label}</span>
             <span className="font-bold text-bs-neutral-900">
-              {metric.value}
+              {metric.value == null || metric.value === ""
+                ? 0
+                : metric.value}
             </span>
           </div>
         ))}

@@ -294,7 +294,12 @@ async def get_sentiment(db: db_dependency, restaurantId: int = Query(...)):
 
     complaint_rows = (
         db.query(ComplaintThemeModel)
-        .filter(ComplaintThemeModel.sentiment_id == row.id)
+        .join(
+            SentimentDataModel,
+            ComplaintThemeModel.sentiment_id == SentimentDataModel.id,
+        )
+        .filter(SentimentDataModel.id == row.id)
+        .order_by(desc(ComplaintThemeModel.count))
         .all()
     )
 
@@ -324,21 +329,23 @@ async def get_reviews_by_theme(
     if not sentiment or not sentiment.reviews:
         raise HTTPException(status_code=404, detail="No reviews found")
 
-    negative_reviews = [
-        review for review in sentiment.reviews if review["rating"] <= 3
+    complaint_reviews = [
+        review for review in sentiment.reviews
+        if review.get("sentiment") in ("Negative", "Neutral")
     ]
-    matched_count = 0
-    total_negative = len(negative_reviews)
+    matched_reviews = [
+        review for review in complaint_reviews
+        if (review.get("theme") or "") == theme
+    ]
+    total_negative = len(complaint_reviews)
+    matched_count = len(matched_reviews)
 
     items: list[ReviewItemResponse] = []
-    for review in negative_reviews:
-        matched = review["theme"] == theme
-        if matched:
-            matched_count += 1
+    for review in matched_reviews:
         items.append(ReviewItemResponse(
             stars=review["rating"],
             text=review["text"],
-            matched=matched,
+            matched=True,
         ))
 
     return ReviewsByThemeResponse(
@@ -354,6 +361,7 @@ async def get_reviews_by_theme(
 @router.get("/getFootTraffic", response_model=FootTrafficResponse)
 async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
     # -- Hourly: average visitors per hour, grouped by weekday / weekend ----
+    # REMOVE COZ THIS IS HEATMAP CHART CODE, NOT USED IN DASHBOARD
     hourly_rows = (
         db.query(
             FootTrafficHourlyModel.hour,
@@ -364,7 +372,7 @@ async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
         .group_by(FootTrafficHourlyModel.hour, FootTrafficHourlyModel.day_type)
         .order_by(FootTrafficHourlyModel.hour)
         .all()
-    )
+    )  
 
     hourly_map: dict[int, dict[str, float]] = {}
     for hr, dt, avg in hourly_rows:

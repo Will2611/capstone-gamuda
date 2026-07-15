@@ -1,9 +1,16 @@
 """
 Seed script — populates visibility dashboard tables with in-house restaurant CSV data.
-Run from the back-end folder with:  python seed_visibility.py
+
+Run from the back-end folder:
+  python seed_visibility.py              # weekday mode (ratings only)
+  python seed_visibility.py --analyze    # also run VADER sentiment
+
+Weekday/weekend jobs can be run separately:
+  python scripts/weekday_sync_ratings.py
+  python scripts/weekend_sentiment_analysis.py
 """
-import csv
-from collections import defaultdict
+import argparse
+import asyncio
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -19,8 +26,13 @@ from src.database.models.visibility import (
     FootTrafficHourlyModel,
     FootTrafficDailyModel,
 )
-
-REVIEWS_CSV_PATH = Path(__file__).parent / "src" / "seed" / "restaurant-reviews.csv"
+from src.database.sentiment_helpers import (
+    load_reviews_by_restaurant,
+    build_rating_only_reviews,
+    compute_sentiment_pcts,
+    compute_avg_rating,
+    compute_complaint_theme_counts,
+)
 
 # ── Inline CSV data ──────────────────────────────────────
 CSV_ROWS = [
@@ -103,50 +115,40 @@ CSV_ROWS = [
 FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction"]
 
 
-def load_reviews_by_restaurant() -> dict[str, list[dict]]:
-    """Group restaurant-reviews.csv rows by restaurant name."""
-    grouped: dict[str, list[dict]] = defaultdict(list)
-    if not REVIEWS_CSV_PATH.exists():
-        return grouped
+async def run_weekend_analysis(db):
+    """Run hybrid sentiment on all restaurants after seed."""
+    from sqlalchemy import desc
+    from src.llm.sentiment_analyzer import analyze_reviews_batch
+    from src.database.sentiment_helpers import replace_complaint_themes
 
-    with REVIEWS_CSV_PATH.open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            name = row["Restaurant"].strip()
-            grouped[name].append({
-                "text": row["Sample Reviews"].strip(),
-                "rating": int(row["Rating_Value"]),
-                "sentiment": row["Sentiment"].strip(),
-                "theme": row["Complaint Theme"].strip(),
-            })
-    return grouped
+    restaurants = db.query(RestaurantVisbilityModel).all()
+    for rest in restaurants:
+        sentiment = (
+            db.query(SentimentDataModel)
+            .filter(SentimentDataModel.restaurant_id == rest.id)
+            .order_by(desc(SentimentDataModel.recorded_at))
+            .first()
+        )
+        if not sentiment or not sentiment.reviews:
+            continue
 
+        pending = [
+            {"text": r.get("text") or "", "rating": r["rating"]}
+            for r in sentiment.reviews
+        ]
+        if not pending:
+            continue
 
-def compute_sentiment_pcts(reviews: list[dict]) -> tuple[float, float, float]:
-    total = len(reviews)
-    if total == 0:
-        return 0.0, 0.0, 0.0
-
-    positive = sum(1 for r in reviews if r["sentiment"] == "Positive")
-    negative = sum(1 for r in reviews if r["sentiment"] == "Negative")
-    neutral = sum(1 for r in reviews if r["sentiment"] == "Neutral")
-
-    return (
-        round(positive / total * 100, 1),
-        round(negative / total * 100, 1),
-        round(neutral / total * 100, 1),
-    )
+        analyzed, _ = await analyze_reviews_batch(pending)
+        sentiment.reviews = analyzed
+        pos, neg, neu = compute_sentiment_pcts(analyzed)
+        sentiment.positive_pct = pos
+        sentiment.negative_pct = neg
+        sentiment.neutral_pct = neu
+        replace_complaint_themes(db, sentiment, analyzed)
 
 
-def compute_complaint_theme_counts(reviews: list[dict]) -> list[tuple[str, int]]:
-    counts: dict[str, int] = defaultdict(int)
-    for review in reviews:
-        if review["sentiment"] in ("Negative", "Neutral"):
-            counts[review["theme"]] += 1
-    return sorted(counts.items(), key=lambda item: item[1], reverse=True)
-
-
-def seed():
+async def seed(*, run_analysis: bool = False):
     Base.metadata.drop_all(bind=engine, tables=[
         t for t in Base.metadata.sorted_tables
         if t.name in {
@@ -177,7 +179,7 @@ def seed():
 
             # ── Visibility metrics (current month) ──
             db.add(VisibilityMetricsModel(
-                restaurant=rest, recorded_at=today,
+                restaurant_id=rest.id, recorded_at=today,
                 visibility_score=row["visibility"],
                 average_rating=row["avg_rating"],
                 total_reviews=row["reviews_count"],
@@ -189,7 +191,7 @@ def seed():
             prev_social = round(row["social_eng"] * (0.85 + (row["visibility"] / 200)), 2)
             prev_repeat = round(row["repeat_visit"] * (0.85 + (row["visibility"] / 200)), 1)
             db.add(VisibilityMetricsModel(
-                restaurant=rest, recorded_at=prev_month,
+                restaurant_id=rest.id, recorded_at=prev_month,
                 visibility_score=max(0, row["visibility"] - 3),
                 average_rating=row["avg_rating"],
                 total_reviews=max(1, row["reviews_count"] - 12),
@@ -208,13 +210,13 @@ def seed():
             ]
             for name, cnt, conv, drop in counts:
                 db.add(FunnelStageModel(
-                    restaurant=rest, recorded_at=today,
+                    restaurant_id=rest.id, recorded_at=today,
                     stage_name=name, count=cnt, conversion=conv, is_drop_off=drop,
                 ))
 
             # ── Google Reviews social card ──
             db.add(SocialPlatformMetricsModel(
-                restaurant=rest, recorded_at=today,
+                restaurant_id=rest.id, recorded_at=today,
                 platform="google",
                 avg_rating=row["avg_rating"],
                 total_reviews=row["reviews_count"],
@@ -222,38 +224,44 @@ def seed():
                 url="https://www.google.com/maps",
             ))
 
-            # ── Sentiment + Complaint (reviews from restaurant-reviews.csv) ──
-            restaurant_reviews = reviews_by_restaurant.get(row["name"], [])
-            if restaurant_reviews:
-                positive_pct, negative_pct, neutral_pct = compute_sentiment_pcts(
-                    restaurant_reviews
-                )
+            # ── Sentiment (restaurant-reviews_latest.csv — weekday ratings first) ──
+            csv_reviews = reviews_by_restaurant.get(row["name"], [])
+            rating_only_reviews = build_rating_only_reviews(csv_reviews) if csv_reviews else []
+
+            if csv_reviews:
+                avg_from_csv = compute_avg_rating(csv_reviews)
+                review_count = len(csv_reviews)
             else:
-                positive_pct = row["positive"]
-                negative_pct = row["negative"]
-                neutral_pct = round(100 - positive_pct - negative_pct, 1)
+                avg_from_csv = row["avg_rating"]
+                review_count = row["reviews_count"]
+
+            positive_pct = row["positive"]
+            negative_pct = row["negative"]
+            neutral_pct = round(100 - positive_pct - negative_pct, 1)
 
             sent = SentimentDataModel(
-                restaurant=rest,
+                restaurant_id=rest.id,
                 recorded_at=today,
                 restaurant_name=row["name"],
                 positive_pct=positive_pct,
                 negative_pct=negative_pct,
                 neutral_pct=neutral_pct,
-                reviews=restaurant_reviews or None,
+                reviews=rating_only_reviews or None,
             )
             db.add(sent)
             db.flush()
 
-            theme_counts = compute_complaint_theme_counts(restaurant_reviews)
+            theme_counts = compute_complaint_theme_counts(
+                [r for r in rating_only_reviews if r.get("sentiment")]
+            )
             if theme_counts:
                 for theme, count in theme_counts[:5]:
                     db.add(ComplaintThemeModel(
-                        sentiment=sent, theme=theme, count=count,
+                        sentiment_id=sent.id, theme=theme, count=count,
                     ))
             else:
                 db.add(ComplaintThemeModel(
-                    sentiment=sent, theme=row["complaint_theme"],
+                    sentiment_id=sent.id, theme=row["complaint_theme"],
                     count=max(2, int((row["negative"] / 100) * 30)),
                 ))
                 secondary_themes = {
@@ -262,45 +270,45 @@ def seed():
                     "Service": "Taste",
                 }
                 db.add(ComplaintThemeModel(
-                    sentiment=sent,
+                    sentiment_id=sent.id,
                     theme=secondary_themes.get(row["complaint_theme"], "Taste"),
                     count=max(1, int((row["negative"] / 100) * 18)),
                 ))
 
             # ── Foot Traffic ──
             scale = row["visibility"] / 100.0
-            foot_traffic_hourly = [
-                ("Monday", "Weekday", 12, int(45 * scale)),
-                ("Monday", "Weekday", 13, int(55 * scale)),
-                ("Monday", "Weekday", 19, int(80 * scale)),
-                ("Tuesday", "Weekday", 12, int(50 * scale)),
-                ("Tuesday", "Weekday", 13, int(60 * scale)),
-                ("Tuesday", "Weekday", 19, int(85 * scale)),
-                ("Wednesday", "Weekday", 12, int(48 * scale)),
-                ("Wednesday", "Weekday", 13, int(58 * scale)),
-                ("Wednesday", "Weekday", 19, int(82 * scale)),
-                ("Thursday", "Weekday", 12, int(52 * scale)),
-                ("Thursday", "Weekday", 13, int(65 * scale)),
-                ("Thursday", "Weekday", 19, int(90 * scale)),
-                ("Friday", "Weekday", 12, int(60 * scale)),
-                ("Friday", "Weekday", 13, int(70 * scale)),
-                ("Friday", "Weekday", 19, int(100 * scale)),
-                ("Saturday", "Weekend", 12, int(95 * scale)),
-                ("Saturday", "Weekend", 13, int(120 * scale)),
-                ("Saturday", "Weekend", 19, int(160 * scale)),
-                ("Sunday", "Weekend", 12, int(85 * scale)),
-                ("Sunday", "Weekend", 13, int(110 * scale)),
-                ("Sunday", "Weekend", 19, int(145 * scale)),
-            ]
-            for day_n, day_t, hr, vis in foot_traffic_hourly:
-                db.add(FootTrafficHourlyModel(
-                    restaurant=rest,
-                    traffic_date=today,
-                    day_name=day_n,
-                    day_type=day_t,
-                    hour=hr,
-                    visitors=max(1, vis),
-                ))
+            # foot_traffic_hourly = [   * REMOVE
+            #     ("Monday", "Weekday", 12, int(45 * scale)),
+            #     ("Monday", "Weekday", 13, int(55 * scale)),
+            #     ("Monday", "Weekday", 19, int(80 * scale)),
+            #     ("Tuesday", "Weekday", 12, int(50 * scale)),
+            #     ("Tuesday", "Weekday", 13, int(60 * scale)),
+            #     ("Tuesday", "Weekday", 19, int(85 * scale)),
+            #     ("Wednesday", "Weekday", 12, int(48 * scale)),
+            #     ("Wednesday", "Weekday", 13, int(58 * scale)),
+            #     ("Wednesday", "Weekday", 19, int(82 * scale)),
+            #     ("Thursday", "Weekday", 12, int(52 * scale)),
+            #     ("Thursday", "Weekday", 13, int(65 * scale)),
+            #     ("Thursday", "Weekday", 19, int(90 * scale)),
+            #     ("Friday", "Weekday", 12, int(60 * scale)),
+            #     ("Friday", "Weekday", 13, int(70 * scale)),
+            #     ("Friday", "Weekday", 19, int(100 * scale)),
+            #     ("Saturday", "Weekend", 12, int(95 * scale)),
+            #     ("Saturday", "Weekend", 13, int(120 * scale)),
+            #     ("Saturday", "Weekend", 19, int(160 * scale)),
+            #     ("Sunday", "Weekend", 12, int(85 * scale)),
+            #     ("Sunday", "Weekend", 13, int(110 * scale)),
+            #     ("Sunday", "Weekend", 19, int(145 * scale)),
+            # ]
+            # for day_n, day_t, hr, vis in foot_traffic_hourly:
+            #     db.add(FootTrafficHourlyModel(
+            #         restaurant=rest,
+            #         traffic_date=today,
+            #         day_name=day_n,
+            #         day_type=day_t,
+            #         hour=hr,
+            #         visitors=max(1, vis),
+            #     ))
 
             foot_traffic_daily = [
                 ("Monday", "Weekday", int(85 * scale)),
@@ -313,15 +321,22 @@ def seed():
             ]
             for day_n, day_t, vis in foot_traffic_daily:
                 db.add(FootTrafficDailyModel(
-                    restaurant=rest,
+                    restaurant_id=rest.id,
                     traffic_date=today,
                     day_name=day_n,
                     day_type=day_t,
                     visits=max(1, vis),
                 ))
 
+        if run_analysis:
+            print("Running VADER sentiment analysis...")
+            await run_weekend_analysis(db)
+            print("Sentiment analysis complete.")
+
         db.commit()
         print(f"Seeded {len(CSV_ROWS)} restaurants successfully.")
+        if not run_analysis:
+            print("Tip: run  python seed_visibility.py --analyze  or  scripts/weekend_sentiment_analysis.py")
 
     except Exception as e:
         db.rollback()
@@ -331,5 +346,16 @@ def seed():
         db.close()
 
 
+async def main():
+    parser = argparse.ArgumentParser(description="Seed visibility dashboard tables")
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Run VADER sentiment analysis after seed",
+    )
+    args = parser.parse_args()
+    await seed(run_analysis=args.analyze)
+
+
 if __name__ == "__main__":
-    seed()
+    asyncio.run(main())
