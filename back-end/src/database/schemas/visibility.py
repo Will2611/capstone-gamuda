@@ -2,7 +2,7 @@ from src.database.connection import Base
 from sqlalchemy import String, Integer, Float, Date, Boolean, ForeignKey, Text, JSON
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from datetime import date
-from typing import Optional
+from typing import Literal
 from pydantic import BaseModel, Field
 
 
@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 
 # ---- Pydantic Response Schemas ----
+FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction"]
+FUNNEL_STAGES_TYPE = Literal["Impressions", "Clicks", "Click-to-Direction"]
 
 class VisibilityScoreEntry(BaseModel):
     value: float

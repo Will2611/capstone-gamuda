@@ -32,8 +32,6 @@ CSV_ROWS = [
         "visibility": 74, "social_eng": 3.90, "reviews_count": 1365, "avg_rating": 4.8,
         "repeat_visit": 68.10, "impressions": 67200, "clicks": 2554, "click_dir": 460,
         "visits": 324, "positive": 82, "negative": 18, "complaint_theme": "Wait Time",
-        "seo_rank": 7, "keyword_match": 62, "freshness": 2.5,
-        "reviews": "1. \"The tasting menu was exquisite — every dish felt like art.\" | 2. \"Ambience is modern yet warm. Perfect for date nights.\" | 3. \"Waited too long between courses, which spoiled the flow.\" | 4. \"Staff were attentive and explained each dish beautifully.\" | 5. \"Parking was a hassle, but food was worth it.\"",
         "longitude": 3.154793, "latitude": 101.709125, "cuisines": "Malaysian",
     },
     {
@@ -41,8 +39,6 @@ CSV_ROWS = [
         "visibility": 81, "social_eng": 4.20, "reviews_count": 3002, "avg_rating": 4.5,
         "repeat_visit": 65.40, "impressions": 84500, "clicks": 3120, "click_dir": 590,
         "visits": 410, "positive": 79, "negative": 21, "complaint_theme": "Taste",
-        "seo_rank": 5, "keyword_match": 70, "freshness": 3,
-        "reviews": "1. \"Authentic Malay flavors with a fine-dining twist. Loved it!\" | 2. \"The rendang was rich and flavorful, highly recommended.\" | 3. \"Portions felt small for the price.\" | 4. \"Service was friendly and quick, made us feel welcome.\" | 5. \"Desserts were average compared to mains.\"",
         "longitude": 3.148888, "latitude": 101.705993, "cuisines": "Malaysian",
     },
     {
@@ -50,8 +46,6 @@ CSV_ROWS = [
         "visibility": 76, "social_eng": 3.70, "reviews_count": 3381, "avg_rating": 4.7,
         "repeat_visit": 72.00, "impressions": 90200, "clicks": 3400, "click_dir": 720,
         "visits": 500, "positive": 85, "negative": 15, "complaint_theme": "Service",
-        "seo_rank": 9, "keyword_match": 58, "freshness": 2,
-        "reviews": "1. \"The rooftop view is unbeatable — KL skyline at its best.\" | 2. \"Cocktails were creative and refreshing.\" | 3. \"Service was slow despite reservations.\" | 4. \"Loved the grilled meats, perfectly cooked.\" | 5. \"Music was too loud for conversation.\"",
         "longitude": 3.158625, "latitude": 101.71816, "cuisines": "South American",
     },
     {
@@ -59,8 +53,6 @@ CSV_ROWS = [
         "visibility": 69, "social_eng": 3.50, "reviews_count": 1127, "avg_rating": 4.6,
         "repeat_visit": 66.80, "impressions": 54100, "clicks": 2100, "click_dir": 380,
         "visits": 270, "positive": 80, "negative": 20, "complaint_theme": "Wait Time",
-        "seo_rank": 11, "keyword_match": 55, "freshness": 1.5,
-        "reviews": "1. \"Innovative dishes with bold flavors, truly memorable.\" | 2. \"The lunch menu is great value for money.\" | 3. \"Wait time between starters and mains was frustrating.\" | 4. \"Staff were knowledgeable about wine pairings.\" | 5. \"Dessert presentation was stunning but taste average.\"",
         "longitude": 3.153259, "latitude": 101.707512, "cuisines": "European",
     },
     {
@@ -68,8 +60,6 @@ CSV_ROWS = [
         "visibility": 88, "social_eng": 4.50, "reviews_count": 3914, "avg_rating": 4.4,
         "repeat_visit": 70.20, "impressions": 120300, "clicks": 4500, "click_dir": 890,
         "visits": 640, "positive": 78, "negative": 22, "complaint_theme": "Taste",
-        "seo_rank": 4, "keyword_match": 75, "freshness": 3.5,
-        "reviews": "1. \"Panoramic views and elegant dining — perfect for celebrations.\" | 2. \"Breakfast buffet was diverse and delicious.\" | 3. \"Taste didn't match the premium pricing.\" | 4. \"Service was polished and professional.\" | 5. \"Crowded during weekends, felt rushed.\"",
         "longitude": 3.153863, "latitude": 101.712326, "cuisines": "Western",
     },
     {
@@ -77,8 +67,6 @@ CSV_ROWS = [
         "visibility": 77, "social_eng": 3.80, "reviews_count": 1434, "avg_rating": 4.7,
         "repeat_visit": 67.90, "impressions": 61000, "clicks": 2300, "click_dir": 420,
         "visits": 310, "positive": 83, "negative": 17, "complaint_theme": "Service",
-        "seo_rank": 8, "keyword_match": 63, "freshness": 2.8,
-        "reviews": "1. \"Romantic setting with beautifully plated dishes.\" | 2. \"Wine list was extensive and well-curated.\" | 3. \"Service felt inattentive at times.\" | 4. \"Loved the Sunday brunch, especially desserts.\" | 5. \"Portions could be more generous.\"",
         "longitude": 3.153132, "latitude": 101.709758, "cuisines": "European",
     },
     {
@@ -86,8 +74,6 @@ CSV_ROWS = [
         "visibility": 72, "social_eng": 3.60, "reviews_count": 3160, "avg_rating": 4.6,
         "repeat_visit": 69.50, "impressions": 78000, "clicks": 2950, "click_dir": 560,
         "visits": 390, "positive": 81, "negative": 19, "complaint_theme": "Wait Time",
-        "seo_rank": 10, "keyword_match": 60, "freshness": 2.2,
-        "reviews": "1. \"Charming atmosphere with cozy interiors.\" | 2. \"Great spot for group dinners, spacious and lively.\" | 3. \"Wait time for mains was longer than expected.\" | 4. \"Cocktails were creative and well-balanced.\" | 5. \"Music was slightly too loud indoors.\"",
         "longitude": 3.132541, "latitude": 101.677107, "cuisines": "European",
     },
     {
@@ -95,8 +81,6 @@ CSV_ROWS = [
         "visibility": 85, "social_eng": 4.10, "reviews_count": 926, "avg_rating": 4.7,
         "repeat_visit": 73.30, "impressions": 50500, "clicks": 1900, "click_dir": 350,
         "visits": 250, "positive": 84, "negative": 16, "complaint_theme": "Taste",
-        "seo_rank": 6, "keyword_match": 68, "freshness": 3.1,
-        "reviews": "1. \"Authentic Malaysian flavors, reminded me of home cooking.\" | 2. \"Service was quick and friendly.\" | 3. \"Taste was inconsistent across dishes.\" | 4. \"Loved the spice blends, very aromatic.\" | 5. \"Ambience felt basic compared to food quality.\"",
         "longitude": 3.129515, "latitude": 101.68604, "cuisines": "Indian",
     },
     {
@@ -104,8 +88,6 @@ CSV_ROWS = [
         "visibility": 79, "social_eng": 3.90, "reviews_count": 928, "avg_rating": 4.7,
         "repeat_visit": 71.00, "impressions": 52000, "clicks": 2000, "click_dir": 370,
         "visits": 260, "positive": 82, "negative": 18, "complaint_theme": "Service",
-        "seo_rank": 12, "keyword_match": 59, "freshness": 2.4,
-        "reviews": "1. \"Creative South Indian fine dining, truly unique.\" | 2. \"Loved the storytelling behind each course.\" | 3. \"Service was slow despite reservations.\" | 4. \"Flavors were bold and memorable.\" | 5. \"Menu felt limited for vegetarians.\"",
         "longitude": 3.158137, "latitude": 101.713717, "cuisines": "Indian",
     },
     {
@@ -113,8 +95,6 @@ CSV_ROWS = [
         "visibility": 73, "social_eng": 3.40, "reviews_count": 658, "avg_rating": 4.4,
         "repeat_visit": 64.70, "impressions": 43000, "clicks": 1650, "click_dir": 310,
         "visits": 220, "positive": 77, "negative": 23, "complaint_theme": "Wait Time",
-        "seo_rank": 13, "keyword_match": 57, "freshness": 1.8,
-        "reviews": "1. \"Steaks were cooked to perfection, juicy and flavorful.\" | 2. \"Elegant ambience, perfect for business dinners.\" | 3. \"Wait time for food was longer than expected.\" | 4. \"Staff were attentive and professional.\" | 5. \"Side dishes didn't match the quality of mains.\"",
         "longitude": 3.136899, "latitude": 101.686263, "cuisines": "Japanese",
     },
 ]
@@ -238,7 +218,6 @@ def seed():
                 platform="google",
                 avg_rating=row["avg_rating"],
                 total_reviews=row["reviews_count"],
-                posts_this_month=max(3, int(row["freshness"] * 3)),
                 engagement_rate=round(row["social_eng"] * 0.6, 1),
                 url="https://www.google.com/maps",
             ))
