@@ -40,6 +40,15 @@ import {
   getActionSuggestions,
   formatTrendText,
   trendColorClass,
+  EMPTY_SUMMARY,
+  EMPTY_SENTIMENT,
+  EMPTY_FUNNEL_STAGES,
+  EMPTY_FOOT_TRAFFIC,
+  normalizeSummary,
+  normalizeFunnelStages,
+  normalizeSentiment,
+  normalizeFootTraffic,
+  normalizeSocialPlatforms,
   type SummaryMetrics,
   type FunnelStage,
   type SocialPlatformCard,
@@ -65,19 +74,19 @@ export default function SocialVisibilityDashboard() {
     { id: "promotions", label: "Promotions" },
   ];
 
-  // â"€â"€ Data state â"€â"€
+  // --- Data state (always start with safe zero defaults) ---
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
     number | null
   >(null);
-  const [summary, setSummary] = useState<SummaryMetrics | null>(null);
-  const [funnel, setFunnel] = useState<FunnelStage[]>([]);
+  const [summary, setSummary] = useState<SummaryMetrics>(EMPTY_SUMMARY);
+  const [funnel, setFunnel] = useState<FunnelStage[]>(EMPTY_FUNNEL_STAGES);
   const [social, setSocial] = useState<SocialPlatformCard[]>([]);
-  const [sentiment, setSentiment] = useState<Sentiment | null>(null);
-  const [footTraffic, setFootTraffic] = useState<FootTrafficResponse | null>(
-    null,
-  );
+  const [sentiment, setSentiment] = useState<Sentiment>(EMPTY_SENTIMENT);
+  const [footTraffic, setFootTraffic] =
+    useState<FootTrafficResponse>(EMPTY_FOOT_TRAFFIC);
   const [loading, setLoading] = useState(false);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // â"€â"€ Theme reviews popup â"€â"€
@@ -118,24 +127,28 @@ export default function SocialVisibilityDashboard() {
     }
   };
 
-  // â"€â"€ Load restaurant list on mount â"€â"€
+  // --- Load restaurant list on mount ---
   useEffect(() => {
+    setRestaurantsLoading(true);
     fetchRestaurants()
       .then((data) => {
-        setRestaurants(data);
-        if (data.length > 0) {
-          setSelectedRestaurantId(data[0].id);
+        const list = Array.isArray(data) ? data : [];
+        setRestaurants(list);
+        if (list.length > 0) {
+          setSelectedRestaurantId(list[0].id);
         }
       })
       .catch(() =>
         setError("Failed to load restaurants. Is the backend running?"),
-      );
+      )
+      .finally(() => setRestaurantsLoading(false));
   }, []);
 
-  // â"€â"€ Fetch all dashboard data when restaurant changes â"€â"€
+  // --- Fetch all dashboard data when restaurant changes ---
   const loadDashboard = useCallback(async (id: number) => {
     setLoading(true);
     setError(null);
+    setActionSuggestions(null);
     try {
       const results = await Promise.allSettled([
         getSummaryMetrics(id),
@@ -156,34 +169,52 @@ export default function SocialVisibilityDashboard() {
         .map((r, i) => (r.status === "rejected" ? labels[i] : null))
         .filter(Boolean);
 
+      const [summaryRes, funnelRes, socialRes, sentimentRes, trafficRes] =
+        results;
+
+      setSummary(
+        summaryRes.status === "fulfilled"
+          ? normalizeSummary(summaryRes.value)
+          : EMPTY_SUMMARY,
+      );
+      setFunnel(
+        funnelRes.status === "fulfilled"
+          ? normalizeFunnelStages(funnelRes.value?.stages)
+          : EMPTY_FUNNEL_STAGES.map((s) => ({ ...s })),
+      );
+      setSocial(
+        socialRes.status === "fulfilled"
+          ? normalizeSocialPlatforms(socialRes.value?.platforms)
+          : [],
+      );
+      setSentiment(
+        sentimentRes.status === "fulfilled"
+          ? normalizeSentiment(sentimentRes.value)
+          : EMPTY_SENTIMENT,
+      );
+      setFootTraffic(
+        trafficRes.status === "fulfilled"
+          ? normalizeFootTraffic(trafficRes.value, id)
+          : { ...EMPTY_FOOT_TRAFFIC, restaurantId: id },
+      );
+
       if (failed.length > 0) {
-        throw new Error(`Failed: ${failed.join(", ")}`);
+        setError(
+          `Some data unavailable (${failed.join(", ")}). Showing defaults of 0.`,
+        );
       }
 
-      const [summaryRes, funnelRes, socialRes, sentimentRes, trafficRes] =
-        results.map((r) => (r as PromiseFulfilledResult<unknown>).value) as [
-          SummaryMetrics,
-          { stages: FunnelStage[] },
-          { platforms: SocialPlatformCard[] },
-          Sentiment,
-          FootTrafficResponse,
-        ];
-
-      setSummary(summaryRes);
-      setFunnel(funnelRes.stages);
-      setSocial(socialRes.platforms);
-      setSentiment(sentimentRes);
-      setFootTraffic(trafficRes);
       getActionSuggestions(id)
         .then(setActionSuggestions)
-        .catch(() => {});
-    } catch (err) {
-      const detail =
-        err instanceof Error ? err.message : "Failed to load dashboard data.";
+        .catch(() => setActionSuggestions(null));
+    } catch {
+      setSummary(EMPTY_SUMMARY);
+      setFunnel(EMPTY_FUNNEL_STAGES.map((s) => ({ ...s })));
+      setSocial([]);
+      setSentiment(EMPTY_SENTIMENT);
+      setFootTraffic({ ...EMPTY_FOOT_TRAFFIC, restaurantId: id });
       setError(
-        detail.startsWith("Failed:")
-          ? `${detail}. Re-run seed_visibility.py and restart the backend.`
-          : "Failed to load dashboard data. Re-run seed_visibility.py and restart the backend.",
+        "Failed to load dashboard data. Showing defaults of 0.",
       );
     } finally {
       setLoading(false);
@@ -196,18 +227,25 @@ export default function SocialVisibilityDashboard() {
     }
   }, [selectedRestaurantId, loadDashboard]);
 
-  // â"€â"€ Derived chart data â"€â"€
-  const sentimentPieData = sentiment
-    ? [
-        { name: "Positive", value: sentiment.positivePct, color: "#27AE60" },
-        { name: "Negative", value: sentiment.negativePct, color: "#FF4C4C" },
-        { name: "Neutral", value: sentiment.neutralPct, color: "#F59E0B" },
-      ]
-    : [];
+  // --- Derived chart data (always defined; zeros when empty) ---
+  const sentimentPieData = [
+    {
+      name: "Positive",
+      value: sentiment.positivePct ?? 0,
+      color: "#27AE60",
+    },
+    {
+      name: "Negative",
+      value: sentiment.negativePct ?? 0,
+      color: "#FF4C4C",
+    },
+    { name: "Neutral", value: sentiment.neutralPct ?? 0, color: "#F59E0B" },
+  ];
 
-  const complaintThemeData = sentiment
-    ? sentiment.complaintThemes.map((c) => ({ theme: c.theme, count: c.count }))
-    : [];
+  const complaintThemeData = (sentiment.complaintThemes ?? []).map((c) => ({
+    theme: c.theme,
+    count: c.count ?? 0,
+  }));
 
   // â"€â"€ Helper: find drop-off stage â"€â"€
   const dropOffStage = funnel.find((s) => s.isDropOff);
@@ -248,8 +286,9 @@ export default function SocialVisibilityDashboard() {
     },
   };
 
-  // â"€â"€ Loading / Error / Empty states â"€â"€
-  if (!selectedRestaurantId && restaurants.length === 0 && !error) {
+  // --- Loading / Error / Empty states ---
+  // Only show a full-page spinner while restaurants are still loading (active fetch).
+  if (restaurantsLoading) {
     return (
       <div className="min-h-screen bg-bs-neutral-100 flex items-center justify-center">
         <Loader2 className="animate-spin text-bs-blue" size={32} />
@@ -296,13 +335,13 @@ export default function SocialVisibilityDashboard() {
         </div>
       )}
 
-      {loading && !summary && (
+      {loading && (
         <div className="min-h-[60vh] flex items-center justify-center">
           <Loader2 className="animate-spin text-bs-blue" size={40} />
         </div>
       )}
 
-      {!loading && summary && (
+      {!loading && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           {/* Tab Navigation */}
           <div className="flex gap-1 overflow-x-auto py-4 border-b border-bs-neutral-200 mb-6">
@@ -323,7 +362,7 @@ export default function SocialVisibilityDashboard() {
         </div>
       )}
 
-      {!loading && summary && (
+      {!loading && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-8">
           {activeTab === "metrics" && (
             <>
@@ -338,8 +377,8 @@ export default function SocialVisibilityDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <Eye className="text-bs-blue" size={24} />
                       <span className="text-2xl font-bold text-bs-neutral-900">
-                        {summary.visibilityScore.value}/
-                        {summary.visibilityScore.max}
+                        {summary.visibilityScore.value ?? 0}/
+                        {summary.visibilityScore.max ?? 100}
                       </span>
                     </div>
                     <h3 className="text-sm text-bs-neutral-600">
@@ -350,7 +389,7 @@ export default function SocialVisibilityDashboard() {
                     >
                       {formatTrendText(
                         summary.visibilityScore.trend,
-                        summary.visibilityScore.changeVsLastMonth,
+                        summary.visibilityScore.changeVsLastMonth ?? 0,
                       )}
                     </p>
                   </div>
@@ -360,15 +399,15 @@ export default function SocialVisibilityDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <Star className="text-bs-gold" size={24} />
                       <span className="text-2xl font-bold text-bs-neutral-900">
-                        {summary.averageRating.value}
+                        {summary.averageRating.value ?? 0}
                       </span>
                     </div>
                     <h3 className="text-sm text-bs-neutral-600">
                       Average Rating
                     </h3>
                     <p className="text-xs text-bs-green mt-1">
-                      {summary.averageRating.totalReviews}{" "}
-                      {summary.averageRating.source} Reviews
+                      {summary.averageRating.totalReviews ?? 0}{" "}
+                      {summary.averageRating.source || "Google"} Reviews
                     </p>
                   </div>
 
@@ -377,7 +416,7 @@ export default function SocialVisibilityDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <ThumbsUp className="text-bs-green" size={24} />
                       <span className="text-2xl font-bold text-bs-neutral-900">
-                        {summary.socialEngagementRate.value}%
+                        {summary.socialEngagementRate.value ?? 0}%
                       </span>
                     </div>
                     <h3 className="text-sm text-bs-neutral-600">
@@ -388,7 +427,7 @@ export default function SocialVisibilityDashboard() {
                     >
                       {formatTrendText(
                         summary.socialEngagementRate.trend,
-                        summary.socialEngagementRate.changeVsLastMonth,
+                        summary.socialEngagementRate.changeVsLastMonth ?? 0,
                       )}
                     </p>
                   </div>
@@ -398,7 +437,7 @@ export default function SocialVisibilityDashboard() {
                     <div className="flex items-center justify-between mb-2">
                       <Repeat className="text-bs-blue" size={24} />
                       <span className="text-2xl font-bold text-bs-neutral-900">
-                        {summary.repeatVisitRate.value}%
+                        {summary.repeatVisitRate.value ?? 0}%
                       </span>
                     </div>
                     <h3 className="text-sm text-bs-neutral-600">
@@ -409,7 +448,7 @@ export default function SocialVisibilityDashboard() {
                     >
                       {formatTrendText(
                         summary.repeatVisitRate.trend,
-                        summary.repeatVisitRate.changeVsLastMonth,
+                        summary.repeatVisitRate.changeVsLastMonth ?? 0,
                       )}
                     </p>
                   </div>
@@ -440,7 +479,7 @@ export default function SocialVisibilityDashboard() {
                         <span className="font-medium">Drop-off detected:</span>
                         <span>
                           {dropOffStage.name} conversion is{" "}
-                          {dropOffStage.conversion}% below average
+                          {dropOffStage.conversion ?? 0}% below average
                         </span>
                       </div>
                     </div>
@@ -479,129 +518,126 @@ export default function SocialVisibilityDashboard() {
           {activeTab === "sentiment" && (
             <>
               {/* 4. Customer Sentiment & Awareness */}
-              {sentiment && (
-                <section aria-labelledby="sentiment-awareness">
-                  <h2 id="sentiment-awareness" className="mb-4">
-                    Customer Sentiment & Awareness
-                  </h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                    {/* Sentiment Widget */}
-                    <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                      <h3 className="mb-4">Review Sentiment</h3>
-                      <div className="flex items-center justify-center">
-                        <ResponsiveContainer width="100%" height={200}>
-                          <PieChart>
-                            <Pie
-                              key="sentiment"
-                              data={sentimentPieData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {sentimentPieData.map((entry, index) => (
-                                <Cell
-                                  key={`sentiment-cell-${index}`}
-                                  fill={entry.color}
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4 mt-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-bs-green">
-                            {sentiment.positivePct}%
-                          </div>
-                          <div className="text-sm text-bs-neutral-600">
-                            Positive
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-bs-red">
-                            {sentiment.negativePct}%
-                          </div>
-                          <div className="text-sm text-bs-neutral-600">
-                            Negative
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-[#F59E0B]">
-                            {sentiment.neutralPct}%
-                          </div>
-                          <div className="text-sm text-bs-neutral-600">
-                            Neutral
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top Complaint Themes */}
-                    <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
-                      <h3 className="mb-4">Top Complaint Themes</h3>
-                      <p className="text-xs text-bs-neutral-500 -mt-2 mb-2">
-                        Click a bar to see related Google Reviews
-                      </p>
+              <section aria-labelledby="sentiment-awareness">
+                <h2 id="sentiment-awareness" className="mb-4">
+                  Customer Sentiment & Awareness
+                </h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                  {/* Sentiment Widget */}
+                  <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
+                    <h3 className="mb-4">Review Sentiment</h3>
+                    <div className="flex items-center justify-center">
                       <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={complaintThemeData}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#E5E5E5"
-                          />
-                          <XAxis dataKey="theme" stroke="#737373" />
-                          <YAxis stroke="#737373" />
+                        <PieChart>
+                          <Pie
+                            key="sentiment"
+                            data={sentimentPieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {sentimentPieData.map((entry, index) => (
+                              <Cell
+                                key={`sentiment-cell-${index}`}
+                                fill={entry.color}
+                              />
+                            ))}
+                          </Pie>
                           <Tooltip />
-                          <Bar
-                            key="count"
-                            dataKey="count"
-                            fill="#FF4C4C"
-                            radius={[8, 8, 0, 0]}
-                            cursor="pointer"
-                            onClick={(event) => {
-                              // event can be a BarRectangleItem or an object with payload
-                              const ev: any = event;
-                              const theme = ev.payload?.theme ?? ev.theme;
-                              if (theme) handleThemeClick(theme);
-                            }}
-                          />
-                        </BarChart>
+                        </PieChart>
                       </ResponsiveContainer>
-                      {complaintThemeData.length > 0 && (
-                        <div className="mt-4 text-sm text-bs-neutral-600">
-                          Most common issue:{" "}
-                          <span className="font-bold text-bs-red">
-                            {
-                              complaintThemeData.sort(
-                                (a, b) => b.count - a.count,
-                              )[0].theme
-                            }{" "}
-                            (
-                            {
-                              complaintThemeData.sort(
-                                (a, b) => b.count - a.count,
-                              )[0].count
-                            }{" "}
-                            mentions)
-                          </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-bs-green">
+                          {sentiment.positivePct ?? 0}%
                         </div>
-                      )}
+                        <div className="text-sm text-bs-neutral-600">
+                          Positive
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-bs-red">
+                          {sentiment.negativePct ?? 0}%
+                        </div>
+                        <div className="text-sm text-bs-neutral-600">
+                          Negative
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-[#F59E0B]">
+                          {sentiment.neutralPct ?? 0}%
+                        </div>
+                        <div className="text-sm text-bs-neutral-600">
+                          Neutral
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </section>
-              )}
+
+                  {/* Top Complaint Themes */}
+                  <div className="bg-white rounded-lg border-2 border-bs-neutral-200 p-6">
+                    <h3 className="mb-4">Top Complaint Themes</h3>
+                    <p className="text-xs text-bs-neutral-500 -mt-2 mb-2">
+                      Click a bar to see related Google Reviews
+                    </p>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={complaintThemeData}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#E5E5E5"
+                        />
+                        <XAxis dataKey="theme" stroke="#737373" />
+                        <YAxis stroke="#737373" />
+                        <Tooltip />
+                        <Bar
+                          key="count"
+                          dataKey="count"
+                          fill="#FF4C4C"
+                          radius={[8, 8, 0, 0]}
+                          cursor="pointer"
+                          onClick={(event) => {
+                            // event can be a BarRectangleItem or an object with payload
+                            const ev: any = event;
+                            const theme = ev.payload?.theme ?? ev.theme;
+                            if (theme) handleThemeClick(theme);
+                          }}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    {complaintThemeData.length > 0 && (
+                      <div className="mt-4 text-sm text-bs-neutral-600">
+                        Most common issue:{" "}
+                        <span className="font-bold text-bs-red">
+                          {
+                            [...complaintThemeData].sort(
+                              (a, b) => b.count - a.count,
+                            )[0].theme
+                          }{" "}
+                          (
+                          {
+                            [...complaintThemeData].sort(
+                              (a, b) => b.count - a.count,
+                            )[0].count
+                          }{" "}
+                          mentions)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
             </>
           )}
 
           {activeTab === "traffic" && (
             <>
               {/* 5. Foot Traffic & Staff Scheduling */}
-              {footTraffic &&
-                (() => {
-                  // ── Derived from API ──
+              {(() => {
+                  // ── Derived from API (defaults to 0 when empty/missing) ──
                   const days = [
                     "Monday",
                     "Tuesday",
@@ -611,15 +647,28 @@ export default function SocialVisibilityDashboard() {
                     "Saturday",
                     "Sunday",
                   ];
+                  const weekdayAvg = footTraffic.daily?.weekdayAvg ?? 0;
+                  const weekendAvg = footTraffic.daily?.weekendAvg ?? 0;
+                  const hourly = footTraffic.hourly ?? [];
+                  // Only invent day-level variation when backend actually returned averages
+                  const hasDailyData = weekdayAvg > 0 || weekendAvg > 0;
+                  const hasHourlyData = hourly.some(
+                    (h) => (h.weekdayAvg ?? 0) > 0 || (h.weekendAvg ?? 0) > 0,
+                  );
+
                   const dailyTraffic = days.map((day, i) => ({
                     date: `2026-06-0${i + 1}`,
                     day,
-                    visits:
-                      i < 5
-                        ? Math.round(footTraffic.daily.weekdayAvg + (i - 2) * 3)
-                        : Math.round(
-                            footTraffic.daily.weekendAvg + (i - 5.5) * 8,
+                    visits: hasDailyData
+                      ? Math.max(
+                          0,
+                          Math.round(
+                            i < 5
+                              ? weekdayAvg + (i - 2) * 3
+                              : weekendAvg + (i - 5.5) * 8,
                           ),
+                        )
+                      : 0,
                     type: (i < 5 ? "weekday" : "weekend") as
                       | "weekday"
                       | "weekend",
@@ -632,7 +681,7 @@ export default function SocialVisibilityDashboard() {
                       day,
                       hour: h,
                       visitors: Math.round(
-                        footTraffic.hourly.find((x) => x.hour === h)?.[
+                        hourly.find((x) => x.hour === h)?.[
                           di < 5 ? "weekdayAvg" : "weekendAvg"
                         ] ?? 0,
                       ),
@@ -642,12 +691,40 @@ export default function SocialVisibilityDashboard() {
                     })),
                   );
 
+                  const getHourAvg = (hour: number, isWeekend: boolean) => {
+                    const row = hourly.find((x) => x.hour === hour);
+                    if (!row) return 0;
+                    const value = isWeekend ? row.weekendAvg : row.weekdayAvg;
+                    return Math.max(0, Math.round(value ?? 0));
+                  };
+
+                  // Keep 7 zero-filled rows when no hourly data so the chart still renders
+                  const stackedData = days.map((day, i) => {
+                    const isWeekend = i >= 5;
+                    const lunch = hasHourlyData ? getHourAvg(12, isWeekend) : 0;
+                    const afternoon = hasHourlyData
+                      ? getHourAvg(13, isWeekend)
+                      : 0;
+                    const dinner = hasHourlyData ? getHourAvg(19, isWeekend) : 0;
+                    const morning = 0;
+                    const lateNight = 0;
+                    return {
+                      label: `${day.slice(0, 3)} Jun ${i + 1}`,
+                      morning,
+                      lunch,
+                      afternoon,
+                      dinner,
+                      lateNight,
+                      total: morning + lunch + afternoon + dinner + lateNight,
+                    };
+                  });
+
                   const weekdayTraffic = {
-                    value: footTraffic.daily.weekdayAvg,
+                    value: weekdayAvg,
                     days: 5,
                   };
                   const weekendTraffic = {
-                    value: footTraffic.daily.weekendAvg,
+                    value: weekendAvg,
                     days: 2,
                   };
 
@@ -852,72 +929,6 @@ export default function SocialVisibilityDashboard() {
 
                       {/* ── Stacked column chart ── */}
                       {(() => {
-                        const stackedData = [
-                          {
-                            label: "Mon Jun 1",
-                            morning: 20,
-                            lunch: 30,
-                            afternoon: 10,
-                            dinner: 20,
-                            lateNight: 5,
-                            total: 85,
-                          },
-                          {
-                            label: "Tue Jun 2",
-                            morning: 22,
-                            lunch: 35,
-                            afternoon: 10,
-                            dinner: 20,
-                            lateNight: 5,
-                            total: 92,
-                          },
-                          {
-                            label: "Wed Jun 3",
-                            morning: 18,
-                            lunch: 32,
-                            afternoon: 12,
-                            dinner: 20,
-                            lateNight: 6,
-                            total: 88,
-                          },
-                          {
-                            label: "Thu Jun 4",
-                            morning: 25,
-                            lunch: 35,
-                            afternoon: 10,
-                            dinner: 20,
-                            lateNight: 5,
-                            total: 95,
-                          },
-                          {
-                            label: "Fri Jun 5",
-                            morning: 30,
-                            lunch: 40,
-                            afternoon: 15,
-                            dinner: 20,
-                            lateNight: 5,
-                            total: 110,
-                          },
-                          {
-                            label: "Sat Jun 6",
-                            morning: 40,
-                            lunch: 60,
-                            afternoon: 20,
-                            dinner: 30,
-                            lateNight: 10,
-                            total: 160,
-                          },
-                          {
-                            label: "Sun Jun 7",
-                            morning: 35,
-                            lunch: 55,
-                            afternoon: 20,
-                            dinner: 25,
-                            lateNight: 10,
-                            total: 145,
-                          },
-                        ];
-
                         const segments = [
                           {
                             key: "morning",
