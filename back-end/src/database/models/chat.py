@@ -38,7 +38,7 @@ class ChatRoomModel(DBBaseModelTimeMixIn,Base, DBBaseModelIdMixin):
     chat_caption:Mapped[Optional[str]]=mapped_column(String)
     
     # Will always exist if both parties are human
-    connection_id:Mapped[UUID]= mapped_column(Uuid, ForeignKey('personal_connections.id'), nullable=True)
+    
 
     __table_args__ = (
         CheckConstraint(
@@ -48,12 +48,6 @@ class ChatRoomModel(DBBaseModelTimeMixIn,Base, DBBaseModelIdMixin):
         CheckConstraint(
             room_status.in_(room_statuses),
             name="ck_room_status"
-        ),
-        CheckConstraint(
-            or_(
-                chat_type.in_(["llm_suggestions"]),
-                connection_id.is_not(None),
-                ),
         )
     )
 

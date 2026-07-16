@@ -19,19 +19,33 @@ from src.database.models.visibility import (
     FunnelStageModel,
     SocialPlatformMetricsModel,
     SentimentDataModel,
-    ComplaintThemeModel,
     FootTrafficHourlyModel,
-    FootTrafficDailyModel
+    SentimentThemeModel,
 )
 from src.database.models.reviews import ReviewModel, SENTIMENT_TYPE
+from src.database.schemas.reviews import ThemesToReviewIds
 from .fake_reviews import ReviewProvider
 from .fake_reviews import ReviewData
 from src.database.schemas.visibility import FUNNEL_STAGES
+import calendar
+year =2026
+month=5
+_, days_in_month = calendar.monthrange(year, month)
 
+# Define the precise boundaries of the month
+start_date = datetime.datetime(year, month, 1, 0, 0, 0)
+end_date = datetime.datetime(year, month, days_in_month, 23, 59, 59)
+# Calculate total seconds between the start and end of the month
+total_seconds = int((end_date - start_date).total_seconds())
+
+
+
+# Faker.seed(12345)
 fake = Faker()
-fake.seed(12345)
-random.seed(12345)
+# random.seed(12345)
 fake.add_provider(ReviewProvider)
+from collections import Counter
+
 
 CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
 names_with_visbility:list[str] = list(map(lambda x:x['name'], VISBILITY_CSV_ROWS))
@@ -45,24 +59,30 @@ def seed():
                 shop = row_to_restaurant(row)
                 db.add(shop)
                 db.flush()
-                if shop.name not in names_with_visbility:
-                    continue
-                visbility_index = names_with_visbility.index(shop.name)
-                visbility_row = VISBILITY_CSV_ROWS[visbility_index]
+                
                 visbility, prev_visibility = row_to_visibility(row ,shop.id)
                 db.add(visbility)
                 db.add(prev_visibility)
-                db.add_all(row_to_funnel(shop.id))
+                funnel_stages = row_to_funnel(shop.id)
+                db.add_all(funnel_stages)
                 
                 db.add(row_to_platform_metric(row,shop.id))
                 reviews, senti = random_reviews(shop.id)
-                themes:ThemesSet ={'positive':set(), 'negative':set(), 'neutral':set()} 
-                for r in reviews:
-                    themes['negative'].update(r.theme["negative"])
-                    themes['positive'].update(r.theme["positive"])
-                    themes['neutral'].update(r.theme["neutral"])
                 db.add_all(reviews)
                 db.add(senti)
+                db.flush()
+                themes=ThemesToReviewIds(positive={}, negative={}, neutral={})
+                for r in reviews:
+                    for negative in r.theme.negative:
+                        themes.negative.setdefault(negative.strip().lower(),[]).append(r.id)
+                    for positive in r.theme.positive:
+                        themes.positive.setdefault(positive.strip().lower(),[]).append(r.id)
+                    for neutral in r.theme.neutral:
+                        themes.neutral.setdefault(neutral.strip().lower(),[]).append(r.id)
+                sentiment_themes = sentiment_theme_from_reviews(themes,senti.id)
+                db.add_all(sentiment_themes)
+                foot_traffic = foot_traffic_generation(shop.id,funnel_stages[-1].count)
+                db.add_all(foot_traffic)
                 db.flush()
 
                 
@@ -146,9 +166,9 @@ def row_to_visibility(row:dict[str|Any,str|Any], restaurant_id:uuid.UUID):
 
 
 def row_to_funnel(restaurant_id:uuid.UUID):
-    impressions = random.randint(10000,100000)
-    clicks = min(random.randint(1000,9999), impressions)
-    click_dir = min(random.randint(100,999), clicks)
+    impressions = random.randint(100000,1000000)
+    clicks = min(random.randint(10000,99999), impressions)
+    click_dir = min(random.randint(1000,10000), clicks)
     counts = [
                 (FUNNEL_STAGES[0], impressions, 100.0, False),
                 (FUNNEL_STAGES[1], clicks,
@@ -181,32 +201,99 @@ def row_to_platform_metric(row:dict[str|Any,str|Any], restaurant_id:uuid.UUID):
                 restaurant_id=restaurant_id
             )
     return platform_metric
-class ThemesSet(TypedDict):
-    positive:set[str]
-    negative:set[str]
-    neutral:set[str]
+
+
 def random_reviews(restaurant_id:uuid.UUID):
     reviews:list[ReviewModel] = []
-    total =random.randint(10,25)
-    themes:ThemesSet ={'positive':set(), 'negative':set(), 'neutral':set()} 
+    total =random.randint(10,50)
     for _ in range(total):
-        result:tuple[SENTIMENT_TYPE,ReviewData] =  fake.positive_review()
+        random_seconds = random.randint(0, total_seconds)
+        random_datetime = start_date + datetime.timedelta(seconds=random_seconds)
+        result:tuple[SENTIMENT_TYPE,ReviewData] =  fake.any_review()
         sentiment, single_review = result
-        reviews.append(ReviewModel(restaurant_id=restaurant_id, content=single_review['content'],sentiment=sentiment,theme=single_review['sentiment'], stars=random.randint(1,5)))
+        review_row  =ReviewModel(restaurant_id=restaurant_id, content=single_review['content'],sentiment=sentiment,theme=single_review['sentiment'], stars=random.randint(1,5))
+        review_row.created_at = random_datetime
+        review_row.id= uuid.uuid7(int(random_datetime.timestamp()))
+        reviews.append(review_row)
     positive=sum(1 for r in reviews if r.sentiment=="Positive")
     negative=sum(1 for r in reviews if r.sentiment=="Negative")
     mixed=sum(1 for r in reviews if r.sentiment=="Mixed")
     neutral=sum(1 for r in reviews if r.sentiment=="Neutral")
     senti = SentimentDataModel(
         restaurant_id=restaurant_id,
-        recorded_at=today,
-        positive_pct=round(positive/total,1),
-        negative_pct=round(negative/total,1),
-        neutral_pct=round(neutral/total,1),
-        mixed_pct=round(mixed/total,1),
-        reviews=None,
+        recorded_at=end_date,
+        positive_pct=round(100* positive/total,1),
+        negative_pct=round(100* negative/total,1),
+        neutral_pct=round(100* neutral/total,1),
+        mixed_pct=round(100* mixed/total,1),
+        avg_ratings= round(sum([r.stars for r in reviews]),1)
         )
+    senti.created_at = end_date
     return reviews, senti
 
+def sentiment_theme_from_reviews(theme_set:ThemesToReviewIds, senti_data_id:uuid.UUID):
+    sentiment_themes_list:list[SentimentThemeModel] = []
+    for neg_key, neg_list in theme_set.negative.items():
+        sentiment_themes_list.append(
+            SentimentThemeModel(
+                sentiment_id=senti_data_id,
+                sentiment_type='Negative',
+                theme=neg_key,
+                count=len(neg_list),
+                review_ids=neg_list
+                )
+            )
+    for pos_key, pos_list in theme_set.positive.items():
+        sentiment_themes_list.append(
+            SentimentThemeModel(
+                sentiment_id=senti_data_id,
+                sentiment_type='Positive',
+                theme=pos_key,
+                count=len(pos_list),
+                review_ids=pos_list
+                )
+            )
+    for netl_key, netl_list in theme_set.neutral.items():
+        sentiment_themes_list.append(
+            SentimentThemeModel(
+                sentiment_id=senti_data_id,
+                sentiment_type='Neutral',
+                theme=netl_key,
+                count=len(netl_list),
+                review_ids=netl_list
+                )
+            )
+
+    return sentiment_themes_list
+weekday_list = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
+def foot_traffic_generation(restaurant_id:uuid.UUID, limit:int):
+    foot_traffic_hour:list[FootTrafficHourlyModel] = []
+    day_traffic = random_ints_with_sum(days_in_month,limit,15)
+    for day_index,day_visits in enumerate(day_traffic):
+        before_eight = random.randint(0,1)
+        after_nine = random.randint(0,1)
+        a_traffics = random_ints_with_sum(13+before_eight+after_nine,day_visits)
+        offset = 8 -before_eight
+        day = datetime.date(year, month, day_index+1)
+        for hour_index,visitors in enumerate(a_traffics):
+            foot_traffic_hour.append(FootTrafficHourlyModel(
+                restaurant_id=restaurant_id,
+                hour=hour_index+offset,
+                traffic_date=day,
+                visitors=visitors,
+                day_name=weekday_list[day.isoweekday()-1],
+                day_type='Weekend' if day.isoweekday()>5 else 'Weekday'
+            ))
+    return foot_traffic_hour
+def random_ints_with_sum(split:int, total:int, min=1):
+    # Method: Generate n-1 random dividers in range [1, total-1]
+    excess_remainder = total-(min-1)*split
+    if(excess_remainder<split):
+        raise ValueError(f'Min too big, or cannot split easily{split,total,min}')
+    dividers = sorted(random.sample(range(1, excess_remainder), split - 1))
+    # Calculate differences between consecutive dividers (including 0 and total)
+    zipped= zip(dividers + [total], [0] + dividers)
+    tuples = [(a,b) for a,b in zipped]
+    return [min-1 + a - b for a, b in tuples]
 if __name__ == "__main__":
     seed()

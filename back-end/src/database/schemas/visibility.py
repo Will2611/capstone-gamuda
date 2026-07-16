@@ -4,6 +4,7 @@ from sqlalchemy.orm import mapped_column, Mapped, relationship
 from datetime import date
 from typing import Literal
 from pydantic import BaseModel, Field
+import uuid_utils.compat as uuid
 
 
 
@@ -106,7 +107,7 @@ class SentimentResponse(BaseModel):
 
 
 class RestaurantListItemResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     cuisines: str
 
@@ -150,7 +151,7 @@ class DailyTrafficSummary(BaseModel):
 
 
 class FootTrafficResponse(BaseModel):
-    restaurantId: int
+    restaurantId: uuid.UUID
     hourly: list[HourlyTrafficItem]
     daily: DailyTrafficSummary
 
@@ -168,7 +169,7 @@ class ActionSuggestion(BaseModel):
 
 
 class ActionSuggestionsResponse(BaseModel):
-    restaurantId: int
+    restaurantId: uuid.UUID
     suggestions: list[ActionSuggestion]
 
     model_config = {"from_attributes": True}

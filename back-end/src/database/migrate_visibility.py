@@ -28,25 +28,6 @@ def ensure_visibility_schema(engine: Engine) -> None:
                 ))
 
 def sentiment_schema_update (conn:Connection, existing:set[str]):
-    if "restaurant_name" not in existing:
-        conn.execute(text(
-            "ALTER TABLE sentiment_data ADD COLUMN restaurant_name VARCHAR(255)"
-            ))
-        conn.execute(text("""
-             UPDATE sentiment_data sd
-             SET restaurant_name = rm.name
-             FROM restaurants_measured rm
-             WHERE sd.restaurant_id = rm.id
-             AND sd.restaurant_name IS NULL
-             """
-            ))
-        conn.execute(text(
-        "UPDATE sentiment_data SET restaurant_name = 'Unknown' "
-        "WHERE restaurant_name IS NULL"
-           ))
-        conn.execute(text(
-           "ALTER TABLE sentiment_data ALTER COLUMN restaurant_name SET NOT NULL"
-       ))
     if "neutral_pct" not in existing:
         conn.execute(text(
            "ALTER TABLE sentiment_data ADD COLUMN neutral_pct FLOAT DEFAULT 0 NOT NULL"
@@ -55,6 +36,15 @@ def sentiment_schema_update (conn:Connection, existing:set[str]):
             UPDATE sentiment_data
            SET neutral_pct = GREATEST(0, 100 - positive_pct - negative_pct)
            WHERE neutral_pct = 0
+       """))
+    if "mixed_pct" not in existing:
+        conn.execute(text(
+           "ALTER TABLE sentiment_data ADD COLUMN mixed_pct FLOAT DEFAULT 0 NOT NULL"
+        ))
+        conn.execute(text("""
+            UPDATE sentiment_data
+           SET mixed_pct = GREATEST(0, 100 - positive_pct - negative_pct)
+           WHERE mixed_pct = 0
        """))
     if "reviews" not in existing:
         conn.execute(text(

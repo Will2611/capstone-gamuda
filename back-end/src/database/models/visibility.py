@@ -1,11 +1,12 @@
 from src.database.connection import Base
 from sqlalchemy import String, Integer, Float, Date, Boolean, ForeignKey, Text, JSON, Uuid
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from datetime import date
 from typing import Optional
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
 import uuid_utils.compat as uuid
-
+from src.database.schemas.reviews import SENTIMENT_TYPE, SentimentModelValidation
 
 class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
     __tablename__ = "restaurants_measured"
@@ -64,31 +65,37 @@ class SocialPlatformMetricsModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,Base):
 class SentimentDataModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,Base):
     __tablename__ = "sentiment_data"
 
-    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
     restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
-    # restaurant_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-
-    reviews: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     positive_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     neutral_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     mixed_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
 
-class ComplaintThemeModel(DBBaseModelTimeMixIn, Base):
+class ComplaintThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
+    """Getting deprecated, general structure is also useful for understanding all sentiment types"""
     __tablename__ = "complaint_themes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
     sentiment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("sentiment_data.id"), nullable=False, index=True)
     theme: Mapped[str] = mapped_column(String(100), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+class SentimentThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
+    __tablename__ = "sentiment_themes"
+
+    sentiment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("sentiment_data.id"), nullable=False, index=True)
+    theme: Mapped[str] = mapped_column(String(100), nullable=False)
+    sentiment_type:Mapped[SENTIMENT_TYPE] = mapped_column(String(25), nullable=False)
+
+    review_ids:Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid),default_factory=list)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 # CHANGE CODE TO ALIGN BAR CHART FOR FOOT TRAFFIC HOURLY ONLY
-class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base):  
+class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):  
     __tablename__ = "foot_traffic_hourly"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
     restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
     day_name: Mapped[str] = mapped_column(String(10), nullable=False)

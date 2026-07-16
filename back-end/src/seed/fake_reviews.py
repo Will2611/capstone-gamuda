@@ -1,5 +1,5 @@
 from faker.providers import BaseProvider
-from src.database.models.reviews import SentimentDict, SENTIMENT_TYPE
+from src.database.models.reviews import SentimentModelValidation, SENTIMENT_TYPE
 from typing import TypedDict, List, OrderedDict
 
 
@@ -12,7 +12,7 @@ class BaseReviewData(TypedDict):
 
 class ReviewData(TypedDict):
     content:str
-    sentiment:SentimentDict
+    sentiment:SentimentModelValidation
 
 
 class ReviewProvider(BaseProvider):
@@ -45,41 +45,45 @@ class ReviewProvider(BaseProvider):
         result = self.random_element(self.positive_data)
         return {
             'content':result["content"],
-            'sentiment':{'positive':[result["theme"]],
-                         'negative':[],
-                         'neutral':[]
-                         }
+            'sentiment':SentimentModelValidation(
+                positive=[result["theme"]],
+                negative=[],
+                neutral=[]
+                )
                 }
     def negative_review(self)->ReviewData:
         result = self.random_element(self.negative_data)
         return {
             'content':result["content"],
-            'sentiment':{'negative':[result["theme"]],
-                         'positive':[],
-                         'neutral':[]
-                         }
+            'sentiment':SentimentModelValidation(
+                negative=[result["theme"]],
+                positive=[],
+                neutral=[]
+                )
                 }
     def neutral_review(self)->ReviewData:
         result = self.random_element(self.neutral_data)
         return {
             'content':result["content"],
-            'sentiment':{'neutral':[result["theme"]],
-                         'positive':[],
-                         'negative':[]
-                         }
+            'sentiment':SentimentModelValidation(
+                neutral =[result["theme"]],
+                positive =[],
+                negative =[]
+                )
                 }
     def mixed_review(self)->ReviewData:
         neg_result = self.random_element(self.negative_data)
         pos_result = self.random_element(self.positive_data)
         return {
             'content':f'{neg_result["content"]}. However. {pos_result['content']}',
-            'sentiment':{'negative':[neg_result["theme"]],
-                         'positive':[pos_result['theme']],
-                         'neutral':[]
-                         }
+            'sentiment':SentimentModelValidation(
+                negative = [neg_result["theme"]],
+                positive = [pos_result['theme']],
+                neutral = []
+            )
                 }
-    def any_review(self)->(SENTIMENT_TYPE,ReviewData):
-        selected_key = self.random_elements(elements=self._function_weights,length=1,use_weighting=True)
+    def any_review(self)->tuple[SENTIMENT_TYPE,ReviewData]:
+        selected_key = self.random_elements(elements=self._function_weights,length=1,use_weighting=True)[0]
         if selected_key == "positive":
             return ("Positive",self.positive_review())
         elif selected_key == "negative":
