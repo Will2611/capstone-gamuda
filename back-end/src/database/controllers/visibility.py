@@ -409,6 +409,8 @@ async def get_foot_traffic(db: db_dependency, restaurantId: uuid.UUID = Query(..
         we = hourly_map[hr].get("Weekend", 0)
         hourly.append(HourlyTrafficItem(hour=hr, weekdayAvg=wd, weekendAvg=we))
 
+        
+    raise HTTPException(status_code=404, detail="Redo this endpoint To use FootTraffic HOurly instead")
     # -- Daily: weekday vs weekend totals & averages ----
     daily_rows = (
         db.query(
