@@ -17,7 +17,7 @@ class SentimentModelValidation(BaseModel):
 
 def clean_key(d:dict[str,Any]):
     return {clean_str(k):item for k,item in d.items()}
-CleansedKeyDict = Annotated[dict[str,list[uuid.UUID]], BeforeValidator(str_list_cleaned)]
+CleansedKeyDict = Annotated[dict[str,list[uuid.UUID]], BeforeValidator(clean_key)]
 class ThemesToReviewIds(BaseModel):
     positive:CleansedKeyDict
     negative:CleansedKeyDict

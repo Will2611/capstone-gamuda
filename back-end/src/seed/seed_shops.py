@@ -9,7 +9,7 @@ from typing import get_args, cast
 import re
 from zoneinfo import ZoneInfo
 from .shifts_utils import splitShifts,testZoneInfoType
-from .visibility_csv import VISBILITY_CSV_ROWS
+
 import datetime
 import random
 from typing import Any
@@ -49,7 +49,7 @@ fake.add_provider(ReviewProvider)
 
 
 CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
-names_with_visbility:list[str] = list(map(lambda x:x['name'], VISBILITY_CSV_ROWS))
+
 IS_ALLOWED_DAY_TYPE = get_args(DAYS_OF_WEEK_TYPE)
 def seed():
     db = SessionLocal()
