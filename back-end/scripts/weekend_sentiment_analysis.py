@@ -1,9 +1,9 @@
 """
-Weekend job — VADER text sentiment + Gemini insights (token-limited).
+Weekend job — VADER text sentiment analysis on pending reviews.
 
-1. VADER → pie chart % and complaint theme bar counts
-2. Gemini → strongly negative reviews only (compound <= -0.3, max 25/restaurant)
-3. Store ai_insights for Troubleshoot Center (no live API on dashboard load)
+1. VADER compound score → Positive / Negative / Neutral
+2. Keyword rules → Wait Time / Taste / Service theme
+3. Recompute pie chart % and complaint theme bar counts
 
 Run from back-end/:  python scripts/weekend_sentiment_analysis.py
 """
@@ -25,7 +25,6 @@ from src.database.sentiment_helpers import (
     replace_complaint_themes,
 )
 from src.llm.sentiment_analyzer import analyze_reviews_batch
-from src.llm.gemini_insights import generate_gemini_insights
 
 
 async def run_analysis():
@@ -39,8 +38,6 @@ async def run_analysis():
         "vader": 0,
         "rating_only": 0,
         "conflicts": 0,
-        "gemini_calls": 0,
-        "gemini_cached": 0,
     }
 
     try:
@@ -89,14 +86,6 @@ async def run_analysis():
 
             replace_complaint_themes(db, sentiment, sentiment.reviews)
 
-            insights = await generate_gemini_insights(rest.name, sentiment.reviews)
-            if insights is not None:
-                sentiment.ai_insights = insights
-                if insights.get("from_cache"):
-                    total_stats["gemini_cached"] += 1
-                elif insights.get("suggestions") and not insights.get("error"):
-                    total_stats["gemini_calls"] += 1
-
             total_stats["restaurants"] += 1
             total_stats["reviews"] += stats["total"]
             for key in ("vader", "rating_only", "conflicts"):
@@ -109,8 +98,6 @@ async def run_analysis():
         print(f"  VADER:        {total_stats['vader']}")
         print(f"  Rating-only:  {total_stats['rating_only']}")
         print(f"  Conflicts:    {total_stats['conflicts']}")
-        print(f"  Gemini calls: {total_stats['gemini_calls']}")
-        print(f"  Gemini cache: {total_stats['gemini_cached']}")
 
     except Exception as exc:
         db.rollback()

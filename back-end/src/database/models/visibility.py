@@ -78,7 +78,6 @@ class SentimentDataModel(DBBaseModelTimeMixIn, Base):
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     neutral_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     reviews: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    ai_insights: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
 
 class ComplaintThemeModel(DBBaseModelTimeMixIn, Base):

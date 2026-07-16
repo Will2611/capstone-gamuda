@@ -161,7 +161,6 @@ class ActionSuggestion(BaseModel):
     issue: str
     impact: str
     recommendation: str
-    source: str = "rules"
 
     model_config = {"from_attributes": True}
 

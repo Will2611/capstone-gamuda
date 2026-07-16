@@ -429,8 +429,8 @@ async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
 @router.get("/getActionSuggestions", response_model=ActionSuggestionsResponse)
 async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(...)):
     """
-    Hybrid suggestion engine: Gemini AI insights (precomputed) + rule-based metrics.
-    AI suggestions appear first with source=ai when weekend analysis has run.
+    Rule-based suggestion engine that analyses the restaurant's live metrics
+    and returns the top 3 actionable recommendations for the owner.
     """
     today = date.today()
 
@@ -459,16 +459,6 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
 
     suggestions: list[ActionSuggestion] = []
 
-    # AI insights from weekend batch (Gemini on VADER-flagged negatives)
-    if sentiment and sentiment.ai_insights:
-        for item in sentiment.ai_insights.get("suggestions", [])[:2]:
-            suggestions.append(ActionSuggestion(
-                issue=item.get("issue", "AI Analysis"),
-                impact=item.get("impact", "High"),
-                recommendation=item.get("recommendation", ""),
-                source="ai",
-            ))
-
     avg_rating = metrics.average_rating
     total_reviews = metrics.total_reviews
     social_eng = metrics.social_engagement_rate
@@ -483,8 +473,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="High",
             recommendation=f"Your rating is {avg_rating}/5. Respond to negative reviews within 24 hours. "
                           f"Encourage satisfied customers to leave Google reviews with a QR code at checkout. "
-                          f"Target: reach 4.5+ in 30 days.",
-            source="rules",
+                          f"Target: reach 4.5+ in 30 days."
         ))
     elif neg_pct > 20:
         suggestions.append(ActionSuggestion(
@@ -492,8 +481,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="High",
             recommendation=f"{neg_pct}% of reviews are negative. The top complaint is \"{top_complaint}\". "
                           f"Address this directly in a public response and implement a service recovery "
-                          f"program (e.g., complimentary item for affected customers).",
-            source="rules",
+                          f"program (e.g., complimentary item for affected customers)."
         ))
     elif total_reviews < 800:
         suggestions.append(ActionSuggestion(
@@ -501,8 +489,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Medium",
             recommendation=f"Only {total_reviews} reviews collected. Launch a review-generation campaign: "
                           f"offer a small discount or loyalty points to customers who leave a Google review. "
-                          f"Target: 100+ new reviews this month.",
-            source="rules",
+                          f"Target: 100+ new reviews this month."
         ))
     else:
         suggestions.append(ActionSuggestion(
@@ -510,8 +497,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Low",
             recommendation=f"Rating is strong at {avg_rating}/5 with {total_reviews} reviews. "
                           f"Keep engaging with reviewers weekly to sustain your reputation. "
-                          f"Highlight positive reviews on social media.",
-            source="rules",
+                          f"Highlight positive reviews on social media."
         ))
 
     # 2. Social engagement
@@ -521,8 +507,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="High",
             recommendation=f"Engagement rate is only {social_eng}%. Post 3x per week on Google Posts "
                           f"with photos of daily specials. Run a poll or Q&A story to boost interaction. "
-                          f"Target: 4%+ engagement within 60 days.",
-            source="rules",
+                          f"Target: 4%+ engagement within 60 days."
         ))
     elif social_eng < 5.0:
         suggestions.append(ActionSuggestion(
@@ -530,8 +515,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Medium",
             recommendation=f"Engagement is {social_eng}% -- room to grow. Share behind-the-scenes content "
                           f"and user-generated photos. Collaborate with a local food influencer for a "
-                          f"feature post to reach new audiences.",
-            source="rules",
+                          f"feature post to reach new audiences."
         ))
     else:
         suggestions.append(ActionSuggestion(
@@ -539,8 +523,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Low",
             recommendation=f"Engagement is healthy at {social_eng}%. Leverage this momentum: "
                           f"launch a limited-time offer exclusive to your followers to drive "
-                          f"repeat visits and word-of-mouth referrals.",
-            source="rules",
+                          f"repeat visits and word-of-mouth referrals."
         ))
 
     # 3. Repeat visit rate
@@ -550,8 +533,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="High",
             recommendation=f"Only {repeat_rate}% of customers return. Implement a digital loyalty card "
                           f"(e.g., 5th visit free). Send a personalised follow-up email 7 days after "
-                          f"each visit with a special offer. Target: 70%+ within 90 days.",
-            source="rules",
+                          f"each visit with a special offer. Target: 70%+ within 90 days."
         ))
     elif repeat_rate < 75:
         suggestions.append(ActionSuggestion(
@@ -559,8 +541,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Medium",
             recommendation=f"Repeat rate is {repeat_rate}%. Introduce a seasonal menu rotation to give "
                           f"regulars a reason to return. Offer an exclusive preview tasting event for "
-                          f"loyal customers to build community.",
-            source="rules",
+                          f"loyal customers to build community."
         ))
     else:
         suggestions.append(ActionSuggestion(
@@ -568,8 +549,7 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
             impact="Low",
             recommendation=f"Repeat rate is excellent at {repeat_rate}%. Reward your regulars with a VIP "
                           f"program. Use their feedback to refine the menu -- they are your best source "
-                          f"of honest, actionable input.",
-            source="rules",
+                          f"of honest, actionable input."
         ))
 
     return ActionSuggestionsResponse(

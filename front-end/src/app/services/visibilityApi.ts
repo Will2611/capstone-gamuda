@@ -413,7 +413,6 @@ export interface ActionSuggestion {
   issue: string;
   impact: string;
   recommendation: string;
-  source?: "ai" | "rules";
 }
 
 export interface ActionSuggestionsResponse {
