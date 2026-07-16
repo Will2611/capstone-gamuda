@@ -12,7 +12,7 @@ langchain-ollama
 langchain
 pygeohash
 proximityhash
-
 uuid-utils
 tzdata
 nltk
+Faker

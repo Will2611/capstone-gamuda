@@ -95,6 +95,7 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
     timezone:Mapped[Optional[ZoneInfo]] = mapped_column(String(64), nullable=True)
     # In Minutes
     timezone_offset:Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Final opening hours into a struct
     opening_hours_struct:Mapped[Dict[DAYS_OF_WEEK_TYPE,List[Tuple[datetime.time,datetime.time]]]] = mapped_column(OpeningHoursType, default_factory=dict)
     source: Mapped[str] = mapped_column(String(20), default="seed")
 

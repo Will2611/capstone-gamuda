@@ -88,7 +88,6 @@ def sync_ratings():
                 sentiment = SentimentDataModel(
                     restaurant_id=rest.id,
                     recorded_at=today,
-                    restaurant_name=rest.name,
                     positive_pct=0.0,
                     negative_pct=0.0,
                     neutral_pct=0.0,

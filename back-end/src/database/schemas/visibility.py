@@ -2,8 +2,9 @@ from src.database.connection import Base
 from sqlalchemy import String, Integer, Float, Date, Boolean, ForeignKey, Text, JSON
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from datetime import date
-from typing import Optional
+from typing import Literal
 from pydantic import BaseModel, Field
+import uuid_utils.compat as uuid
 
 
 
@@ -12,6 +13,8 @@ from pydantic import BaseModel, Field
 
 
 # ---- Pydantic Response Schemas ----
+FUNNEL_STAGES = ["Impressions", "Clicks", "Click-to-Direction"]
+FUNNEL_STAGES_TYPE = Literal["Impressions", "Clicks", "Click-to-Direction"]
 
 class VisibilityScoreEntry(BaseModel):
     value: float
@@ -104,7 +107,7 @@ class SentimentResponse(BaseModel):
 
 
 class RestaurantListItemResponse(BaseModel):
-    id: int
+    id: uuid.UUID
     name: str
     cuisines: str
 
@@ -148,7 +151,7 @@ class DailyTrafficSummary(BaseModel):
 
 
 class FootTrafficResponse(BaseModel):
-    restaurantId: int
+    restaurantId: uuid.UUID
     hourly: list[HourlyTrafficItem]
     daily: DailyTrafficSummary
 
@@ -166,7 +169,7 @@ class ActionSuggestion(BaseModel):
 
 
 class ActionSuggestionsResponse(BaseModel):
-    restaurantId: int
+    restaurantId: uuid.UUID
     suggestions: list[ActionSuggestion]
 
     model_config = {"from_attributes": True}
