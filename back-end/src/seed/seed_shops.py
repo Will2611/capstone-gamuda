@@ -5,7 +5,7 @@ from src.database.connection import SessionLocal
 from src.database.models.test import TestModel
 from src.database.models.restaurants import RestaurantModel, DAYS_OF_WEEK_TYPE
 import uuid_utils.compat as uuid
-from typing import get_args, cast, TypedDict
+from typing import get_args, cast
 import re
 from zoneinfo import ZoneInfo
 from .shifts_utils import splitShifts,testZoneInfoType
@@ -31,6 +31,7 @@ import calendar
 year =2026
 month=5
 _, days_in_month = calendar.monthrange(year, month)
+_, days_in_prev_month = calendar.monthrange(year, month-1)
 
 # Define the precise boundaries of the month
 start_date = datetime.datetime(year, month, 1, 0, 0, 0)
@@ -38,13 +39,13 @@ end_date = datetime.datetime(year, month, days_in_month, 23, 59, 59)
 # Calculate total seconds between the start and end of the month
 total_seconds = int((end_date - start_date).total_seconds())
 
+weekday_list = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
 
 # Faker.seed(12345)
 fake = Faker()
 # random.seed(12345)
 fake.add_provider(ReviewProvider)
-from collections import Counter
 
 
 CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
@@ -94,9 +95,6 @@ def seed():
     finally:
         db.close()
 
-today = datetime.date.today()
-prev_month = today - datetime.timedelta(days=30)
-
 def row_to_restaurant(row:dict[str|Any,str|Any]):
     cuisine = [r.strip() for r in str(row.get("Categories")).split(';')] if row.get("Categories") else []
     about = str(row.get("About")) if row.get("About") else "Misisng Description"
@@ -112,7 +110,6 @@ def row_to_restaurant(row:dict[str|Any,str|Any]):
         day:splitShifts(list(map(lambda x: x.replace(']',''),hour.split(',')))) for day,hour in days_hour_dict.items()
         }
     
-    days_opened:list[DAYS_OF_WEEK_TYPE]=[day for day,hour in days_hour_dict.items() if hour.strip().lower()!='closed']
     
     timezone =str(row.get('Time Zone')).strip() if row.get('Time Zone') else None
     castTimeZone = cast(ZoneInfo, timezone) if testZoneInfoType(timezone) else None
@@ -137,7 +134,7 @@ def row_to_visibility(row:dict[str|Any,str|Any], restaurant_id:uuid.UUID):
     social_engagement_rate=round(random.uniform(1.0,20.0),2)
     repeat_visit_rate=round(random.uniform(50.0,100.0),2)
     visibility  = VisibilityMetricsModel(
-                recorded_at=today,
+                recorded_at=end_date,
                 average_rating=float(row["Average Rating"]) if row["Average Rating"] else 0.0,
                 total_reviews=int(row["Review Count"]) if row["Review Count"] else 0,
                 rating_source="Google",
@@ -153,7 +150,7 @@ def row_to_visibility(row:dict[str|Any,str|Any], restaurant_id:uuid.UUID):
     prev_social = round(social_engagement_rate * prev_visibility_score, 2)
     prev_repeat = round(repeat_visit_rate * prev_visibility_score, 1)
     prev_visbility = VisibilityMetricsModel(
-                recorded_at=prev_month,
+                recorded_at=datetime.date(year,month-1,1),
                 average_rating=float(row["Average Rating"]) if row["Average Rating"] else 0.0,
                 total_reviews=max(int(row["Review Count"]) if row["Review Count"] else 0,0),
                 rating_source="Google",
@@ -179,7 +176,7 @@ def row_to_funnel(restaurant_id:uuid.UUID):
     funnelStages:list[ FunnelStageModel] = []
     for name, cnt, conv, drop in counts:
         single_funnel_stage = FunnelStageModel(
-            recorded_at=today,
+            recorded_at=end_date,
             stage_name=name,
             count=cnt,
             conversion=conv,
@@ -192,7 +189,7 @@ def row_to_funnel(restaurant_id:uuid.UUID):
 def row_to_platform_metric(row:dict[str|Any,str|Any], restaurant_id:uuid.UUID):
     social_engagement_rate=round(random.uniform(1.0,20.0),2)
     platform_metric =  SocialPlatformMetricsModel(
-                recorded_at=today,
+                recorded_at=end_date,
                 platform="google",
                 avg_rating=float(row["Average Rating"]) if row["Average Rating"] else 0.0,
                 total_reviews=max(int(row["Review Count"]) if row["Review Count"] else 0,0),
@@ -226,7 +223,6 @@ def random_reviews(restaurant_id:uuid.UUID):
         negative_pct=round(100* negative/total,1),
         neutral_pct=round(100* neutral/total,1),
         mixed_pct=round(100* mixed/total,1),
-        avg_ratings= round(sum([r.stars for r in reviews]),1)
         )
     senti.created_at = end_date
     return reviews, senti
@@ -265,7 +261,6 @@ def sentiment_theme_from_reviews(theme_set:ThemesToReviewIds, senti_data_id:uuid
             )
 
     return sentiment_themes_list
-weekday_list = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 def foot_traffic_generation(restaurant_id:uuid.UUID, limit:int):
     foot_traffic_hour:list[FootTrafficHourlyModel] = []
     day_traffic = random_ints_with_sum(days_in_month,limit,15)
