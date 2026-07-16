@@ -39,6 +39,16 @@ function getInstagramTagUrl(name: string) {
   return `https://www.instagram.com/explore/tags/${name.replace(/\s+/g, "")}/`;
 }
 
+function getDummyRestaurantWebsiteUrl(name: string) {
+  const slug = name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+
+  return `https://example.com/${slug || "restaurant"}`;
+}
+
 function buildFallbackGalleryImages(name: string) {
   const palettes = [
     ["#f59e0b", "#7c2d12"],
@@ -80,6 +90,7 @@ export function RestaurantPopupCard({
 
   const tiktokUrl = getTikTokSearchUrl(restaurant.name);
   const instagramUrl = getInstagramTagUrl(restaurant.name);
+  const dummyWebsiteUrl = getDummyRestaurantWebsiteUrl(restaurant.name);
 
   const activePromotions =
     restaurant.promotions?.filter(isPromotionActive) ?? [];
@@ -102,7 +113,7 @@ export function RestaurantPopupCard({
   }, [restaurant.id, restaurant.image, restaurant.images?.join("|")]);
 
   const showImageArrows = galleryImages.length > 1;
-  const currentImage = galleryImages[currentImageIndex] ?? galleryImages[0];
+  const currentImage = galleryImages[currentImageIndex] ?? galleryImages[1];
 
   const goToPreviousImage = () => {
     setCurrentImageIndex((previousIndex) =>
@@ -219,12 +230,23 @@ export function RestaurantPopupCard({
             >
               <div className="w-full space-y-4 p-5 border-r border-bs-neutral-200">
                 <div>
-                  <h3
-                    id="restaurant-popup-title"
-                    className="mb-1 text-lg font-semibold text-bs-neutral-900"
-                  >
-                    {restaurant.name}
-                  </h3>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h3
+                      id="restaurant-popup-title"
+                      className="text-lg font-semibold text-bs-neutral-900"
+                    >
+                      {restaurant.name}
+                    </h3>
+                    <a
+                      href={dummyWebsiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open ${restaurant.name} website`}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-bs-neutral-300 bg-bs-neutral-50 text-xs font-semibold text-bs-neutral-700 transition hover:border-bs-grey hover:bg-bs-gold hover:text-blue"
+                    >
+                      i
+                    </a>
+                  </div>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-bs-neutral-600">
                     <span className="flex items-center gap-1">
                       <Star size={14} className="fill-bs-gold text-bs-gold" />
@@ -323,7 +345,7 @@ export function RestaurantPopupCard({
                           <h4 className="font-semibold text-bs-neutral-900">
                             Promotions
                           </h4>
-                          <span className="rounded-full bg-bs-red/10 px-2 py-0.5 text-xs font-medium text-bs-red">
+                          <span className="rounded-full bg-bs-red px-2 py-0.5 text-xs font-medium text-white">
                             {activePromotions.length}
                           </span>
                         </div>
