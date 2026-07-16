@@ -7,7 +7,7 @@ import {
   Link as LinkIcon,
   Clock,
   Upload,
-  AlertCircle, // Used for validation error icons
+  AlertCircle,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -50,7 +50,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       : true,
   );
 
-  // Error tracking state
   const [errors, setErrors] = useState<FormErrors>({});
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +63,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       reader.onloadend = () => {
         if (typeof reader.result === "string") {
           setImageUrl(reader.result);
-          // Clear error dynamically when field is populated
           setErrors((prev) => ({ ...prev, imageUrl: undefined }));
         }
       };
@@ -105,8 +103,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    // Prevent execution if validation fails
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault(); // Prevents fallback page reload
+
     if (!validateForm()) {
       return;
     }
@@ -114,19 +113,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     const promotion: Promotion = {
       promoId: initialData?.promoId ?? crypto.randomUUID(),
       id: initialData?.id ?? 1,
-
       title: title.trim(),
       description: description.trim(),
-
       imageUrl: imageUrl.trim(),
       websiteUrl: websiteUrl.trim(),
-
       startDate,
       startTime: isAllDay ? "" : startTime,
-
       endDate,
       endTime: isAllDay ? "" : endTime,
-
       isAllDay,
     };
 
@@ -188,8 +182,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           </div>
         </div>
 
-        {/* Dynamic Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Dynamic Two-Column Layout wrapped in a Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+        >
           {/* Form Controls (Left Column) */}
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
             {/* Title */}
@@ -250,7 +247,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
             {/* Image Upload Area */}
             <div>
               <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                <Upload size={16} className="text-bs-neutral-500" />
+                <ImageIcon size={16} className="text-bs-neutral-500" />
                 Promotion Banner Image <span className="text-red-500">*</span>
               </label>
 
@@ -332,6 +329,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 Website URL
               </label>
               <input
+                type="url"
                 className="w-full border border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20 rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400"
                 placeholder="https://yourrestaurant.com/offers"
                 value={websiteUrl}
@@ -359,11 +357,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     value={startDate}
                     onChange={(e) => {
                       setStartDate(e.target.value);
-                      if (errors.startDate)
-                        setErrors((prev) => ({
-                          ...prev,
-                          startDate: undefined,
-                        }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        startDate: undefined,
+                        endDate: undefined, // Clear end date bounds error too
+                      }));
                     }}
                   />
                   {errors.startDate && (
@@ -384,8 +382,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     value={endDate}
                     onChange={(e) => {
                       setEndDate(e.target.value);
-                      if (errors.endDate)
-                        setErrors((prev) => ({ ...prev, endDate: undefined }));
+                      setErrors((prev) => ({
+                        ...prev,
+                        endDate: undefined,
+                      }));
                     }}
                   />
                   {errors.endDate && (
@@ -435,11 +435,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                         value={startTime}
                         onChange={(e) => {
                           setStartTime(e.target.value);
-                          if (errors.startTime)
-                            setErrors((prev) => ({
-                              ...prev,
-                              startTime: undefined,
-                            }));
+                          setErrors((prev) => ({
+                            ...prev,
+                            startTime: undefined,
+                            endTime: undefined, // Clear timing sequence conflicts
+                          }));
                         }}
                       />
                       {errors.startTime && (
@@ -461,11 +461,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                         value={endTime}
                         onChange={(e) => {
                           setEndTime(e.target.value);
-                          if (errors.endTime)
-                            setErrors((prev) => ({
-                              ...prev,
-                              endTime: undefined,
-                            }));
+                          setErrors((prev) => ({
+                            ...prev,
+                            endTime: undefined,
+                          }));
                         }}
                       />
                       {errors.endTime && (
@@ -490,7 +489,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </button>
 
               <button
-                onClick={handleSubmit}
+                type="submit"
                 className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all"
               >
                 {initialData ? "Update Promotion" : "Create Promotion"}
@@ -522,7 +521,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </div>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
