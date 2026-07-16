@@ -80,7 +80,9 @@ export function safeNumber(value: unknown, fallback = 0): number {
 type Trend = "up" | "down" | "flat";
 
 function safeTrend(value: unknown): Trend {
-  return value === "up" || value === "down" || value === "flat" ? value : "flat";
+  return value === "up" || value === "down" || value === "flat"
+    ? value
+    : "flat";
 }
 
 export const EMPTY_SUMMARY: SummaryMetrics = {
@@ -127,8 +129,7 @@ export function normalizeSummary(
   return {
     visibilityScore: {
       value: safeNumber(raw?.visibilityScore?.value, d.visibilityScore.value),
-      max:
-        safeNumber(raw?.visibilityScore?.max, d.visibilityScore.max) || 100,
+      max: safeNumber(raw?.visibilityScore?.max, d.visibilityScore.max) || 100,
       changeVsLastMonth: safeNumber(
         raw?.visibilityScore?.changeVsLastMonth,
         d.visibilityScore.changeVsLastMonth,
@@ -155,10 +156,7 @@ export function normalizeSummary(
       trend: safeTrend(raw?.socialEngagementRate?.trend),
     },
     repeatVisitRate: {
-      value: safeNumber(
-        raw?.repeatVisitRate?.value,
-        d.repeatVisitRate.value,
-      ),
+      value: safeNumber(raw?.repeatVisitRate?.value, d.repeatVisitRate.value),
       changeVsLastMonth: safeNumber(
         raw?.repeatVisitRate?.changeVsLastMonth,
         d.repeatVisitRate.changeVsLastMonth,
@@ -217,7 +215,7 @@ export function normalizeSocialPlatforms(
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface RestaurantItem {
-  id: number;
+  id: string;
   name: string;
   cuisines: string;
 }
@@ -229,7 +227,7 @@ export async function fetchRestaurants(): Promise<RestaurantItem[]> {
 }
 
 export async function getSummaryMetrics(
-  restaurantId: number,
+  restaurantId: string,
 ): Promise<SummaryMetrics> {
   const response = await fetch(
     `${API_BASE}/visibility/getSummaryMetrics?restaurantId=${restaurantId}`,
@@ -243,7 +241,7 @@ export async function getSummaryMetrics(
 }
 
 export async function getFunnelMetrics(
-  restaurantId: number,
+  restaurantId: string,
 ): Promise<FunnelMetrics> {
   const response = await fetch(
     `${API_BASE}/visibility/getFunnelMetrics?restaurantId=${restaurantId}`,
@@ -257,7 +255,7 @@ export async function getFunnelMetrics(
 }
 
 export async function getSocialVisibility(
-  restaurantId: number,
+  restaurantId: string,
 ): Promise<SocialVisibility> {
   const response = await fetch(
     `${API_BASE}/visibility/getSocialVisibility?restaurantId=${restaurantId}`,
@@ -270,9 +268,7 @@ export async function getSocialVisibility(
   return response.json();
 }
 
-export async function getSentiment(
-  restaurantId: number,
-): Promise<Sentiment> {
+export async function getSentiment(restaurantId: string): Promise<Sentiment> {
   const response = await fetch(
     `${API_BASE}/visibility/getSentiment?restaurantId=${restaurantId}`,
   );
@@ -298,7 +294,7 @@ export interface ReviewsByTheme {
 }
 
 export async function getReviewsByTheme(
-  restaurantId: number,
+  restaurantId: string,
   theme: string,
 ): Promise<ReviewsByTheme> {
   const response = await fetch(
@@ -336,7 +332,6 @@ export function trendColorClass(trend: "up" | "down" | "flat"): string {
   return "text-bs-neutral-600";
 }
 
-
 // ──────────── Foot Traffic ────────────
 
 export interface HourlyTrafficItem {
@@ -353,7 +348,7 @@ export interface DailyTrafficSummary {
 }
 
 export interface FootTrafficResponse {
-  restaurantId: number;
+  restaurantId: string;
   hourly: HourlyTrafficItem[];
   daily: DailyTrafficSummary;
 }
@@ -393,7 +388,7 @@ export function normalizeFootTraffic(
 }
 
 export async function getFootTraffic(
-  restaurantId: number,
+  restaurantId: string,
 ): Promise<FootTrafficResponse> {
   const response = await fetch(
     `${API_BASE}/visibility/getFootTraffic?restaurantId=${restaurantId}`,
@@ -406,7 +401,6 @@ export async function getFootTraffic(
   return response.json();
 }
 
-
 // ──────────── Action Suggestions ────────────
 
 export interface ActionSuggestion {
@@ -416,12 +410,12 @@ export interface ActionSuggestion {
 }
 
 export interface ActionSuggestionsResponse {
-  restaurantId: number;
+  restaurantId: string;
   suggestions: ActionSuggestion[];
 }
 
 export async function getActionSuggestions(
-  restaurantId: number,
+  restaurantId: string,
 ): Promise<ActionSuggestionsResponse> {
   const response = await fetch(
     `${API_BASE}/visibility/getActionSuggestions?restaurantId=${restaurantId}`,

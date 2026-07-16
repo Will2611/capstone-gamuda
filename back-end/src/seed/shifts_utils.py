@@ -1,4 +1,6 @@
 import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 def parse_time_string(time_str: str) -> datetime.time:
     """Parses a single time string into a datetime.time object."""
     clean_str = time_str.replace('\u00A0', ' ').strip()
@@ -75,3 +77,23 @@ def parse_time_ranges_no_regex(time_ranges: list[str]) -> list[tuple[datetime.ti
 # data = ['12 - 3 AM', '3 - 6 PM', '12–2:30 PM', '1 AM–12:30 PM']
 # parsed = parse_time_ranges_no_regex(data)
 # print(parsed)
+
+
+def testZoneInfoType(input:str|None)->bool:
+    if not input:
+        return False
+    try:
+        ZoneInfo(input)
+        return True
+    except ZoneInfoNotFoundError:
+        return False
+
+
+
+
+def splitShifts(shifts:list[str])->list[tuple[datetime.time,datetime.time]]:
+    if shifts[0].strip().lower()=='closed':
+        return []
+    if shifts[0].strip()=="Open 24 hours":
+        return [(datetime.time(0,0), datetime.time(23,59))]
+    return parse_time_ranges_no_regex(shifts)
