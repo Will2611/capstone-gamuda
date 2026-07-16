@@ -120,7 +120,8 @@ async def get_summary_metrics(db: db_dependency, restaurantId: uuid.UUID = Query
 
     if current is None:
         raise HTTPException(status_code=404, detail="No metrics found for this restaurant")
-
+    
+    raise HTTPException(status_code=404, detail="Redo this endpoint for better list of ratings")
     avg_rating = compute_average_rating(
         stored_avg=current.average_rating,
         total_reviews=current.total_reviews,
