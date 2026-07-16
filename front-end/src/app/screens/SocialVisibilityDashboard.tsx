@@ -472,8 +472,9 @@ export default function SocialVisibilityDashboard() {
             </div>
             <div className="p-4 overflow-y-auto flex-1">
               <p className="text-xs text-bs-neutral-500 mb-4">
-                Based on your restaurant's visibility metrics, review sentiment,
-                social engagement, and foot traffic patterns.
+                Based on your visibility metrics and review sentiment. Items
+                marked <span className="font-medium text-bs-blue">AI · Gemini</span>{" "}
+                are generated from strongly negative reviews (VADER-filtered).
               </p>
               {!actionSuggestions ? (
                 <div className="flex items-center justify-center py-8">
@@ -492,7 +493,7 @@ export default function SocialVisibilityDashboard() {
                             : "border-bs-green/30 bg-bs-green/5"
                       }`}
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
                         <span
                           className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                             s.impact === "High"
@@ -504,6 +505,11 @@ export default function SocialVisibilityDashboard() {
                         >
                           {s.impact}
                         </span>
+                        {s.source === "ai" && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-bs-blue/10 text-bs-blue">
+                            AI · Gemini
+                          </span>
+                        )}
                         <span className="font-bold text-bs-neutral-900 text-sm">
                           {s.issue}
                         </span>

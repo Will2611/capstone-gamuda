@@ -50,6 +50,11 @@ def ensure_visibility_schema(engine: Engine) -> None:
                 "ALTER TABLE sentiment_data ADD COLUMN reviews JSONB"
             ))
 
+        if "ai_insights" not in existing:
+            conn.execute(text(
+                "ALTER TABLE sentiment_data ADD COLUMN ai_insights JSONB"
+            ))
+
         if inspector.has_table("restaurants_measured"):
             rest_cols = {col["name"] for col in inspector.get_columns("restaurants_measured")}
             if "sample_reviews" in rest_cols:

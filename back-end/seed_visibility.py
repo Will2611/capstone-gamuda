@@ -139,6 +139,7 @@ async def run_weekend_analysis(db):
     """Run hybrid sentiment on all restaurants after seed."""
     from sqlalchemy import desc
     from src.llm.sentiment_analyzer import analyze_reviews_batch
+    from src.llm.gemini_insights import generate_gemini_insights
     from src.database.sentiment_helpers import replace_complaint_themes
 
     restaurants = db.query(RestaurantVisbilityModel).all()
@@ -166,6 +167,9 @@ async def run_weekend_analysis(db):
         sentiment.negative_pct = neg
         sentiment.neutral_pct = neu
         replace_complaint_themes(db, sentiment, analyzed)
+        insights = await generate_gemini_insights(rest.name, analyzed)
+        if insights is not None:
+            sentiment.ai_insights = insights
 
 
 async def seed(*, run_analysis: bool = False):
