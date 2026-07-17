@@ -6,7 +6,7 @@ from src.database.connection import db_dependency
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 
-# #default chat endpoint
+# #default chat endpoint   
 # @router.post("/chat", response_model=ChatResponse)
 # async def chat_endpoint(body: ChatRequest):
 #     if not body.messages:

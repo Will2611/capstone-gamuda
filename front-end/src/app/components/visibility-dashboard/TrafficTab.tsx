@@ -52,9 +52,7 @@ export function TrafficTab({
       ? Math.max(
           0,
           Math.round(
-            i < 5
-              ? weekdayAvg + (i - 2) * 3
-              : weekendAvg + (i - 5.5) * 8,
+            i < 5 ? weekdayAvg + (i - 2) * 3 : weekendAvg + (i - 5.5) * 8,
           ),
         )
       : 0,
@@ -375,7 +373,9 @@ export function TrafficTab({
                 stackId="stack"
                 fill={s.color}
                 name={s.label}
-                radius={si === segments.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                radius={
+                  si === segments.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]
+                }
               >
                 <LabelList dataKey={s.key} content={renderLabel} />
                 {/* Render total above the full stack on the topmost segment only */}
@@ -398,7 +398,9 @@ export function TrafficTab({
         <div className="bg-white rounded-xl border-2 border-bs-neutral p-6">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle className="text-bs-red" size={24} />
-            <h3 className="font-bold text-bs-neutral-900">Top 3 Issues</h3>
+            <h3 className="font-bold text-bs-neutral-900">
+              Troubleshoot Center
+            </h3>
           </div>
           <div className="space-y-3">
             {actionSuggestions?.suggestions.map((s, i) => (
@@ -458,14 +460,17 @@ export function TrafficTab({
 
         {/* Right: Staffing Insight */}
         <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
-          <h3 className="font-bold text-bs-neutral-900 mb-4">Staffing Insight</h3>
+          <h3 className="font-bold text-bs-neutral-900 mb-4">
+            Traffic Insight
+          </h3>
           <div className="space-y-3">
             <div
               className="p-3 rounded-lg border border-blue-200"
               style={{ background: "#EFF6FF" }}
             >
               <p className="text-xs font-bold text-blue-700 mb-1">
-                📅 Weekdays (Mon--Fri) -- avg {weekdayTraffic.value} visitors/day
+                📅 Weekdays (Mon--Fri) -- avg {weekdayTraffic.value}{" "}
+                visitors/day
               </p>
               <p className="text-sm text-bs-neutral-700">
                 Lunch peak at <strong>1 PM (60 visitors Mon)</strong>. Standard
@@ -478,7 +483,8 @@ export function TrafficTab({
               style={{ background: "#FFF7ED" }}
             >
               <p className="text-xs font-bold text-orange-700 mb-1">
-                🎉 Weekends (Sat--Sun) -- avg {weekendTraffic.value} visitors/day
+                🎉 Weekends (Sat--Sun) -- avg {weekendTraffic.value}{" "}
+                visitors/day
               </p>
               <p className="text-sm text-bs-neutral-700">
                 Peak at <strong>7 PM Sunday (140 visitors)</strong>. Saturday

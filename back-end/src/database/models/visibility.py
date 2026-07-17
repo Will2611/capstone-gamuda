@@ -1,9 +1,12 @@
 from src.database.connection import Base
-from sqlalchemy import String, Integer, Float, Date, Boolean, ForeignKey, Text, JSON
+from sqlalchemy import String, Integer, Float, Date, Boolean, ForeignKey, Text, JSON, Uuid
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import mapped_column, Mapped, relationship
 from datetime import date
 from typing import Optional
-from .base_model import DBBaseModelTimeMixIn
+from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
+import uuid_utils.compat as uuid
+from src.database.schemas.reviews import SENTIMENT_TYPE, SentimentModelValidation
 
 class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
     __tablename__ = "restaurants_measured"
@@ -14,26 +17,13 @@ class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
 
-    metrics: Mapped[list["VisibilityMetricsModel"]] = relationship(
-        "VisibilityMetricsModel", back_populates="restaurant", cascade="all, delete-orphan", default_factory=list
-    )
-    funnel_stages: Mapped[list["FunnelStageModel"]] = relationship(
-        "FunnelStageModel", back_populates="restaurant", cascade="all, delete-orphan", default_factory=list
-    )
-    social_platforms: Mapped[list["SocialPlatformMetricsModel"]] = relationship(
-        "SocialPlatformMetricsModel", back_populates="restaurant", cascade="all, delete-orphan", default_factory=list
-    )
-    sentiments: Mapped[list["SentimentDataModel"]] = relationship(
-        "SentimentDataModel", back_populates="restaurant", cascade="all, delete-orphan", default_factory=list
-    )
 
-
-
-class VisibilityMetricsModel(DBBaseModelTimeMixIn, Base):
+class VisibilityMetricsModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ = "visibility_metrics"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
+
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
 
     visibility_score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
@@ -43,14 +33,12 @@ class VisibilityMetricsModel(DBBaseModelTimeMixIn, Base):
     social_engagement_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     repeat_visit_rate: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship("RestaurantVisbilityModel", back_populates="metrics", default=None)
 
-
-class FunnelStageModel(DBBaseModelTimeMixIn, Base):
+class FunnelStageModel(DBBaseModelTimeMixIn,DBBaseModelIdMixin, Base):
     __tablename__ = "funnel_stages"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
 
     stage_name: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -58,14 +46,13 @@ class FunnelStageModel(DBBaseModelTimeMixIn, Base):
     conversion: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
     is_drop_off: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship("RestaurantVisbilityModel", back_populates="funnel_stages", default=None)
 
-
-class SocialPlatformMetricsModel(DBBaseModelTimeMixIn, Base):
+class SocialPlatformMetricsModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,Base):
+    """This is used for reviews only for now, seed with fake google reviews"""
     __tablename__ = "social_platform_metrics"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
     platform: Mapped[str] = mapped_column(String(20), nullable=False)
     avg_rating: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -74,63 +61,55 @@ class SocialPlatformMetricsModel(DBBaseModelTimeMixIn, Base):
     url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     posts_this_month: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship(
-        "RestaurantVisbilityModel", back_populates="social_platforms", default=None
-    )
-
 # Is best used for saving past-data
-class SentimentDataModel(DBBaseModelTimeMixIn, Base):
+class SentimentDataModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,Base):
     __tablename__ = "sentiment_data"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     recorded_at: Mapped[date] = mapped_column(Date, nullable=False)
-    restaurant_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-
     positive_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     neutral_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    reviews: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-
-    complaint_themes: Mapped[list["ComplaintThemeModel"]] = relationship(
-        "ComplaintThemeModel", back_populates="sentiment", cascade="all, delete-orphan", default_factory=list
-    )
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship("RestaurantVisbilityModel", back_populates="sentiments", default=None)
+    mixed_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
 
-class ComplaintThemeModel(DBBaseModelTimeMixIn, Base):
+class ComplaintThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
+    """Getting deprecated, general structure is also useful for understanding all sentiment types"""
     __tablename__ = "complaint_themes"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    sentiment_id: Mapped[int] = mapped_column(Integer, ForeignKey("sentiment_data.id"), nullable=False, index=True, init=False)
+    sentiment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("sentiment_data.id"), nullable=False, index=True)
     theme: Mapped[str] = mapped_column(String(100), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    sentiment: Mapped[Optional["SentimentDataModel"]] = relationship("SentimentDataModel", back_populates="complaint_themes", default=None)
+class SentimentThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
+    __tablename__ = "sentiment_themes"
+
+    sentiment_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("sentiment_data.id"), nullable=False, index=True)
+    theme: Mapped[str] = mapped_column(String(100), nullable=False)
+    sentiment_type:Mapped[SENTIMENT_TYPE] = mapped_column(String(25), nullable=False)
+
+    review_ids:Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid),default_factory=list)
+    count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
-class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base):
+# CHANGE CODE TO ALIGN BAR CHART FOR FOOT TRAFFIC HOURLY ONLY
+class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):  
     __tablename__ = "foot_traffic_hourly"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
     traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
     day_name: Mapped[str] = mapped_column(String(10), nullable=False)
     day_type: Mapped[str] = mapped_column(String(10), nullable=False)
     hour: Mapped[int] = mapped_column(Integer, nullable=False)
     visitors: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship("RestaurantVisbilityModel", default=None)
 
-
-class FootTrafficDailyModel(DBBaseModelTimeMixIn, Base):
+class FootTrafficDailyModel(DBBaseModelTimeMixIn,DBBaseModelIdMixin, Base):
     __tablename__ = "foot_traffic_daily"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, init=False)
-    restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
+    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True, init=False)
+    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
     traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
     day_name: Mapped[str] = mapped_column(String(10), nullable=False)
     day_type: Mapped[str] = mapped_column(String(10), nullable=False)
     visits: Mapped[int] = mapped_column(Integer, nullable=False)
-
-    restaurant: Mapped[Optional[RestaurantVisbilityModel]] = relationship("RestaurantVisbilityModel", default=None)

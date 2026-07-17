@@ -6,6 +6,7 @@ import {
   Link as LinkIcon,
   Clock,
   Upload,
+  AlertCircle,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -14,6 +15,16 @@ import { mockPromotions } from "../data/mockPromotions";
 interface PromotionFormProps {
   initialData?: Promotion;
   onSubmit?: (promotion: Promotion) => void;
+}
+
+interface FormErrors {
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
 }
 
 export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
@@ -38,6 +49,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       : true,
   );
 
+  const [errors, setErrors] = useState<FormErrors>({});
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -49,33 +62,67 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       reader.onloadend = () => {
         if (typeof reader.result === "string") {
           setImageUrl(reader.result);
+          setErrors((prev) => ({ ...prev, imageUrl: undefined }));
         }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = () => {
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+
+    if (!title.trim()) newErrors.title = "Promotion title is required";
+    if (!description.trim()) newErrors.description = "Description is required";
+    if (!imageUrl) newErrors.imageUrl = "Please upload a banner image";
+    if (!startDate) newErrors.startDate = "Start date is required";
+    if (!endDate) newErrors.endDate = "End date is required";
+
+    if (startDate && endDate && startDate > endDate) {
+      newErrors.endDate = "End date cannot be earlier than start date";
+    }
+
+    if (!isAllDay) {
+      if (!startTime) newErrors.startTime = "Start time is required";
+      if (!endTime) newErrors.endTime = "End time is required";
+
+      if (
+        startDate &&
+        endDate &&
+        startDate === endDate &&
+        startTime &&
+        endTime &&
+        startTime > endTime
+      ) {
+        newErrors.endTime = "End time must be after start time on the same day";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault(); // Prevents fallback page reload
+
+    if (!validateForm()) {
+      return;
+    }
+
     const promotion: Promotion = {
       promoId: initialData?.promoId ?? crypto.randomUUID(),
-      id: initialData?.id ?? 1, // Owner restaurant ID
-
-      title: title.trim() || "Untitled Promotion",
+      id: initialData?.id ?? 1,
+      title: title.trim(),
       description: description.trim(),
-
       imageUrl: imageUrl.trim(),
       websiteUrl: websiteUrl.trim(),
-
-      startDate: startDate || new Date().toISOString().split("T")[0],
+      startDate,
       startTime: isAllDay ? "" : startTime,
-
-      endDate: endDate || new Date().toISOString().split("T")[0],
+      endDate,
       endTime: isAllDay ? "" : endTime,
-
       isAllDay,
     };
 
-    // Update the in-memory mock promotions list
     if (initialData) {
       const idx = mockPromotions.findIndex(
         (p) => p.promoId === initialData.promoId,
@@ -91,7 +138,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     navigate("/promotion");
   };
 
-  // Build the live preview state object
   const currentPromoState: Promotion = {
     promoId: initialData?.promoId ?? "preview-id",
     id: initialData?.id ?? 1,
@@ -135,67 +181,73 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           </div>
         </div>
 
-        {/* Dynamic Two-Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Dynamic Two-Column Layout wrapped in a Form */}
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
+        >
           {/* Form Controls (Left Column) */}
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
             {/* Title */}
             <div>
               <label className="block mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                Promotion Title
+                Promotion Title <span className="text-red-500">*</span>
               </label>
               <input
-                className="
-                  w-full
-                  border border-bs-neutral-300
-                  hover:border-bs-neutral-400
-                  focus:border-bs-gold
-                  focus:ring-2 focus:ring-bs-gold/20
-                  rounded-xl
-                  p-3
-                  outline-none
-                  text-bs-neutral-800
-                  transition-all
-                  placeholder:text-bs-neutral-400
-                "
+                className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
+                  ${
+                    errors.title
+                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  }`}
                 placeholder="e.g. Weekend Family Buffet Discount"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (errors.title)
+                    setErrors((prev) => ({ ...prev, title: undefined }));
+                }}
               />
+              {errors.title && (
+                <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                  <AlertCircle size={13} /> {errors.title}
+                </p>
+              )}
             </div>
 
             {/* Description */}
             <div>
               <label className="block mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                Description
+                Description <span className="text-red-500">*</span>
               </label>
               <textarea
                 rows={4}
-                className="
-                  w-full
-                  border border-bs-neutral-300
-                  hover:border-bs-neutral-400
-                  focus:border-bs-gold
-                  focus:ring-2 focus:ring-bs-gold/20
-                  rounded-xl
-                  p-3
-                  outline-none
-                  text-bs-neutral-800
-                  transition-all
-                  placeholder:text-bs-neutral-400
-                  resize-none
-                "
+                className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
+                  ${
+                    errors.description
+                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  }`}
                 placeholder="Describe your special offer and any terms..."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (errors.description)
+                    setErrors((prev) => ({ ...prev, description: undefined }));
+                }}
               />
+              {errors.description && (
+                <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                  <AlertCircle size={13} /> {errors.description}
+                </p>
+              )}
             </div>
 
             {/* Image Upload Area */}
             <div>
               <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                <Upload size={16} className="text-bs-neutral-500" />
-                Promotion Banner Image
+                <ImageIcon size={16} className="text-bs-neutral-500" />
+                Promotion Banner Image <span className="text-red-500">*</span>
               </label>
 
               <input
@@ -210,16 +262,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 onClick={() =>
                   document.getElementById("promo-image-upload")?.click()
                 }
-                className={`
-                  border-2 border-dashed rounded-2xl p-6
-                  flex flex-col items-center justify-center
-                  cursor-pointer transition-all duration-200
+                className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200
                   ${
                     imageUrl
                       ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
-                      : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
-                  }
-                `}
+                      : errors.imageUrl
+                        ? "border-red-500 bg-red-50/30 hover:bg-red-50/50"
+                        : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+                  }`}
               >
                 {imageUrl ? (
                   <div className="text-center space-y-3">
@@ -238,7 +288,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                           e.stopPropagation();
                           setImageUrl("");
                         }}
-                        className="text-xs font-bold text-rose-600 hover:underline"
+                        className="text-xs font-bold text-red-600 hover:underline"
                       >
                         Remove
                       </button>
@@ -246,11 +296,15 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   </div>
                 ) : (
                   <div className="text-center space-y-2">
-                    <div className="p-3 bg-white border border-bs-neutral-200 rounded-xl inline-block text-bs-neutral-500 shadow-sm">
+                    <div
+                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${errors.imageUrl ? "text-red-500 border-red-200" : "text-bs-neutral-500 border-bs-neutral-200"}`}
+                    >
                       <Upload size={22} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-bs-neutral-800">
+                      <p
+                        className={`text-sm font-bold ${errors.imageUrl ? "text-red-700" : "text-bs-neutral-800"}`}
+                      >
                         Click to upload promotion image
                       </p>
                       <p className="text-xs text-bs-neutral-400 mt-1">
@@ -260,6 +314,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   </div>
                 )}
               </div>
+              {errors.imageUrl && (
+                <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                  <AlertCircle size={13} /> {errors.imageUrl}
+                </p>
+              )}
             </div>
 
             {/* Website URL */}
@@ -269,19 +328,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 Website URL
               </label>
               <input
-                className="
-                  w-full
-                  border border-bs-neutral-300
-                  hover:border-bs-neutral-400
-                  focus:border-bs-gold
-                  focus:ring-2 focus:ring-bs-gold/20
-                  rounded-xl
-                  p-3
-                  outline-none
-                  text-bs-neutral-800
-                  transition-all
-                  placeholder:text-bs-neutral-400
-                "
+                type="url"
+                className="w-full border border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20 rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400"
                 placeholder="https://yourrestaurant.com/offers"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
@@ -299,46 +347,51 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
-                    Start Date
+                    Start Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
-                    className="
-                      w-full
-                      border border-bs-neutral-300
-                      hover:border-bs-neutral-400
-                      focus:border-bs-gold
-                      rounded-xl
-                      p-3
-                      outline-none
-                      text-bs-neutral-800
-                      transition-all
-                    "
+                    className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
+                      ${errors.startDate ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setErrors((prev) => ({
+                        ...prev,
+                        startDate: undefined,
+                        endDate: undefined, // Clear end date bounds error too
+                      }));
+                    }}
                   />
+                  {errors.startDate && (
+                    <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                      <AlertCircle size={13} /> {errors.startDate}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
-                    End Date
+                    End Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
-                    className="
-                      w-full
-                      border border-bs-neutral-300
-                      hover:border-bs-neutral-400
-                      focus:border-bs-gold
-                      rounded-xl
-                      p-3
-                      outline-none
-                      text-bs-neutral-800
-                      transition-all
-                    "
+                    className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
+                      ${errors.endDate ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setErrors((prev) => ({
+                        ...prev,
+                        endDate: undefined,
+                      }));
+                    }}
                   />
+                  {errors.endDate && (
+                    <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                      <AlertCircle size={13} /> {errors.endDate}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -353,17 +406,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       if (e.target.checked) {
                         setStartTime("");
                         setEndTime("");
+                        setErrors((prev) => ({
+                          ...prev,
+                          startTime: undefined,
+                          endTime: undefined,
+                        }));
                       }
                     }}
-                    className="
-                      h-5 w-5
-                      rounded-md
-                      border-bs-neutral-300
-                      text-bs-gold
-                      focus:ring-bs-gold
-                      cursor-pointer
-                      accent-bs-gold
-                    "
+                    className="h-5 w-5 rounded-md border-bs-neutral-300 text-bs-gold focus:ring-bs-gold cursor-pointer accent-bs-gold"
                   />
                   <span className="text-sm font-semibold text-bs-neutral-700 group-hover:text-bs-neutral-900 transition-colors">
                     Available All Day
@@ -374,46 +424,53 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
                     <div>
                       <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
-                        <Clock size={12} /> Start Time
+                        <Clock size={12} /> Start Time{" "}
+                        <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="time"
-                        className="
-                          w-full
-                          border border-bs-neutral-300
-                          hover:border-bs-neutral-400
-                          focus:border-bs-gold
-                          rounded-xl
-                          p-3
-                          outline-none
-                          text-bs-neutral-800
-                          transition-all
-                        "
+                        className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
+                          ${errors.startTime ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
                         value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
+                        onChange={(e) => {
+                          setStartTime(e.target.value);
+                          setErrors((prev) => ({
+                            ...prev,
+                            startTime: undefined,
+                            endTime: undefined, // Clear timing sequence conflicts
+                          }));
+                        }}
                       />
+                      {errors.startTime && (
+                        <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                          <AlertCircle size={13} /> {errors.startTime}
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <label className="flex items-center gap-1.5 mb-1 text-xs font-semibold text-bs-neutral-500 tracking-wider">
-                        <Clock size={12} /> End Time
+                        <Clock size={12} /> End Time{" "}
+                        <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="time"
-                        className="
-                          w-full
-                          border border-bs-neutral-300
-                          hover:border-bs-neutral-400
-                          focus:border-bs-gold
-                          rounded-xl
-                          p-3
-                          outline-none
-                          text-bs-neutral-800
-                          transition-all
-                        "
+                        className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
+                          ${errors.endTime ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
                         value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
+                        onChange={(e) => {
+                          setEndTime(e.target.value);
+                          setErrors((prev) => ({
+                            ...prev,
+                            endTime: undefined,
+                          }));
+                        }}
                       />
+                      {errors.endTime && (
+                        <p className="flex items-center gap-1 text-xs text-red-600 font-medium mt-1.5">
+                          <AlertCircle size={13} /> {errors.endTime}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -425,53 +482,28 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <button
                 type="button"
                 onClick={() => navigate("/promotion")}
-                className="
-                  flex-1
-                  py-3 px-4
-                  rounded-xl
-                  border border-bs-neutral-300
-                  text-bs-neutral-700 font-semibold text-sm
-                  hover:bg-bs-neutral-50
-                  transition-colors
-                "
+                className="flex-1 py-3 px-4 rounded-xl border border-bs-neutral-300 text-bs-neutral-700 font-semibold text-sm hover:bg-bs-neutral-50 transition-colors"
               >
                 Cancel
               </button>
 
               <button
-                onClick={handleSubmit}
-                className="
-                  flex-1
-                  py-3 px-4
-                  rounded-xl
-                  bg-bs-gold
-                  hover:bg-[#FFD600]
-                  text-bs-neutral-900 font-semibold text-sm
-                  shadow-sm hover:shadow
-                  transition-all
-                "
+                type="submit"
+                className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all"
               >
                 {initialData ? "Update Promotion" : "Create Promotion"}
               </button>
             </div>
           </div>
 
-          {/* Live Preview (Right Column - Sticky) */}
+          {/* Live Preview (Right Column) */}
           <div className="lg:col-span-5 lg:sticky lg:top-8">
             <div className="space-y-4">
               <h2 className="text-xs font-bold uppercase tracking-wider text-bs-neutral-400">
                 Live Card Preview
               </h2>
 
-              <div
-                className="
-                p-2
-                bg-bs-neutral-200/40
-                rounded-3xl
-                border border-bs-neutral-200
-                shadow-inner
-              "
-              >
+              <div className="p-2 bg-bs-neutral-200/40 rounded-3xl border border-bs-neutral-200 shadow-inner">
                 <PromotionCard
                   promotion={currentPromoState}
                   onDelete={() => {}}
@@ -488,7 +520,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </div>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

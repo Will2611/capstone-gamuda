@@ -1,9 +1,11 @@
-from sqlalchemy import  DateTime, func, Uuid, String
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import  DateTime, func, Uuid, String, JSON
+from sqlalchemy.types import  TypeDecorator
+from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 import uuid_utils.compat as uuid
 from sqlalchemy.orm import mapped_column, Mapped
 from datetime import datetime
-from typing import List
+from typing import List, Any, Optional
 import pygeohash as gh
 from sqlalchemy.orm import MappedAsDataclass
 
@@ -13,6 +15,7 @@ from sqlalchemy.orm import MappedAsDataclass
 #     title: str= Field(min_length=3, max_length=1000)
 #     author: str= Field(min_length=3, max_length=255)
 #     published_year: StrictInt= Field(gt=1800, lt=2026)
+
 
 
 
@@ -37,6 +40,24 @@ class RestaurantDetailsTableMixin(MappedAsDataclass, kw_only=True):
     cuisine:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
     dietary:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
     ambience:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list) 
+
+class PydanticJSONType(TypeDecorator):
+    impl = JSON
+    cache_ok = True
+
+    def __init__(self, pydantic_model: type[BaseModel]):
+        super().__init__()
+        self.pydantic_model = pydantic_model
+
+    def process_bind_param(self, value: Optional[BaseModel], dialect: Any) -> Optional[dict]:
+        if value is None:
+            return None
+        return value.model_dump(mode='json')
+
+    def process_result_value(self, value: Optional[dict], dialect: Any) -> Optional[BaseModel]:
+        if value is None:
+            return None
+        return self.pydantic_model.model_validate(value)
 
 class GeohashHelper:
      @staticmethod

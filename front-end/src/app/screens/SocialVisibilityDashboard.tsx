@@ -1,8 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import {
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
+﻿import { useState, useEffect, useCallback } from "react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
 import {
   fetchRestaurants,
@@ -39,7 +36,6 @@ import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 import { PromotionsTab } from "../components/visibility-dashboard/PromotionsTab";
 
 export default function SocialVisibilityDashboard() {
-
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("metrics");
 
@@ -55,7 +51,7 @@ export default function SocialVisibilityDashboard() {
   // --- Data state (always start with safe zero defaults) ---
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<
-    number | null
+    string | null
   >(null);
   const [summary, setSummary] = useState<SummaryMetrics>(EMPTY_SUMMARY);
   const [funnel, setFunnel] = useState<FunnelStage[]>(EMPTY_FUNNEL_STAGES);
@@ -123,7 +119,7 @@ export default function SocialVisibilityDashboard() {
   }, []);
 
   // --- Fetch all dashboard data when restaurant changes ---
-  const loadDashboard = useCallback(async (id: number) => {
+  const loadDashboard = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     setActionSuggestions(null);
@@ -191,9 +187,7 @@ export default function SocialVisibilityDashboard() {
       setSocial([]);
       setSentiment(EMPTY_SENTIMENT);
       setFootTraffic({ ...EMPTY_FOOT_TRAFFIC, restaurantId: id });
-      setError(
-        "Failed to load dashboard data. Showing defaults of 0.",
-      );
+      setError("Failed to load dashboard data. Showing defaults of 0.");
     } finally {
       setLoading(false);
     }
@@ -269,9 +263,7 @@ export default function SocialVisibilityDashboard() {
               <select
                 className="border-2 border-bs-neutral-200 rounded-lg px-4 py-2 text-sm bg-white max-w-xs"
                 value={selectedRestaurantId ?? ""}
-                onChange={(e) =>
-                  setSelectedRestaurantId(Number(e.target.value))
-                }
+                onChange={(e) => setSelectedRestaurantId(e.target.value)}
               >
                 {restaurants.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -321,20 +313,19 @@ export default function SocialVisibilityDashboard() {
 
       {!loading && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-8">
-          {activeTab === "metrics" && (
-            <MetricsTab summary={summary} />
-          )}
+          {activeTab === "metrics" && <MetricsTab summary={summary} />}
 
           {activeTab === "funnel" && (
             <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
           )}
 
-          {activeTab === "reviews" && (
-            <ReviewsTab social={social} />
-          )}
+          {activeTab === "reviews" && <ReviewsTab social={social} />}
 
           {activeTab === "sentiment" && (
-            <SentimentTab sentiment={sentiment} handleThemeClick={handleThemeClick} />
+            <SentimentTab
+              sentiment={sentiment}
+              handleThemeClick={handleThemeClick}
+            />
           )}
 
           {activeTab === "traffic" && (
