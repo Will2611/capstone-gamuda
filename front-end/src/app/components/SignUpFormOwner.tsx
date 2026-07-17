@@ -1,4 +1,5 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect } from "react";
+import type { SubmitEvent as ReactSubmitEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Mail,
@@ -10,23 +11,26 @@ import {
   Camera,
   Phone,
   Link as LinkIcon,
+  Image as ImageIcon,
+  Utensils,
+  DollarSign,
+  Coffee,
+  Leaf,
+  Upload,
 } from "lucide-react";
 
 import { FormField, SelectField } from "./FormField";
+import { MultiSelectField } from "./MultiSelectField";
 import { Button } from "./Button";
-
-const priceRangeOptions = [
-  { value: "", label: "Any Price" },
-  { value: "1", label: "$ < RM20 / person" },
-  { value: "2", label: "$$ RM20 - RM60 / person" },
-  { value: "3", label: "$$$ RM60 - RM110 / person" },
-  { value: "4", label: "$$$$ RM110 - RM250 / person" },
-  { value: "5", label: "$$$$$ > RM250 / person" },
-];
+import {
+  CUISINE_OPTIONS,
+  PRICE_OPTIONS,
+  DIETARY_OPTIONS,
+  AMBIENCE_OPTIONS,
+} from "./config/FilterOption";
 
 export function SignUpFormOwner() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
-
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,24 +60,65 @@ export function SignUpFormOwner() {
 
   const navigate = useNavigate();
 
+  const [errors, setErrors] = useState<{
+    ownerName?: string;
+    email?: string;
+    password?: string;
+    restaurantName?: string;
+    contactNo?: string;
+    restaurantURL?: string;
+    restaurantImages?: string;
+    cuisineType?: string;
+    priceRange?: string;
+    ambience?: string;
+    openTime?: string;
+    closeTime?: string;
+    street?: string;
+    postcode?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    consent?: string;
+    form?: string;
+  }>({});
+
+  const [touched, setTouched] = useState({
+    ownerName: false,
+    email: false,
+    password: false,
+    restaurantName: false,
+    contactNo: false,
+    restaurantURL: false,
+    restaurantImages: false,
+    cuisineType: false,
+    priceRange: false,
+    ambience: false,
+    openTime: false,
+    closeTime: false,
+    street: false,
+    postcode: false,
+    city: false,
+    state: false,
+    country: false,
+    consent: false,
+  });
+
   const fetchCoordinatesFromAddress = async () => {
     if (!street.trim() || !postcode.trim() || !city.trim()) return;
 
     setIsSearchingLocation(true);
     try {
       let cleanStreet1 = street
-        .replace(/no\.?\s*\d+[-–\/]*\d*\w*/gi, "") // remove eg: No. 12, No 12-A
-        .replace(/lot\.?\s*\d+/gi, "") // remove eg: Lot 123
-        .replace(/block\s*\w+/gi, "") // remove eg: Block A
-        .replace(/flat\s*\w+/gi, "") // remove eg: Flat B
-        .replace(/level\s*\d+/gi, "") // remove eg: Level 3
-        .replace(/floor\s*\d+/gi, "") // remove eg: 3rd Floor
-        .replace(/[\s,]+/g, " ") // remove comma ,
+        .replace(/no\.?\s*\d+[-–\/]*\d*\w*/gi, "")
+        .replace(/lot\.?\s*\d+/gi, "")
+        .replace(/block\s*\w+/gi, "")
+        .replace(/flat\s*\w+/gi, "")
+        .replace(/level\s*\d+/gi, "")
+        .replace(/floor\s*\d+/gi, "")
+        .replace(/[\s,]+/g, " ")
         .trim();
 
       if (!cleanStreet1) cleanStreet1 = street.trim();
-
-      console.log("Address after removing the house number:", cleanStreet1);
 
       let params = new URLSearchParams({
         format: "json",
@@ -113,8 +158,6 @@ export function SignUpFormOwner() {
       }
 
       if (cleanStreet2 && cleanStreet2 !== cleanStreet1) {
-        console.log("Address after removing the house street:", cleanStreet2);
-
         let tamanParams = new URLSearchParams({
           format: "json",
           street: cleanStreet2,
@@ -137,7 +180,6 @@ export function SignUpFormOwner() {
         }
       }
 
-      console.error("Location not found. ");
       setLatitude(null);
       setLongitude(null);
     } catch (error) {
@@ -154,47 +196,6 @@ export function SignUpFormOwner() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [street, postcode, city, state, country]);
-
-  const [errors, setErrors] = useState<{
-    ownerName?: string;
-    email?: string;
-    password?: string;
-    restaurantName?: string;
-    contactNo?: string;
-    restaurantURL?: string;
-    cuisineType?: string;
-    priceRange?: string;
-    ambience?: string;
-    openTime?: string;
-    closeTime?: string;
-    street?: string;
-    postcode?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    consent?: string;
-    form?: string;
-  }>({});
-
-  const [touched, setTouched] = useState({
-    ownerName: false,
-    email: false,
-    password: false,
-    restaurantName: false,
-    contactNo: false,
-    restaurantURL: false,
-    cuisineType: false,
-    priceRange: false,
-    ambience: false,
-    openTime: false,
-    closeTime: false,
-    street: false,
-    postcode: false,
-    city: false,
-    state: false,
-    country: false,
-    consent: false,
-  });
 
   const validate = () => {
     const next: typeof errors = {};
@@ -227,6 +228,10 @@ export function SignUpFormOwner() {
       }
     }
 
+    if (restaurantImages.length === 0) {
+      next.restaurantImages = "At least one restaurant image must be uploaded";
+    }
+
     if (!contactNo.trim()) {
       next.contactNo = "Restaurant contact number is required";
     } else if (contactNo.length < 10) {
@@ -253,7 +258,7 @@ export function SignUpFormOwner() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: ReactSubmitEvent) => {
     e.preventDefault();
 
     const allTouched = {
@@ -263,6 +268,7 @@ export function SignUpFormOwner() {
       restaurantName: true,
       contactNo: true,
       restaurantURL: true,
+      restaurantImages: true,
       cuisineType: true,
       priceRange: true,
       ambience: true,
@@ -329,14 +335,38 @@ export function SignUpFormOwner() {
 
   const handleBlur = (field: keyof typeof touched) => {
     setTouched((t) => ({ ...t, [field]: true }));
-    validate();
+    // Deferred validation execution fixes edge-cases when elements blur due to system dialogues opening
+    setTimeout(() => validate(), 0);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Only JPG, PNG, and WEBP image formats are allowed for the profile picture.",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        const { form, ...rest } = prev;
+        return rest;
+      });
+
       const imageUrl = URL.createObjectURL(file);
       setProfileImage(imageUrl);
+    }
+  };
+
+  const handleImageRemove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profileImage) {
+      URL.revokeObjectURL(profileImage);
+      setProfileImage(null);
     }
   };
 
@@ -344,14 +374,41 @@ export function SignUpFormOwner() {
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = Array.from(e.target.files || []);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    setTouched((t) => ({ ...t, restaurantImages: true }));
+
+    const hasInvalidType = files.some(
+      (file) => !allowedTypes.includes(file.type),
+    );
+
+    if (hasInvalidType) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "Only JPG, PNG, and WEBP image formats are allowed",
+      }));
+      return;
+    }
+
+    if (files.length > 0) {
+      const imageUrls = files.map((file) => URL.createObjectURL(file));
+      setErrors((prev) => {
+        const { restaurantImages, ...rest } = prev;
+        return rest;
+      });
+      setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    } else if (restaurantImages.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "At least one restaurant image must be uploaded",
+      }));
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <div className="relative">
+        <div className="relative group/container">
           <label htmlFor="profile-upload" className="cursor-pointer group">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-bs-gold bg-bs-neutral-100 flex items-center justify-center">
               {profileImage ? (
@@ -364,10 +421,28 @@ export function SignUpFormOwner() {
                 <User size={40} className="text-bs-neutral-400" />
               )}
             </div>
-            <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
-              <Camera size={16} />
-            </div>
+
+            {!profileImage && (
+              <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
+                <Camera size={16} />
+              </div>
+            )}
           </label>
+
+          {profileImage && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              disabled={isLoading}
+              className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Remove Profile Picture"
+            >
+              <span className="text-xs font-bold leading-none w-3 h-3 flex items-center justify-center">
+                ✕
+              </span>
+            </button>
+          )}
+
           <input
             id="profile-upload"
             type="file"
@@ -436,9 +511,7 @@ export function SignUpFormOwner() {
         </button>
       </div>
 
-      <br />
       <hr />
-      <br />
 
       <FormField
         label="Restaurant Name"
@@ -468,27 +541,6 @@ export function SignUpFormOwner() {
         disabled={isLoading}
       />
 
-      <div className="space-y-3">
-        <label className="block text-sm font-medium">Restaurant Images</label>
-        <input
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={handleRestaurantImagesUpload}
-          disabled={isLoading}
-        />
-        <div className="grid grid-cols-3 gap-3">
-          {restaurantImages.map((image, index) => (
-            <img
-              key={index}
-              src={image}
-              alt={`Restaurant ${index}`}
-              className="w-full h-24 object-cover rounded-lg border"
-            />
-          ))}
-        </div>
-      </div>
-
       <FormField
         label="Restaurant Website URL"
         type="text"
@@ -503,144 +555,194 @@ export function SignUpFormOwner() {
         disabled={isLoading}
       />
 
-      {/* Cuisine Types */}
-      <div className="space-y-2">
-        <label className="block font-medium">
-          Cuisine Types (Select all that apply)
+      <div>
+        <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
+          <ImageIcon size={16} className="text-bs-neutral-500" />
+          Restaurant Images
         </label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {[
-            "Japanese",
-            "Korean",
-            "Western",
-            "Chinese",
-            "Malay",
-            "Indian",
-            "Fusion",
-            "Italian",
-            "Mexican",
-            "Asian",
-            "American",
-            "Mediteranean",
-          ].map((item) => (
-            <label
-              key={item}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={cuisineType.includes(item)}
-                disabled={isLoading}
-                onBlur={() => handleBlur("cuisineType")}
-                onChange={(e) => {
-                  let updated: string[];
-                  if (e.target.checked) {
-                    updated = [...cuisineType, item];
-                  } else {
-                    updated = cuisineType.filter((c) => c !== item);
-                  }
-                  setCuisineType(updated);
-                  if (touched.cuisineType) setTimeout(() => validate(), 0);
-                }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-        {touched.cuisineType && errors.cuisineType && (
-          <p className="text-sm text-bs-red">{errors.cuisineType}</p>
-        )}
-      </div>
 
-      {/* Price Range */}
-      <SelectField
-        label="Price Range"
-        value={priceRange}
-        onChange={(e) =>
-          handleChange(e.target.value, setPriceRange, "priceRange")
-        }
-        onBlur={() => handleBlur("priceRange")}
-        disabled={isLoading}
-        error={touched.priceRange ? errors.priceRange : undefined}
-        options={priceRangeOptions}
-      />
+        <input
+          type="file"
+          id="restaurant-image-upload"
+          accept="image/*"
+          multiple
+          onChange={handleRestaurantImagesUpload}
+          className="hidden"
+          disabled={isLoading}
+        />
 
-      <div className="space-y-2">
-        <label className="block font-medium">
-          Restaurant Ambience (Select all that apply)
-        </label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {[
-            "Casual",
-            "Fine Dining",
-            "Romantic",
-            "Family",
-            "Business",
-            "Trendy",
-            "Quiet",
-            "Cozy",
-            "Lively",
-          ].map((item) => (
-            <label
-              key={item}
-              className="flex items-center gap-2 text-sm cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={ambience.includes(item)}
-                disabled={isLoading}
-                onBlur={() => handleBlur("ambience")}
-                onChange={(e) => {
-                  let updated: string[];
-                  if (e.target.checked) {
-                    updated = [...ambience, item];
-                  } else {
-                    updated = ambience.filter((a) => a !== item);
-                  }
-                  setAmbience(updated);
-                  if (touched.ambience) setTimeout(() => validate(), 0);
-                }}
-              />
-              {item}
-            </label>
-          ))}
-        </div>
-        {touched.ambience && errors.ambience && (
-          <p className="text-sm text-bs-red">{errors.ambience}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <label className="block font-medium">Supported Dietary Needs</label>
-        <div className="grid grid-cols-2 gap-2 bg-bs-neutral-50 p-3 rounded-lg border">
-          {["Halal", "Vegetarian", "Vegan", "Gluten-Free", "Kosher"].map(
-            (item) => (
-              <label
-                key={item}
-                className="flex items-center gap-2 text-sm cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={dietaryNeeds.includes(item)}
-                  disabled={isLoading}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setDietaryNeeds([...dietaryNeeds, item]);
-                    } else {
-                      setDietaryNeeds(dietaryNeeds.filter((d) => d !== item));
+        <div
+          onClick={() => {
+            document.getElementById("restaurant-image-upload")?.click();
+          }}
+          onBlur={() => handleBlur("restaurantImages")}
+          tabIndex={0}
+          className={`
+            border-2 border-dashed rounded-2xl p-6
+            flex flex-col items-center justify-center
+            cursor-pointer transition-all duration-200 focus:outline-none
+            ${
+              touched.restaurantImages && errors.restaurantImages
+                ? "border-bs-red bg-bs-red/5"
+                : restaurantImages.length > 0
+                  ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                  : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+            }
+          `}
+        >
+          {restaurantImages.length > 0 ? (
+            <div className="text-center space-y-4 w-full">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                {restaurantImages.map((imgUrl, index) => (
+                  <div
+                    key={index}
+                    className="relative group/thumb h-20 rounded-md overflow-hidden shadow-sm"
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updated = restaurantImages.filter(
+                          (_, i) => i !== index,
+                        );
+                        setRestaurantImages(updated);
+                        if (updated.length === 0 && touched.restaurantImages) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            restaurantImages:
+                              "At least one restaurant image must be uploaded",
+                          }));
+                        }
+                      }}
+                      className="absolute inset-0 bg-black/40 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                  {restaurantImages.length} Image(s) Loaded
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRestaurantImages([]);
+                    if (touched.restaurantImages) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        restaurantImages:
+                          "At least one restaurant image must be uploaded",
+                      }));
                     }
                   }}
-                />
-                {item}
-              </label>
-            ),
+                  className="text-xs font-bold text-rose-600 hover:underline"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center space-y-2">
+              <div className="p-3 bg-white border border-bs-neutral-200 rounded-xl inline-block text-bs-neutral-500 shadow-sm">
+                <Upload size={22} />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-bs-neutral-800">
+                  Click to upload restaurant images
+                </p>
+                <p className="text-xs text-bs-neutral-400 mt-1">
+                  PNG, JPG, JPEG up to 5MB (Supports selection of multiple
+                  files)
+                </p>
+              </div>
+            </div>
           )}
         </div>
+
+        {touched.restaurantImages && errors.restaurantImages && (
+          <p className="text-sm text-bs-red mt-1 animate-fadeIn">
+            {errors.restaurantImages}
+          </p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Cuisine Types */}
+        <div className="space-y-2" onBlur={() => handleBlur("cuisineType")}>
+          <MultiSelectField
+            label="Cuisine Type"
+            value={cuisineType}
+            onChange={(val) => {
+              setCuisineType(val);
+              if (touched.cuisineType) setTimeout(() => validate(), 0);
+            }}
+            options={CUISINE_OPTIONS}
+            disabled={isLoading}
+            icon={<Utensils size={18} />}
+            placeholder="Any Cuisine"
+          />
+          {touched.cuisineType && errors.cuisineType && (
+            <p className="text-sm text-bs-red">{errors.cuisineType}</p>
+          )}
+        </div>
+
+        {/* Price Range */}
+        <SelectField
+          label="Price Range"
+          value={priceRange}
+          icon={<DollarSign size={18} />}
+          onChange={(e) =>
+            handleChange(e.target.value, setPriceRange, "priceRange")
+          }
+          onBlur={() => handleBlur("priceRange")}
+          options={PRICE_OPTIONS}
+          disabled={isLoading}
+          error={touched.priceRange ? errors.priceRange : undefined}
+          placeholder="Any Price"
+        />
+
+        {/* Vibe / Ambience */}
+        <div className="space-y-2" onBlur={() => handleBlur("ambience")}>
+          <MultiSelectField
+            label="Vibe / Ambience"
+            value={ambience}
+            onChange={(val) => {
+              setAmbience(val);
+              if (touched.ambience) setTimeout(() => validate(), 0);
+            }}
+            options={AMBIENCE_OPTIONS}
+            disabled={isLoading}
+            icon={<Coffee size={18} />}
+            placeholder="Any Vibe"
+          />
+          {touched.ambience && errors.ambience && (
+            <p className="text-sm text-bs-red">{errors.ambience}</p>
+          )}
+        </div>
+
+        {/* Dietary Requirements */}
+        <MultiSelectField
+          label="Dietary Requirements"
+          value={dietaryNeeds}
+          onChange={(val) => setDietaryNeeds(val)}
+          options={DIETARY_OPTIONS}
+          disabled={isLoading}
+          icon={<Leaf size={18} />}
+          placeholder="No Restrictions"
+        />
       </div>
 
       <br />
       <div className="space-y-2">
-        <label className="block text-sm font-medium">
+        <label className="block text-m font-medium">
           Default Operating Hours
         </label>
         <div className="grid grid-cols-2 gap-4">
@@ -705,9 +807,8 @@ export function SignUpFormOwner() {
         </div>
       </div>
 
-      <br />
       <div className="space-y-4">
-        <label className="block text-sm font-medium text-bs-neutral-800">
+        <label className="block text-m font-medium text-bs-neutral-800 mb-2">
           Restaurant Location
         </label>
 
@@ -808,12 +909,15 @@ export function SignUpFormOwner() {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" onBlur={() => handleBlur("consent")}>
         <label className="flex items-start gap-2 text-sm text-bs-neutral-700 cursor-pointer">
           <input
             type="checkbox"
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onChange={(e) => {
+              setConsent(e.target.checked);
+              if (touched.consent) setTimeout(() => validate(), 0);
+            }}
             className="mt-1"
             disabled={isLoading}
           />

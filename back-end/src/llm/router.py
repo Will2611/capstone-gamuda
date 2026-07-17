@@ -6,7 +6,7 @@ from src.database.connection import db_dependency
 
 router = APIRouter(prefix="/llm", tags=["llm"])
 
-# #default chat endpoint
+# #default chat endpoint   
 # @router.post("/chat", response_model=ChatResponse)
 # async def chat_endpoint(body: ChatRequest):
 #     if not body.messages:
@@ -53,6 +53,8 @@ async def chat_endpoint(body: ChatRequest, db: db_dependency):
         reply, restaurants = await service.chat_with_restaurant_search(
             [{"role": m.role, "content": m.content} for m in body.messages],
             db,
+            latitude=body.latitude,
+            longitude=body.longitude,
         )
         return ChatResponse(message=reply, restaurants=restaurants)
     except ValueError as exc:

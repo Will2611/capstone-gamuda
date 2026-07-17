@@ -89,18 +89,27 @@ export default function MapInterface() {
           return rating > bestRating ? i : bestIdx;
         }, 0);
 
+        const stringToHash = (str: string): number => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return Math.abs(hash);
+        };
+
         const mapped = searchResults.map((r, index) => {
+          const numericId = typeof r.id === "string" ? stringToHash(r.id) : (r.id || 0);
           const rating = r.rating || 4.0;
           const mockMatch = MOCK_RESTAURANTS.find(
             (m) =>
-              m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase(),
+              m.id === numericId || m.name.toLowerCase() === r.name.toLowerCase(),
           );
           return {
-            id: r.id,
+            id: numericId,
             name: r.name,
             rating,
             cuisine: r.cuisine || "Any",
-            distance: mockMatch?.distance || "1.2 km",
+            distance: r.distance !== undefined ? `${r.distance.toFixed(1)} km` : (mockMatch?.distance || "1.2 km"),
             dietary: mockMatch?.dietary || "Halal",
             isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
             type: index === topIndex ? ("gold" as const) : ("red" as const),
@@ -109,7 +118,7 @@ export default function MapInterface() {
                 ? [r.longitude, r.latitude]
                 : mockMatch?.coordinates || [101.71, 3.15],
             image: mockMatch?.image,
-            promotions: mockPromotions.filter((promo) => promo.id === r.id),
+            promotions: mockPromotions.filter((promo) => promo.id === numericId),
           } as Restaurant;
         });
         setDisplayedRestaurants(mapped);
@@ -289,8 +298,8 @@ export default function MapInterface() {
   });
   // Dual mode
   return (
-    <div className="flex flex-col h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 lg:gap-4 lg:p-4 overflow-hidden">
-      <div className="px-4 pt-4 lg:px-0 lg:pt-0 flex items-center justify-between gap-4">
+    <div className="flex flex-col md:h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 md:gap-4 md:p-4">
+      <div className="px-4 pt-4 md:px-0 md:pt-0 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-bs-neutral-900">
             Dining Discovery
@@ -304,29 +313,27 @@ export default function MapInterface() {
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "map"
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "map"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "text-bs-neutral-600 hover:text-bs-neutral-900"
-            }`}
+              }`}
           >
             Map Mode
           </button>
           <button
             type="button"
             onClick={() => setViewMode("suggestions")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "suggestions"
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "suggestions"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "text-bs-neutral-600 hover:text-bs-neutral-900"
-            }`}
+              }`}
           >
             Suggestion Mode
           </button>
         </div>
       </div>
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 gap-0 lg:gap-4">
-        <div className="flex-1 relative min-h-[45vh] lg:min-h-0 rounded-none lg:rounded-xl overflow-hidden border-0 lg:border border-bs-neutral-200 shadow-md lg:shadow-lg bg-white">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0 gap-0 md:gap-4">
+        <div className="flex-1 relative min-h-[45vh] md:min-h-0 rounded-none md:rounded-xl overflow-hidden border-0 md:border border-bs-neutral-200 shadow-md md:shadow-lg bg-white">
           {viewMode === "map" ? (
             <>
               <FilterBar filters={filters} onFilterChange={setFilters} />
@@ -356,7 +363,7 @@ export default function MapInterface() {
                 </div>
 
                 {!selectedRestaurant && (
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+                  <div className="absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
                     <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
                       Tap a pin to view restaurant details
                     </div>
@@ -373,7 +380,7 @@ export default function MapInterface() {
                   onClick={locate}
                   disabled={isLocating}
                   aria-label="Locate me on the map"
-                  className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+                  className="absolute top-25 right-10 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
                 >
                   <PersonPin />
                 </button>
@@ -495,17 +502,19 @@ export default function MapInterface() {
             onClick={locate}
             disabled={isLocating}
             aria-label="Locate me on the map"
-            className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+            className="absolute top-25 right-10 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
           >
             <PersonPin />
           </button>
         </div>
 
-        <div className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col p-4 min-h-[320px] max-h-[50vh] lg:min-h-0 lg:max-h-full overflow-y-hidden">
+        <div className="w-full md:w-80 xl:w-96 shrink-0 flex flex-col p-4 md:pb-4 min-h-[320px] max-h-[50vh] md:min-h-0 md:max-h-full overflow-y-hidden">
           <ChatBoxPanel
             socketUrl={null}
             useLlm
             onLlmResponse={handleLlmResponse}
+            latitude={userCenter ? userCenter[1] : undefined}
+            longitude={userCenter ? userCenter[0] : undefined}
             dummyChat={{
               chatGroupName: "BiteScouts AI",
               chatCaption: "Your dining discovery assistant",

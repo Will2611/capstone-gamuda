@@ -1,4 +1,5 @@
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
+import type { SubmitEvent as ReactSubmitEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   User,
@@ -15,6 +16,7 @@ import {
   Coffee,
   Clock,
   Smile,
+  X,
 } from "lucide-react";
 import { FormField, SelectField } from "./FormField";
 import { MultiSelectField } from "./MultiSelectField";
@@ -32,6 +34,39 @@ import {
 
 import { useUser } from "../context/UserContext";
 import { useAuth } from "../context/AuthContext";
+
+const GENDER_OPTIONS = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+];
+
+const RELIGION_OPTIONS = [
+  { value: "Islam", label: "Islam" },
+  { value: "Christianity", label: "Christianity" },
+  { value: "Buddhism", label: "Buddhism" },
+  { value: "Hinduism", label: "Hinduism" },
+  { value: "Others", label: "Others" },
+];
+
+const LANG_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ms", label: "Bahasa Melayu" },
+];
+
+const PERSONALITY_TAG_OPTIONS = [
+  "Adventurous eater",
+  "Cafe hopper",
+  "Fine dining lover",
+  "Street food hunter",
+  "Late night foodie",
+  "Healthy eater",
+  "Dessert addict",
+];
+
+const personalityOptions = PERSONALITY_TAG_OPTIONS.map((tag) => ({
+  label: tag,
+  value: tag,
+}));
 
 export function SignUpFormClient() {
   const navigate = useNavigate();
@@ -61,6 +96,13 @@ export function SignUpFormClient() {
     time: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (isEditMode && profile) {
       const extendedProfile = profile as any;
@@ -89,85 +131,62 @@ export function SignUpFormClient() {
     }
   }, [profile, user, isEditMode]);
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
-
-  const genderOptions = [
-    { label: "Select Gender", value: "" },
-    { label: "Male", value: "male" },
-    { label: "Female", value: "female" },
-  ];
-  const religionOptions = [
-    { value: "", label: "Select Religion" },
-    { value: "Islam", label: "Islam" },
-    { value: "Christianity", label: "Christianity" },
-    { value: "Buddhism", label: "Buddhism" },
-    { value: "Hinduism", label: "Hinduism" },
-    { value: "Others", label: "Others" },
-  ];
-  const langOptions = [
-    { value: "", label: "Select Language" },
-    { value: "en", label: "English" },
-    { value: "ms", label: "Bahasa Melayu" },
-  ];
-
-  const PERSONALITY_TAG_OPTIONS = [
-    "Adventurous eater",
-    "Cafe hopper",
-    "Fine dining lover",
-    "Street food hunter",
-    "Late night foodie",
-    "Healthy eater",
-    "Dessert addict",
-  ];
-
-  const personalityOptions = PERSONALITY_TAG_OPTIONS.map((tag) => ({
-    label: tag,
-    value: tag,
-  }));
-
   const getValidationErrors = (
-    currentValues: {
+    values: {
       fullName: string;
       email: string;
-      password: string;
+      password?: string;
       gender: string;
       birthday: string;
       religion: string;
       language: string;
-      consent: boolean;
+      consent?: boolean;
     },
     editMode: boolean = isEditMode,
   ) => {
     const next: Record<string, string> = {};
-    if (!currentValues.fullName.trim()) next.fullName = "Full name is required";
-    if (!currentValues.email.trim()) {
+    if (!values.fullName.trim()) next.fullName = "Full name is required";
+
+    if (!values.email.trim()) {
       next.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentValues.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) {
       next.email = "Enter a valid email address";
     }
 
     if (!editMode) {
-      if (!currentValues.password) {
+      if (!values.password) {
         next.password = "Password is required";
-      } else if (currentValues.password.length < 8) {
+      } else if (values.password.length < 8) {
         next.password = "Password must be at least 8 characters";
+      }
+      if (!values.consent) {
+        next.consent = "You must accept the Privacy Policy";
       }
     }
 
-    if (!currentValues.gender) next.gender = "Please select a gender";
-    if (!currentValues.birthday) next.birthday = "Birthday is required";
-    if (!currentValues.religion) next.religion = "Religion is required";
-    if (!currentValues.language) next.language = "Please select a language";
+    if (!values.gender) next.gender = "Please select a gender";
+    if (!values.birthday) next.birthday = "Birthday is required";
+    if (!values.religion) next.religion = "Religion is required";
+    if (!values.language) next.language = "Please select a language";
 
-    if (!editMode && !currentValues.consent) {
-      next.consent = "You must accept the Privacy Policy";
-    }
     return next;
+  };
+
+  const runValidation = (updatedFields: Record<string, any> = {}) => {
+    const currentValues = {
+      fullName,
+      email,
+      password,
+      gender,
+      birthday,
+      religion,
+      language,
+      consent,
+      ...updatedFields,
+    };
+    const nextErrors = getValidationErrors(currentValues, isEditMode);
+    setErrors(nextErrors);
+    return nextErrors;
   };
 
   const handleFieldChange = (
@@ -176,43 +195,17 @@ export function SignUpFormClient() {
     fieldName: string,
   ) => {
     setter(value);
-
     if (touched[fieldName]) {
-      const updatedValues = {
-        fullName,
-        email,
-        password,
-        gender,
-        birthday,
-        religion,
-        language,
-        consent,
-        [fieldName]: value,
-      };
-      const nextErrors = getValidationErrors(updatedValues, isEditMode);
-      setErrors(nextErrors);
+      runValidation({ [fieldName]: value });
     }
   };
 
   const handleBlur = (fieldName: string) => {
     setTouched((prev) => ({ ...prev, [fieldName]: true }));
-    const nextErrors = getValidationErrors(
-      {
-        fullName,
-        email,
-        password,
-        gender,
-        birthday,
-        religion,
-        language,
-        consent,
-      },
-      isEditMode,
-    );
-    setErrors(nextErrors);
+    runValidation();
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: ReactSubmitEvent) => {
     e.preventDefault();
 
     const allTouched = {
@@ -227,39 +220,14 @@ export function SignUpFormClient() {
     };
     setTouched(allTouched);
 
-    const nextErrors = getValidationErrors(
-      {
-        fullName,
-        email,
-        password,
-        gender,
-        birthday,
-        religion,
-        language,
-        consent,
-      },
-      isEditMode,
-    );
-    setErrors(nextErrors);
-
+    const nextErrors = runValidation();
     if (Object.keys(nextErrors).length > 0) return;
+
     setIsLoading(true);
 
-    //edit mode
     if (isEditMode) {
       try {
         await updatePreferences(preferences);
-
-        // await updateFullProfile({
-        //   fullName,
-        //   gender,
-        //   birthday,
-        //   religion,
-        //   language,
-        //   personalities,
-        //   avatarUrl: profileImage
-        // });
-
         setSuccess(true);
         setTimeout(() => navigate("/profile"), 1500);
       } catch (error) {
@@ -270,7 +238,6 @@ export function SignUpFormClient() {
       return;
     }
 
-    //new user
     const formData = {
       profileImage,
       fullName,
@@ -284,40 +251,85 @@ export function SignUpFormClient() {
       preferences,
       personalities,
     };
+
     console.log("CLIENT REGISTER:", formData);
     setSuccess(true);
     setTimeout(() => navigate("/login"), 1500);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Only JPG, PNG, and WEBP image formats are allowed for the profile picture.",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        const { form, ...rest } = prev;
+        return rest;
+      });
+
+      const imageUrl = URL.createObjectURL(file);
+      setProfileImage(imageUrl);
+    }
+  };
+
+  const handleImageRemove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profileImage) {
+      URL.revokeObjectURL(profileImage);
+      setProfileImage(null);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <div className="relative">
+        <div className="relative group/container">
           <label htmlFor="profile-upload" className="cursor-pointer group">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-bs-gold bg-bs-neutral-100 flex items-center justify-center">
               {profileImage ? (
                 <img
                   src={profileImage}
-                  alt="Preview"
+                  alt="Profile Preview"
                   className="w-full h-full object-cover"
                 />
               ) : (
                 <User size={40} className="text-bs-neutral-400" />
               )}
             </div>
-            <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md">
-              <Camera size={16} />
-            </div>
+
+            {!profileImage && (
+              <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
+                <Camera size={16} />
+              </div>
+            )}
           </label>
+
+          {profileImage && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              disabled={isLoading}
+              className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Remove Profile Picture"
+            >
+              <X size={12} className="stroke-[3]" />
+            </button>
+          )}
+
           <input
             id="profile-upload"
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) =>
-              e.target.files?.[0] &&
-              setProfileImage(URL.createObjectURL(e.target.files[0]))
-            }
+            onChange={handleImageUpload}
             disabled={isLoading}
           />
         </div>
@@ -325,6 +337,12 @@ export function SignUpFormClient() {
           {isEditMode ? "Update Profile Picture" : "Upload Profile Picture"}
         </p>
       </div>
+
+      {errors.form && (
+        <div className="p-3 text-sm rounded-lg bg-rose-50 border border-rose-200 text-rose-600">
+          {errors.form}
+        </div>
+      )}
 
       <FormField
         label="Full Name"
@@ -339,6 +357,7 @@ export function SignUpFormClient() {
         disabled={isLoading}
         placeholder="Full Name"
       />
+
       <FormField
         label="Email"
         type="email"
@@ -370,7 +389,7 @@ export function SignUpFormClient() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-[42px] text-bs-neutral-500"
+            className="absolute right-3 top-[calc(50%+4px)] -translate-y-1/2 text-bs-neutral-500 hover:text-bs-neutral-700 transition-colors"
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -385,10 +404,11 @@ export function SignUpFormClient() {
             handleFieldChange(e.target.value, setGender, "gender")
           }
           onBlur={() => handleBlur("gender")}
-          options={genderOptions}
+          options={GENDER_OPTIONS}
           error={touched.gender ? errors.gender : undefined}
           disabled={isLoading}
           icon={<User size={18} />}
+          placeholder="Select a gender"
         />
         <FormField
           label="Birthday"
@@ -412,9 +432,10 @@ export function SignUpFormClient() {
             handleFieldChange(e.target.value, setReligion, "religion")
           }
           onBlur={() => handleBlur("religion")}
-          options={religionOptions}
+          options={RELIGION_OPTIONS}
           error={touched.religion ? errors.religion : undefined}
           disabled={isLoading}
+          placeholder="Select a religion"
         />
         <SelectField
           label="Preferred Language"
@@ -423,9 +444,10 @@ export function SignUpFormClient() {
             handleFieldChange(e.target.value, setLanguage, "language")
           }
           onBlur={() => handleBlur("language")}
-          options={langOptions}
+          options={LANG_OPTIONS}
           error={touched.language ? errors.language : undefined}
           disabled={isLoading}
+          placeholder="Select a language"
         />
       </div>
 
@@ -441,7 +463,8 @@ export function SignUpFormClient() {
           </span>
         </div>
       </div>
-      <p className="text-xs text-bs-neutral-500 -mt-2">
+
+      <p className="text-xs text-bs-neutral-500 -mt-3">
         Help us customize your BiteScouts recommendation feed immediately.
       </p>
 
@@ -515,7 +538,7 @@ export function SignUpFormClient() {
 
       {!isEditMode && (
         <div className="space-y-2 pt-2">
-          <label className="flex items-start gap-2 text-sm text-bs-neutral-700">
+          <label className="flex items-start gap-2 text-sm text-bs-neutral-700 cursor-pointer">
             <input
               type="checkbox"
               checked={consent}
@@ -527,8 +550,14 @@ export function SignUpFormClient() {
             />
             <span>I agree to the Privacy Policy and Terms of Service</span>
           </label>
+          <p className="text-xs text-bs-neutral-500">
+            By creating an account, you agree to how we process your data.{" "}
+            <Link to="/privacy" className="text-bs-gold hover:underline">
+              View Privacy Policy
+            </Link>
+          </p>
           {touched.consent && errors.consent && (
-            <p className="text-xs text-bs-red">{errors.consent}</p>
+            <p className="text-xs text-bs-red font-medium">{errors.consent}</p>
           )}
         </div>
       )}
@@ -548,7 +577,7 @@ export function SignUpFormClient() {
             : "Registering..."
           : isEditMode
             ? "Save Preferences"
-            : "Create Client Account"}
+            : "Create Personal Account"}
       </Button>
 
       {!isEditMode && (
