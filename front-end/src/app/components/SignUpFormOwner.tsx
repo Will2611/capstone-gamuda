@@ -11,6 +11,7 @@ import {
   Camera,
   Phone,
   Link as LinkIcon,
+  Image as ImageIcon,
   Utensils,
   DollarSign,
   Coffee,
@@ -30,7 +31,6 @@ import {
 
 export function SignUpFormOwner() {
   const [profileImage, setProfileImage] = useState<string | null>(null);
-
   const [ownerName, setOwnerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,6 +59,49 @@ export function SignUpFormOwner() {
   const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const [errors, setErrors] = useState<{
+    ownerName?: string;
+    email?: string;
+    password?: string;
+    restaurantName?: string;
+    contactNo?: string;
+    restaurantURL?: string;
+    restaurantImages?: string;
+    cuisineType?: string;
+    priceRange?: string;
+    ambience?: string;
+    openTime?: string;
+    closeTime?: string;
+    street?: string;
+    postcode?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    consent?: string;
+    form?: string;
+  }>({});
+
+  const [touched, setTouched] = useState({
+    ownerName: false,
+    email: false,
+    password: false,
+    restaurantName: false,
+    contactNo: false,
+    restaurantURL: false,
+    restaurantImages: false,
+    cuisineType: false,
+    priceRange: false,
+    ambience: false,
+    openTime: false,
+    closeTime: false,
+    street: false,
+    postcode: false,
+    city: false,
+    state: false,
+    country: false,
+    consent: false,
+  });
 
   const fetchCoordinatesFromAddress = async () => {
     if (!street.trim() || !postcode.trim() || !city.trim()) return;
@@ -154,47 +197,6 @@ export function SignUpFormOwner() {
     return () => clearTimeout(delayDebounceFn);
   }, [street, postcode, city, state, country]);
 
-  const [errors, setErrors] = useState<{
-    ownerName?: string;
-    email?: string;
-    password?: string;
-    restaurantName?: string;
-    contactNo?: string;
-    restaurantURL?: string;
-    cuisineType?: string;
-    priceRange?: string;
-    ambience?: string;
-    openTime?: string;
-    closeTime?: string;
-    street?: string;
-    postcode?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    consent?: string;
-    form?: string;
-  }>({});
-
-  const [touched, setTouched] = useState({
-    ownerName: false,
-    email: false,
-    password: false,
-    restaurantName: false,
-    contactNo: false,
-    restaurantURL: false,
-    cuisineType: false,
-    priceRange: false,
-    ambience: false,
-    openTime: false,
-    closeTime: false,
-    street: false,
-    postcode: false,
-    city: false,
-    state: false,
-    country: false,
-    consent: false,
-  });
-
   const validate = () => {
     const next: typeof errors = {};
 
@@ -224,6 +226,10 @@ export function SignUpFormOwner() {
       } catch (err) {
         next.restaurantURL = "Enter a valid website URL";
       }
+    }
+
+    if (restaurantImages.length === 0) {
+      next.restaurantImages = "At least one restaurant image must be uploaded";
     }
 
     if (!contactNo.trim()) {
@@ -262,6 +268,7 @@ export function SignUpFormOwner() {
       restaurantName: true,
       contactNo: true,
       restaurantURL: true,
+      restaurantImages: true,
       cuisineType: true,
       priceRange: true,
       ambience: true,
@@ -328,14 +335,38 @@ export function SignUpFormOwner() {
 
   const handleBlur = (field: keyof typeof touched) => {
     setTouched((t) => ({ ...t, [field]: true }));
-    validate();
+    // Deferred validation execution fixes edge-cases when elements blur due to system dialogues opening
+    setTimeout(() => validate(), 0);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Only JPG, PNG, and WEBP image formats are allowed for the profile picture.",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        const { form, ...rest } = prev;
+        return rest;
+      });
+
       const imageUrl = URL.createObjectURL(file);
       setProfileImage(imageUrl);
+    }
+  };
+
+  const handleImageRemove = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (profileImage) {
+      URL.revokeObjectURL(profileImage);
+      setProfileImage(null);
     }
   };
 
@@ -343,14 +374,41 @@ export function SignUpFormOwner() {
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const files = Array.from(e.target.files || []);
-    const imageUrls = files.map((file) => URL.createObjectURL(file));
-    setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    setTouched((t) => ({ ...t, restaurantImages: true }));
+
+    const hasInvalidType = files.some(
+      (file) => !allowedTypes.includes(file.type),
+    );
+
+    if (hasInvalidType) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "Only JPG, PNG, and WEBP image formats are allowed",
+      }));
+      return;
+    }
+
+    if (files.length > 0) {
+      const imageUrls = files.map((file) => URL.createObjectURL(file));
+      setErrors((prev) => {
+        const { restaurantImages, ...rest } = prev;
+        return rest;
+      });
+      setRestaurantImages((prev) => [...prev, ...imageUrls]);
+    } else if (restaurantImages.length === 0) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "At least one restaurant image must be uploaded",
+      }));
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="flex flex-col items-center gap-3">
-        <div className="relative">
+        <div className="relative group/container">
           <label htmlFor="profile-upload" className="cursor-pointer group">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-bs-gold bg-bs-neutral-100 flex items-center justify-center">
               {profileImage ? (
@@ -363,10 +421,28 @@ export function SignUpFormOwner() {
                 <User size={40} className="text-bs-neutral-400" />
               )}
             </div>
-            <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
-              <Camera size={16} />
-            </div>
+
+            {!profileImage && (
+              <div className="absolute bottom-1 right-1 bg-bs-gold text-white p-2 rounded-full shadow-md group-hover:scale-105 transition">
+                <Camera size={16} />
+              </div>
+            )}
           </label>
+
+          {profileImage && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              disabled={isLoading}
+              className="absolute top-0 right-0 bg-rose-600 hover:bg-rose-700 text-white p-1.5 rounded-full shadow-md transition transform hover:scale-110 flex items-center justify-center border-2 border-white"
+              title="Remove Profile Picture"
+            >
+              <span className="text-xs font-bold leading-none w-3 h-3 flex items-center justify-center">
+                ✕
+              </span>
+            </button>
+          )}
+
           <input
             id="profile-upload"
             type="file"
@@ -481,11 +557,10 @@ export function SignUpFormOwner() {
 
       <div>
         <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-          <Upload size={16} className="text-bs-neutral-500" />
+          <ImageIcon size={16} className="text-bs-neutral-500" />
           Restaurant Images
         </label>
 
-        {/* Fixed id tag name to link accurately with triggering label layout */}
         <input
           type="file"
           id="restaurant-image-upload"
@@ -497,23 +572,26 @@ export function SignUpFormOwner() {
         />
 
         <div
-          onClick={() =>
-            document.getElementById("restaurant-image-upload")?.click()
-          }
+          onClick={() => {
+            document.getElementById("restaurant-image-upload")?.click();
+          }}
+          onBlur={() => handleBlur("restaurantImages")}
+          tabIndex={0}
           className={`
             border-2 border-dashed rounded-2xl p-6
             flex flex-col items-center justify-center
-            cursor-pointer transition-all duration-200
+            cursor-pointer transition-all duration-200 focus:outline-none
             ${
-              restaurantImages.length > 0
-                ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
-                : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+              touched.restaurantImages && errors.restaurantImages
+                ? "border-bs-red bg-bs-red/5"
+                : restaurantImages.length > 0
+                  ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                  : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
             }
           `}
         >
           {restaurantImages.length > 0 ? (
             <div className="text-center space-y-4 w-full">
-              {/* Added a clean gallery layout grid display supporting multi-image arrays */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
                 {restaurantImages.map((imgUrl, index) => (
                   <div
@@ -529,9 +607,17 @@ export function SignUpFormOwner() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setRestaurantImages(
-                          restaurantImages.filter((_, i) => i !== index),
+                        const updated = restaurantImages.filter(
+                          (_, i) => i !== index,
                         );
+                        setRestaurantImages(updated);
+                        if (updated.length === 0 && touched.restaurantImages) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            restaurantImages:
+                              "At least one restaurant image must be uploaded",
+                          }));
+                        }
                       }}
                       className="absolute inset-0 bg-black/40 text-white text-xs font-bold flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity"
                     >
@@ -549,6 +635,13 @@ export function SignUpFormOwner() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setRestaurantImages([]);
+                    if (touched.restaurantImages) {
+                      setErrors((prev) => ({
+                        ...prev,
+                        restaurantImages:
+                          "At least one restaurant image must be uploaded",
+                      }));
+                    }
                   }}
                   className="text-xs font-bold text-rose-600 hover:underline"
                 >
@@ -573,11 +666,17 @@ export function SignUpFormOwner() {
             </div>
           )}
         </div>
+
+        {touched.restaurantImages && errors.restaurantImages && (
+          <p className="text-sm text-bs-red mt-1 animate-fadeIn">
+            {errors.restaurantImages}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Cuisine Types */}
-        <div className="space-y-2">
+        <div className="space-y-2" onBlur={() => handleBlur("cuisineType")}>
           <MultiSelectField
             label="Cuisine Type"
             value={cuisineType}
@@ -611,7 +710,7 @@ export function SignUpFormOwner() {
         />
 
         {/* Vibe / Ambience */}
-        <div className="space-y-2">
+        <div className="space-y-2" onBlur={() => handleBlur("ambience")}>
           <MultiSelectField
             label="Vibe / Ambience"
             value={ambience}
@@ -810,12 +909,15 @@ export function SignUpFormOwner() {
         )}
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2" onBlur={() => handleBlur("consent")}>
         <label className="flex items-start gap-2 text-sm text-bs-neutral-700 cursor-pointer">
           <input
             type="checkbox"
             checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
+            onChange={(e) => {
+              setConsent(e.target.checked);
+              if (touched.consent) setTimeout(() => validate(), 0);
+            }}
             className="mt-1"
             disabled={isLoading}
           />
