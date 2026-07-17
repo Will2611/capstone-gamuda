@@ -31,6 +31,40 @@ def splitShifts(shifts:list[str])->list[tuple[datetime.time,datetime.time]]:
     return parse_time_ranges_no_regex(shifts)
     
 
+def extract_dietary_tags(about: str, cuisine: list[str]) -> list[str]:
+    dietary = []
+    about_lower = about.lower()
+    cuisine_lower = [c.lower() for c in cuisine]
+    
+    if (
+        "halal" in about_lower 
+        or "halal" in cuisine_lower 
+        or "mamak" in cuisine_lower 
+        or "indian muslim" in cuisine_lower
+    ):
+        dietary.append("Halal")
+        
+    if (
+        "vegetarian" in about_lower 
+        or "vegetarian" in cuisine_lower
+    ):
+        dietary.append("Vegetarian")
+        
+    if (
+        "vegan" in about_lower 
+        or "vegan" in cuisine_lower
+    ):
+        dietary.append("Vegan")
+        
+    if (
+        "gluten-free" in about_lower 
+        or "gluten free" in about_lower 
+        or "gluten-free" in cuisine_lower
+    ):
+        dietary.append("Gluten-free")
+        
+    return dietary
+
 CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
 a =  "Wednesday(2026-06-24): [6–11 PM], Thursday(2026-06-25): [6–11 PM], Friday(2026-06-26): [6–11 PM], Saturday(2026-06-27): [6–11 PM], Sunday(2026-06-28): [6–11 PM], Monday(2026-06-29): [Closed], Tuesday(2026-06-30): [6–11 PM]"
 IS_ALLOWED_DAY_TYPE = get_args(DAYS_OF_WEEK_TYPE)
@@ -62,6 +96,7 @@ def seed():
                     name=row["Name"].strip(),
                     rating=float(row["Average Rating"]) if row["Average Rating"] else None,
                     cuisine= cuisine if row.get("Categories") else [],
+                    dietary=extract_dietary_tags(about, cuisine),
                     about=about,
                     latitude=float(row["Latitude"]),
                     longitude=float(row["Longitude"]),

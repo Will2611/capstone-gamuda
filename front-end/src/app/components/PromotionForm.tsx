@@ -3,7 +3,6 @@ import { useNavigate } from "react-router";
 import {
   Megaphone,
   Calendar,
-  Image as ImageIcon,
   Link as LinkIcon,
   Clock,
   Upload,

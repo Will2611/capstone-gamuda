@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 // const IsDev = import.meta.env.VITE_IS_DEV;
@@ -32,22 +32,22 @@ function PWABadge({ children }: { children: ReactNode }) {
     },
   });
 
-  const [isOffline, setIsOffline] = useState<boolean>(false);
-  useEffect(() => {
-    const handleSetToOffline = () => {
-      setIsOffline(true);
-    };
-    const handleSetToOnline = () => {
-      setIsOffline(false);
-    };
-    window.addEventListener("offline", handleSetToOffline);
-    window.addEventListener("online", handleSetToOnline);
-
-    return () => {
-      window.removeEventListener("offline", handleSetToOffline);
-      window.removeEventListener("online", handleSetToOnline);
-    };
-  }, []);
+  // const [isOffline, setIsOffline] = useState<boolean>(false);
+  // useEffect(() => {
+  //   const handleSetToOffline = () => {
+  //     setIsOffline(true);
+  //   };
+  //   const handleSetToOnline = () => {
+  //     setIsOffline(false);
+  //   };
+  //   window.addEventListener("offline", handleSetToOffline);
+  //   window.addEventListener("online", handleSetToOnline);
+  // 
+  //   return () => {
+  //     window.removeEventListener("offline", handleSetToOffline);
+  //     window.removeEventListener("online", handleSetToOnline);
+  //   };
+  // }, []);
 
   function close() {
     // setOfflineReady(false);
@@ -111,17 +111,17 @@ function registerPeriodicSync(
   }, period);
 }
 
-function subscribeNotifications(r: ServiceWorkerRegistration) {
-  r.pushManager
-    .subscribe({ userVisibleOnly: true, applicationServerKey: "" })
-    .then((subscription) => {
-      // Send the subscription to your server
-      // const response = await fetch('/api/subscribe', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(subscription),
-      // });
-    });
-}
+// function subscribeNotifications(r: ServiceWorkerRegistration) {
+//   r.pushManager
+//     .subscribe({ userVisibleOnly: true, applicationServerKey: "" })
+//     .then((subscription) => {
+//       // Send the subscription to your server
+//       // const response = await fetch('/api/subscribe', {
+//       //   method: 'POST',
+//       //   headers: {
+//       //     'Content-Type': 'application/json',
+//       //   },
+//       //   body: JSON.stringify(subscription),
+//       // });
+//     });
+// }
