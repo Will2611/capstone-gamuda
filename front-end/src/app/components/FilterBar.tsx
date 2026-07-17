@@ -8,6 +8,7 @@ import {
   Coffee,
   Clock,
   SlidersHorizontal,
+  RotateCcw,
 } from "lucide-react";
 import type { SearchPreferences } from "../types/restaurant";
 import {
@@ -25,12 +26,35 @@ interface FilterBarProps {
   onFilterChange: (filters: SearchPreferences) => void;
 }
 
+// Defining the initial/empty state of filters for clean resetting
+const DEFAULT_FILTERS: SearchPreferences = {
+  cuisine: [],
+  priceRange: [],
+  dietary: [],
+  ambience: [],
+  distance: "",
+  time: "",
+};
+
 export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
   const handleChange = (
     key: keyof SearchPreferences,
     value: string | string[],
   ) => {
     onFilterChange({ ...filters, [key]: value });
+  };
+
+  // Check if any filter has been changed from its default empty state
+  const hasActiveFilters =
+    (filters.cuisine?.length ?? 0) > 0 ||
+    (filters.priceRange?.length ?? 0) > 0 ||
+    (filters.dietary?.length ?? 0) > 0 ||
+    (filters.ambience?.length ?? 0) > 0 ||
+    !!filters.distance ||
+    !!filters.time;
+
+  const handleReset = () => {
+    onFilterChange(DEFAULT_FILTERS);
   };
 
   return (
@@ -101,6 +125,17 @@ export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
             icon={<Clock size={14} />}
             className="w-[125px] shrink-0"
           />
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleReset}
+              className="flex items-center gap-1.5 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 active:scale-95 px-3 py-1.5 rounded-md shadow-sm transition-all shrink-0 ml-auto"
+            >
+              <RotateCcw size={13} />
+              <span>Clear Filters</span>
+            </button>
+          )}
         </div>
       </div>
     </div>
