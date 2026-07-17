@@ -13,7 +13,7 @@ from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin, RestaurantDeta
 import hashlib
 import hmac
 import os
-
+from sqlalchemy.dialects.postgresql import ARRAY, TIME
 
 class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ ='users'
@@ -63,7 +63,7 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     language:Mapped[str] = mapped_column(String)
     gender:Mapped[Optional[str]]= mapped_column(String, nullable=True)
     birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True)
-    preferred_time:Mapped[List[datetime.time]]= mapped_column(Time, default_factory=list)
+    preferred_time: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
     preferred_vibes:Mapped[list[str]]= mapped_column(ARRAY(String), default_factory=list)
     price_limit:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
     # Distance limit in km

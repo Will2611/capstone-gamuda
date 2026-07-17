@@ -5,21 +5,31 @@ from sqlalchemy import String, ForeignKey,Uuid, Float
 from sqlalchemy import CheckConstraint,func
 from uuid_utils.compat import UUID, uuid7
 from sqlalchemy.orm import mapped_column, Mapped
-from pydantic import Field, EmailStr
+from pydantic import Field, EmailStr, BaseModel, Field, EmailStr, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import Literal, Optional
 from .base_model import DBBaseRequest
 import pygeohash as gh
 from enum import Enum
+from typing import Literal, Optional, List
+import datetime
+from enum import Enum
 
 class UserRequest(DBBaseRequest):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
+
     full_name: str= Field(min_length=3, max_length=256)
     email:EmailStr = Field()
+    password: str = Field(..., min_length=8)
     user_type:Literal["client","owner"] = Field()
 
 class UserTypeEnum(Enum):
     CLIENT ="client"
     OWNER = "owner"
-
 
 class ClientRequest(UserRequest):
     # PreFill as default
@@ -42,4 +52,22 @@ class OwnerRequest(UserRequest):
     user_type:Literal['owner'] = Field("owner")# type: ignore[assignment]
     restaurant_name:str = Field()
 
+# Nested structure to perfectly match frontend state
+class ClientPreferencesSchema(BaseModel):
+    cuisine: List[str] = []
+    priceRange: List[str] = []
+    dietary: List[str] = []
+    distance: Optional[str] = ""
+    ambience: List[str] = []
+    time: Optional[str] = ""
 
+# Dedicated schema for Client Registration
+class ClientRegisterRequest(UserRequest):
+    user_type: Literal['client'] = "client"
+    gender: str
+    birthday: datetime.date 
+    religion: str
+    language: str
+    personalities: List[str] = Field(default=[])
+    preferences: ClientPreferencesSchema
+    profile_image: Optional[str] = Field(None)
