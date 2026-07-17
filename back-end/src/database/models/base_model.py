@@ -68,7 +68,7 @@ class GeohashHelper:
             recent_lat =  current_param.get(latitude_column)
             recent_long =  current_param.get(longitude_column )
             if recent_lat and recent_long:
-                return gh.encode(latitude=recent_lat,longitude=recent_lat )
+                return gh.encode(latitude=recent_lat, longitude=recent_long)
             return None
         return arrow
         

@@ -48,6 +48,40 @@ fake = Faker()
 fake.add_provider(ReviewProvider)
 
 
+def extract_dietary_tags(about: str, cuisine: list[str]) -> list[str]:
+    dietary = []
+    about_lower = about.lower()
+    cuisine_lower = [c.lower() for c in cuisine]
+    
+    if (
+        "halal" in about_lower 
+        or "halal" in cuisine_lower 
+        or "mamak" in cuisine_lower 
+        or "indian muslim" in cuisine_lower
+    ):
+        dietary.append("Halal")
+        
+    if (
+        "vegetarian" in about_lower 
+        or "vegetarian" in cuisine_lower
+    ):
+        dietary.append("Vegetarian")
+        
+    if (
+        "vegan" in about_lower 
+        or "vegan" in cuisine_lower
+    ):
+        dietary.append("Vegan")
+        
+    if (
+        "gluten-free" in about_lower 
+        or "gluten free" in about_lower 
+        or "gluten-free" in cuisine_lower
+    ):
+        dietary.append("Gluten-free")
+        
+    return dietary
+
 CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
 
 IS_ALLOWED_DAY_TYPE = get_args(DAYS_OF_WEEK_TYPE)
@@ -117,6 +151,7 @@ def row_to_restaurant(row:dict[str|Any,str|Any]):
         name=row["Name"].strip(),
         rating=float(row["Average Rating"]) if row["Average Rating"] else None,
         cuisine= cuisine if row.get("Categories") else [],
+        dietary=extract_dietary_tags(about, cuisine),
         about=about,
         latitude=float(row["Latitude"]),
         longitude=float(row["Longitude"]),

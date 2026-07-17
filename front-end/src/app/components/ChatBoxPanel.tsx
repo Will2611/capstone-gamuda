@@ -36,6 +36,8 @@ export default function ChatBoxPanel({
   children,
   dummyChat,
   useLlm = false,
+  latitude,
+  longitude,
   onSendMessage = (_text) => {},
   onReceiveMessage = (_text) => {},
   onLlmResponse,
@@ -46,6 +48,8 @@ export default function ChatBoxPanel({
   height?: string;
   dummyChat?: DummyChatBox;
   useLlm?: boolean;
+  latitude?: number;
+  longitude?: number;
   chatName?: string;
   onSendMessage?: (text: string) => void;
   onReceiveMessage?: (text: string, id?: string) => void;
@@ -272,7 +276,7 @@ export default function ChatBoxPanel({
                 : ("user" as const),
             content: m.message,
           }));
-          const response = await sendChatMessage(history);
+          const response = await sendChatMessage(history, latitude, longitude);
           const replyText = response.message;
           const restaurants = response.restaurants || [];
           const botMsg: ChatMessage = {
@@ -316,6 +320,8 @@ export default function ChatBoxPanel({
       getUser.profile,
       onSendMessage,
       onReceiveMessage,
+      latitude,
+      longitude,
     ],
   );
   return (
