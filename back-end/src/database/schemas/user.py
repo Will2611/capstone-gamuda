@@ -7,7 +7,7 @@ from uuid_utils.compat import UUID, uuid7
 from sqlalchemy.orm import mapped_column, Mapped
 from pydantic import Field, EmailStr
 from typing import Literal, Optional
-from .base_model import DBBaseModelTimeMixIn, DBBaseRequest, DBBaseModelIdMixin
+from .base_model import DBBaseRequest
 import pygeohash as gh
 from enum import Enum
 

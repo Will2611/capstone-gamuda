@@ -9,8 +9,15 @@ from src.database.models.visibility import (
     SocialPlatformMetricsModel,
     SentimentDataModel,
     ComplaintThemeModel,
+    SentimentThemeModel,
     FootTrafficHourlyModel,
     FootTrafficDailyModel
+)
+from src.database.models.reviews import (
+    ReviewModel
+)
+from src.database.models.restaurants import (
+    RestaurantModel
 )
 from src.database.schemas.visibility import (
     SummaryMetricsResponse,
@@ -41,8 +48,7 @@ from src.database.calculations import (
     compute_repeat_visit_rate,
     compute_average_rating,
 )
-import re
-
+import  uuid_utils.compat as uuid
 router = APIRouter(prefix="/visibility", tags=["visibility"])
 
 
@@ -76,12 +82,12 @@ def _build_platform_metrics(platform_row, colour_class: str) -> list[PlatformMet
 
 @router.get("/restaurants", response_model=list[RestaurantListItemResponse])
 async def list_restaurants(db: db_dependency):
-    rows = db.query(RestaurantVisbilityModel).order_by(RestaurantVisbilityModel.name).all()
-    return [RestaurantListItemResponse(id=r.id, name=r.name, cuisines=r.cuisines) for r in rows]
+    rows = db.query(RestaurantModel).order_by(RestaurantModel.name).all()
+    return [RestaurantListItemResponse(id=r.id, name=r.name, cuisines=','.join(r.cuisine)) for r in rows]
 
 
 @router.get("/getSummaryMetrics", response_model=SummaryMetricsResponse)
-async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...)):
+async def get_summary_metrics(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     today = date.today()
     prev_month = today - timedelta(days=30)
 
@@ -114,17 +120,12 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
 
     if current is None:
         raise HTTPException(status_code=404, detail="No metrics found for this restaurant")
-
-    # ── Average Rating: computed from aggregate review data ──
-    restaurant = (
-        db.query(RestaurantVisbilityModel)
-        .filter(RestaurantVisbilityModel.id == restaurantId)
-        .first()
-    )
+    
+    raise HTTPException(status_code=404, detail="Redo this endpoint for better list of ratings")
     avg_rating = compute_average_rating(
         stored_avg=current.average_rating,
         total_reviews=current.total_reviews,
-        sample_ratings=restaurant.review_ratings if restaurant else None,
+        sample_ratings=[5],
     )
     total_reviews_count = current.total_reviews
 
@@ -218,7 +219,7 @@ async def get_summary_metrics(db: db_dependency, restaurantId: int = Query(...))
 
 
 @router.get("/getFunnelMetrics", response_model=FunnelMetricsResponse)
-async def get_funnel_metrics(db: db_dependency, restaurantId: int = Query(...)):
+async def get_funnel_metrics(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     rows = (
         db.query(FunnelStageModel)
         .filter(FunnelStageModel.restaurant_id == restaurantId)
@@ -248,7 +249,7 @@ async def get_funnel_metrics(db: db_dependency, restaurantId: int = Query(...)):
 
 
 @router.get("/getSocialVisibility", response_model=SocialVisibilityResponse)
-async def get_social_visibility(db: db_dependency, restaurantId: int = Query(...)):
+async def get_social_visibility(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     rows = (
         db.query(SocialPlatformMetricsModel)
         .filter(SocialPlatformMetricsModel.restaurant_id == restaurantId)
@@ -282,7 +283,7 @@ async def get_social_visibility(db: db_dependency, restaurantId: int = Query(...
 
 
 @router.get("/getSentiment", response_model=SentimentResponse)
-async def get_sentiment(db: db_dependency, restaurantId: int = Query(...)):
+async def get_sentiment(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     row = (
         db.query(SentimentDataModel)
         .filter(SentimentDataModel.restaurant_id == restaurantId)
@@ -294,14 +295,21 @@ async def get_sentiment(db: db_dependency, restaurantId: int = Query(...)):
         raise HTTPException(status_code=404, detail="No sentiment data found")
 
     complaint_rows = (
-        db.query(ComplaintThemeModel)
-        .filter(ComplaintThemeModel.sentiment_id == row.id)
+        db.query(SentimentThemeModel)
+        .filter(SentimentThemeModel.sentiment_type == 'Negative')
+        .filter(SentimentThemeModel.sentiment_id == row.id)
+        .join(
+            SentimentDataModel,
+            SentimentThemeModel.sentiment_id == SentimentDataModel.id,
+        )
+        .filter(SentimentDataModel.id == row.id)
+        .order_by(desc(SentimentThemeModel.count))
         .all()
     )
-
     return SentimentResponse(
         positivePct=round(row.positive_pct, 1),
         negativePct=round(row.negative_pct, 1),
+        neutralPct=round(row.neutral_pct, 1),
         complaintThemes=[
             ComplaintThemeEntry(theme=c.theme, count=c.count)
             for c in complaint_rows
@@ -309,60 +317,62 @@ async def get_sentiment(db: db_dependency, restaurantId: int = Query(...)):
     )
 
 
-# ------ Theme → Review Keyword Map ----
-
-THEME_KEYWORDS: dict[str, list[str]] = {
-    "Wait Time": ["wait", "waited", "longer", "slow", "rushed", "delay", "crowded"],
-    "Taste": ["taste", "flavor", "average", "inconsistent", "bland", "spoil", "didn't match", "tasteless"],
-    "Service": ["slow service", "inattentive", "rude", "unfriendly", "ignored", "mistake", "wrong order"],
-}
-
-
-def _parse_reviews(raw: str, ratings: list[int] | None = None) -> list[dict]:
-    """Split sample_reviews text into individual review dicts with stars and text."""
-    results = []
-    parts = re.split(r"\s*\|\s*", raw)
-    for i, part in enumerate(parts):
-        part = part.strip()
-        if not part:
-            continue
-        # Strip leading number and quotes
-        text = re.sub(r"^\d+\.\s*", "", part).strip()
-        text = text.strip('"').strip("'")
-        stars = ratings[i] if ratings and i < len(ratings) else 3
-        results.append({"stars": stars, "text": text})
-    return results
-
-
-def _keyword_match(text: str, keywords: list[str]) -> bool:
-    lower = text.lower()
-    return any(kw.lower() in lower for kw in keywords)
-
-
 @router.get("/getReviewsByTheme", response_model=ReviewsByThemeResponse)
 async def get_reviews_by_theme(
     db: db_dependency,
-    restaurantId: int = Query(...),
+    restaurantId: uuid.UUID = Query(...),
     theme: str = Query("Wait Time"),
 ):
-    restaurant = db.query(RestaurantVisbilityModel).filter(RestaurantVisbilityModel.id == restaurantId).first()
-    if not restaurant or not restaurant.sample_reviews:
+    sentiment = (
+        db.query(SentimentDataModel)
+        .filter(SentimentDataModel.restaurant_id == restaurantId)
+        .order_by(desc(SentimentDataModel.recorded_at))
+        .first()
+    )
+    if not sentiment:
         raise HTTPException(status_code=404, detail="No reviews found")
+    themed_reviews = (
+        db.query(SentimentThemeModel)
+        .filter(SentimentThemeModel.sentiment_id == sentiment.id)
+        .filter(SentimentThemeModel.sentiment_type.in_(['Negative','Neutral']))
+        # .filter(SentimentThemeModel.theme.ilike(theme.strip().lower()))
+        .order_by(desc(SentimentThemeModel.created_at))
+        .all()
+    )
+    if theme not in list(map(lambda x: x.theme,themed_reviews)):
+        raise HTTPException(status_code=404, detail="No reviews found for this theme")
 
-    reviews = _parse_reviews(restaurant.sample_reviews, restaurant.review_ratings)
-    keywords = THEME_KEYWORDS.get(theme, THEME_KEYWORDS.get("Wait Time", []))
-
-    # Only negative (≤3 stars) reviews belong in a complaint-themed view
-    negative_reviews = [r for r in reviews if r["stars"] <= 3]
-    matched_count = 0
-    total_negative = len(negative_reviews)
+    all_flat_review_ids:list[uuid.UUID] = [
+        listed_reviews
+        for single in themed_reviews
+        for listed_reviews in single.review_ids
+        ]
+    flat_review_ids:list[uuid.UUID] = [
+        listed_reviews
+        for single in themed_reviews
+        if single.theme.strip().lower() == theme.strip().lower()
+        for listed_reviews in single.review_ids
+        ]
+    
+    review_id_set:set[uuid.UUID] = set()
+    review_id_set.update(all_flat_review_ids)
+    deduplicated = list(review_id_set)
+    
+    matched_reviews = (
+        db.query(ReviewModel)
+        .filter(ReviewModel.id.in_(flat_review_ids))
+        .all()
+    )
+    total_negative = len(deduplicated)
+    matched_count = len(flat_review_ids)
 
     items: list[ReviewItemResponse] = []
-    for r in negative_reviews:
-        matched = _keyword_match(r["text"], keywords)
-        if matched:
-            matched_count += 1
-        items.append(ReviewItemResponse(stars=r["stars"], text=r["text"], matched=matched))
+    for review in matched_reviews:
+        items.append(ReviewItemResponse(
+            stars=review.stars,
+            text=review.content,
+            matched=True,
+        ))
 
     return ReviewsByThemeResponse(
         theme=theme,
@@ -375,19 +385,19 @@ async def get_reviews_by_theme(
 # ------ Foot Traffic ----
 
 @router.get("/getFootTraffic", response_model=FootTrafficResponse)
-async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
+async def get_foot_traffic(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     # -- Hourly: average visitors per hour, grouped by weekday / weekend ----
+    # REMOVE COZ THIS IS HEATMAP CHART CODE, NOT USED IN DASHBOARD
     hourly_rows = (
         db.query(
             FootTrafficHourlyModel.hour,
-            FootTrafficHourlyModel.day_type,
             func.avg(FootTrafficHourlyModel.visitors).label("avg_visitors"),
         )
         .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
         .group_by(FootTrafficHourlyModel.hour, FootTrafficHourlyModel.day_type)
         .order_by(FootTrafficHourlyModel.hour)
         .all()
-    )
+    )  
 
     hourly_map: dict[int, dict[str, float]] = {}
     for hr, dt, avg in hourly_rows:
@@ -399,6 +409,8 @@ async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
         we = hourly_map[hr].get("Weekend", 0)
         hourly.append(HourlyTrafficItem(hour=hr, weekdayAvg=wd, weekendAvg=we))
 
+        
+    raise HTTPException(status_code=404, detail="Redo this endpoint To use FootTraffic HOurly instead")
     # -- Daily: weekday vs weekend totals & averages ----
     daily_rows = (
         db.query(
@@ -442,7 +454,7 @@ async def get_foot_traffic(db: db_dependency, restaurantId: int = Query(...)):
 # ---------------- Action Suggestions ----------------
 
 @router.get("/getActionSuggestions", response_model=ActionSuggestionsResponse)
-async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(...)):
+async def get_action_suggestions(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
     """
     Rule-based suggestion engine that analyses the restaurant's live metrics
     and returns the top 3 actionable recommendations for the owner.
@@ -462,10 +474,11 @@ async def get_action_suggestions(db: db_dependency, restaurantId: int = Query(..
         .first()
     )
     complaint_rows = (
-        db.query(ComplaintThemeModel)
+        db.query(SentimentThemeModel)
+        .filter(SentimentThemeModel.sentiment_type == 'Negative')
         .join(SentimentDataModel)
         .filter(SentimentDataModel.restaurant_id == restaurantId)
-        .order_by(desc(ComplaintThemeModel.count))
+        .order_by(desc(SentimentThemeModel.count))
         .all()
     )
 
