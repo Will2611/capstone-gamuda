@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from uuid import UUID
 
 class SignUpRequest(BaseModel):
     email: EmailStr
@@ -15,7 +15,9 @@ class LoginRequest(BaseModel):
 
 
 class AuthUserResponse(BaseModel):
-    id: int
+    model_config = ConfigDict(from_attributes=True) # Enables ORM conversion compatibility
+    
+    id: UUID
     email: str
     display_name: str
     role: str
