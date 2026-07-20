@@ -21,9 +21,9 @@ class AuthUserResponse(BaseModel):
     
     id: UUID
     email: str
-    display_name: str
+    displayName: str
     role: str
-    avatar_url: str | None = None
+    avatarUrl: str | None = None
 
 
 class TokenResponse(BaseModel):
