@@ -92,8 +92,8 @@ class SentimentThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
-# CHANGE CODE TO ALIGN BAR CHART FOR FOOT TRAFFIC HOURLY ONLY
-class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):  
+class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
+    """Single foot-traffic table — bar chart and weekday/weekend stats derive from this."""
     __tablename__ = "foot_traffic_hourly"
 
     restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True)
@@ -102,14 +102,3 @@ class FootTrafficHourlyModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
     day_type: Mapped[str] = mapped_column(String(10), nullable=False)
     hour: Mapped[int] = mapped_column(Integer, nullable=False)
     visitors: Mapped[int] = mapped_column(Integer, nullable=False)
-
-
-class FootTrafficDailyModel(DBBaseModelTimeMixIn,DBBaseModelIdMixin, Base):
-    __tablename__ = "foot_traffic_daily"
-
-    restaurant_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("restaurants.id"), nullable=False, index=True, init=False)
-    # restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey("restaurants_measured.id"), nullable=False, index=True, init=False)
-    traffic_date: Mapped[date] = mapped_column(Date, nullable=False)
-    day_name: Mapped[str] = mapped_column(String(10), nullable=False)
-    day_type: Mapped[str] = mapped_column(String(10), nullable=False)
-    visits: Mapped[int] = mapped_column(Integer, nullable=False)

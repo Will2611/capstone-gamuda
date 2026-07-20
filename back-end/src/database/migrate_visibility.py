@@ -9,12 +9,12 @@ from sqlalchemy.engine import Engine, Connection
 
 
 def ensure_visibility_schema(engine: Engine) -> None:
-    inspector = inspect(engine)
-
     with engine.begin() as conn:
+        inspector = inspect(conn)
+
         if inspector.has_table("sentiment_data"):
             existing_schema = {col["name"] for col in inspector.get_columns("sentiment_data")}
-            sentiment_schema_update(conn,existing=existing_schema)
+            sentiment_schema_update(conn, existing=existing_schema)
 
         if inspector.has_table("restaurants_measured"):
             rest_cols = {col["name"] for col in inspector.get_columns("restaurants_measured")}
@@ -26,6 +26,10 @@ def ensure_visibility_schema(engine: Engine) -> None:
                 conn.execute(text(
                     "ALTER TABLE restaurants_measured DROP COLUMN review_ratings"
                 ))
+
+        # Foot traffic is hourly-only; drop legacy daily table if present
+        if inspector.has_table("foot_traffic_daily"):
+            conn.execute(text("DROP TABLE IF EXISTS foot_traffic_daily CASCADE"))
 
 def sentiment_schema_update (conn:Connection, existing:set[str]):
     if "neutral_pct" not in existing:
