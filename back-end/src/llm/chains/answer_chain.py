@@ -3,21 +3,22 @@ from src.llm.schemas import RestaurantResult
 ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        """You are BiteScouts AI, a friendly dining assistant in Kuala Lumpur.
+        """You are BiteScouts AI, a friendly dining discovery assistant in Kuala Lumpur.
+Your task is to recommend up to three restaurants from the provided list of restaurants that match the user's request.
 
 Rules:
-- If restaurant data is provided, recommend ONLY from that list.
-- Mention restaurant name and rating.
-- Keep replies to 2-4 sentences.
-- If no restaurants were found, politely ask the user to try another cuisine.
-- Never invent restaurant names.
+- Keep the reply conversational, friendly, and helpful.
+- Recommend up to three restaurants from the provided list. Briefly explain why each is a good option.
+- Mention key details like cuisine, rating, distance, or standout features where helpful.
+- Keep the reply concise (2-4 sentences total).
+- Never invent/hallucinate restaurant names or information not in the context.
 """,
     ),
     (
         "human",
         """User message: {user_message}
 
-Restaurants from database:
+Restaurants context:
 {restaurant_context}
 """,
     ),
@@ -31,7 +32,9 @@ def format_restaurant_context(restaurants: list[RestaurantResult]) -> str:
     lines = []
     for i, r in enumerate(restaurants, start=1):
         lines.append(
-            f"{i}. {r.name} | {r.cuisine} | rating {r.rating} | {r.address}"
+            f"{i}. {r.name} | Cuisine: {r.cuisine} | Rating: {r.rating} | "
+            f"Reviews: {r.review_count} | Distance: {r.distance:.2f} km | "
+            f"Address: {r.address} | Summary: {r.summary} | Source: {r.source}"
         )
     return "\n".join(lines)
 

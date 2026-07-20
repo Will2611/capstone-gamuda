@@ -70,7 +70,7 @@ class OpeningHoursType(TypeDecorator):
 class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetailsTableMixin,GeohashHelper, Base):
     __tablename__ ='restaurants'
     name: Mapped[str]= mapped_column(String, nullable=False)
-    rating: Mapped[Optional[float]]=mapped_column(Float)
+    rating: Mapped[Optional[float]]=mapped_column(Float, default=None)
     longitude:Mapped[float]=mapped_column(Float, nullable=False)
     latitude:Mapped[float]=mapped_column(Float, nullable=False)
     geohash:Mapped[str]= mapped_column(String(12),
@@ -81,10 +81,10 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
                                        )
     about:Mapped[str] = mapped_column(Text, nullable=False)
     # e.g.+6011-100-2999 becomes +60111002999
-    contact_no:Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    contact_no:Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
     # Set structure?, assume array with each index making into
     # may also make into seperated list, with dollar sign also?
-    address:Mapped[list[str]] = mapped_column(ARRAY(String,zero_indexes=False, dimensions=1), nullable=True)
+    address:Mapped[list[str]] = mapped_column(ARRAY(String,zero_indexes=False, dimensions=1), nullable=True, default=None)
 
     # also a '$'separated list?
     # opening_hours:Mapped[str] = mapped_column(Text, nullable=False)
@@ -92,15 +92,21 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
     # start_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
     # close_time: Mapped[Optional[datetime.time]] = mapped_column(Time, nullable=True)
     # days_opened:Mapped[list[DAYS_OF_WEEK_TYPE]] = mapped_column(ARRAY(String(9)), nullable=False)
-    timezone:Mapped[Optional[ZoneInfo]] = mapped_column(String(64), nullable=True)
+    timezone:Mapped[Optional[ZoneInfo]] = mapped_column(String(64), nullable=True, default=None)
     # In Minutes
-    timezone_offset:Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    # Final opening hours into a struct
+    timezone_offset:Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
     opening_hours_struct:Mapped[Dict[DAYS_OF_WEEK_TYPE,List[Tuple[datetime.time,datetime.time]]]] = mapped_column(OpeningHoursType, default_factory=dict)
     source: Mapped[str] = mapped_column(String(20), default="seed")
 
     # Maybe change to remove column
-    google_place_id:Mapped[Optional[str]]= mapped_column(String, nullable=True, default=None)
+    # Unique key for Google Places / SerpAPI upserts
+    google_place_id:Mapped[Optional[str]]= mapped_column(String, unique=True, index=True, nullable=True, default=None)
+    review_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+    price_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+    business_status: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
+    website: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
+    photos: Mapped[Optional[list[str]]] = mapped_column(ARRAY(String), nullable=True, default=None)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
     __table_args__=((
         CheckConstraint(
             or_(

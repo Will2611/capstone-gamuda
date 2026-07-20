@@ -16,3 +16,4 @@ uuid-utils
 tzdata
 nltk
 Faker
+pyjwt
