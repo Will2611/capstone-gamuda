@@ -375,7 +375,7 @@ export function TrafficTab({
           </button> */}
         </div>
 
-        <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
+        {/* <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6"> REMOVE
           <h3 className="font-bold text-bs-neutral-900 mb-1">
             Recommended Shifts (Jun 8–14, 2026)
           </h3>
@@ -439,7 +439,7 @@ export function TrafficTab({
               </table>
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </section>
   );
