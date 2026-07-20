@@ -71,3 +71,28 @@ class ClientRegisterRequest(UserRequest):
     personalities: List[str] = Field(default=[])
     preferences: ClientPreferencesSchema
     profile_image: Optional[str] = Field(None)
+
+class ClientResponse(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True  # Enables ORM conversion from ClientModel -> Pydantic
+    )
+
+    id: UUID
+    full_name: str
+    email: EmailStr
+    user_type: Literal["client"]
+    avatar_url: Optional[str] = None
+    gender: Optional[str] = None
+    birth_date: Optional[datetime.date] = None
+    religion: Optional[str] = None
+    language: Optional[str] = None
+    food_personality: List[str] = []
+    preferred_vibes: List[str] = []
+    price_limit: List[str] = []
+    distance_limit: Optional[float] = None
+    preferred_time: Optional[str] = None
+    recent_latitude: Optional[float] = None
+    recent_longitude: Optional[float] = None
+    geohash: Optional[str] = None

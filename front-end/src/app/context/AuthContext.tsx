@@ -23,6 +23,7 @@ interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null;
+  token: string | null;
   isAuthenticated: boolean;
   // 💡 Updated to return role string on success
   login: (
@@ -36,13 +37,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   // Load user from storage on initial application mount
   useEffect(() => {
     const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (stored) {
       try {
         setUser(JSON.parse(stored) as AuthUser);
+        setToken(storedToken);
       } catch {
         localStorage.removeItem(AUTH_STORAGE_KEY);
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -82,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Store both token string and user object locally
       setUser(authUser);
+      setToken(data.access_token);
+
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
       localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
 
@@ -97,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
   }, []);
@@ -104,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       user,
+      token,
       isAuthenticated: !!user,
       login,
       logout,

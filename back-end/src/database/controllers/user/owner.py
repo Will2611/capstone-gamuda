@@ -65,7 +65,7 @@ async def register_owner(payload: OwnerRegisterRequest, db: db_dependency):
             dietary=rest_data.dietary_needs,
             ambience=rest_data.ambience_vibes,
         )
-        new_restaurant.geohash = GeohashHelper.encode(lat, lng) if (lat or lng) else "s00000000000"
+
 
         db.add(new_restaurant)
         db.flush() # Flush so new_restaurant.id is available for FK constraint

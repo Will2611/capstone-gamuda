@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { SubmitEvent as ReactSubmitEvent } from "react";
+import axios from "axios";
 import { Link, useNavigate } from "react-router";
 import {
   Mail,
@@ -82,20 +83,27 @@ export function SignUpFormOwner() {
 
       if (!cleanStreet1) cleanStreet1 = street.trim();
 
-      let params = new URLSearchParams({
-        format: "json",
+      let address_params = {
         street: cleanStreet1,
         postalcode: postcode.trim(),
         city: city.trim(),
         state: state.trim(),
         country: country.trim() || "Malaysia",
+      };
+      let params = new URLSearchParams({
+        format: "json",
         limit: "1",
+        ...address_params,
       });
 
-      let response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-      );
-      let data = await response.json();
+      // let response = await fetch(
+      //   `https://nominatim.openstreetmap.org/search?${params.toString()}`,
+      // );
+      // let data = await response.json();
+      const { data }: { data: { lat: string; lon: string }[] } =
+        await axios.get(`https://nominatim.openstreetmap.org/search`, {
+          params,
+        });
 
       if (data && data.length > 0) {
         setLatitude(parseFloat(data[0].lat));
@@ -284,35 +292,27 @@ export function SignUpFormOwner() {
     };
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/user/owner/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-      );
+      // const response = await fetch(
+      //   "http://localhost:8000/user/owner/register",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(payload),
+      //   },
+      // );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const errorMessage =
-          typeof data.detail === "string"
-            ? data.detail
-            : Array.isArray(data.detail)
-              ? data.detail[0]?.msg || "Validation error"
-              : "Registration failed.";
-
-        throw new Error(errorMessage);
-      }
+      // const data = await response.json();
+      await axios.post("http://localhost:8000/user/owner/register", payload);
 
       setSuccess(true);
       setTimeout(() => navigate("/login"), 1500);
     } catch (error: any) {
       console.error("API Error:", error);
-      const msg = error.message || "Something went wrong";
+
+      const msg =
+        error.response.data.detail || error.message || "Something went wrong";
       if (msg.toLowerCase().includes("email")) {
         setErrors((prev) => ({ ...prev, email: msg }));
       } else {
@@ -770,7 +770,6 @@ export function SignUpFormOwner() {
         <label className="block text-m font-medium text-bs-neutral-800 mb-2">
           Restaurant Location
         </label>
-
         <FormField
           label="Street Address"
           type="text"
@@ -783,7 +782,6 @@ export function SignUpFormOwner() {
           error={touched.street ? errors.street : undefined}
           disabled={isLoading}
         />
-
         <div className="grid grid-cols-2 gap-4">
           <FormField
             label="Postcode"
@@ -808,7 +806,6 @@ export function SignUpFormOwner() {
             disabled={isLoading}
           />
         </div>
-
         <div className="grid grid-cols-2 gap-4">
           <FormField
             label="State"
@@ -835,7 +832,10 @@ export function SignUpFormOwner() {
             disabled={isLoading}
           />
         </div>
-
+        Map status
+        {isSearchingLocation && <>IsSearching</>}
+        {latitude}
+        {longitude}
         {(isSearchingLocation || (latitude && longitude)) && (
           <div className="mt-4 space-y-2 animate-fadeIn">
             <div className="flex items-center justify-between">

@@ -61,12 +61,6 @@ class PydanticJSONType(TypeDecorator):
 
 class GeohashHelper:
      
-    @staticmethod
-    def encode(latitude: Optional[float], longitude: Optional[float], precision: int = 12) -> Optional[str]:
-        """Directly encodes latitude and longitude into a geohash string."""
-        if latitude is None or longitude is None:
-            return None
-        return gh.encode(latitude=latitude, longitude=longitude, precision=precision)
 
     @staticmethod
     def column_geohash_factory(latitude_column='latitude', longitude_column="longitude"):
@@ -78,7 +72,7 @@ class GeohashHelper:
             
             if recent_lat is not None and recent_long is not None:
                 # Fixed: passing recent_long to longitude
-                return GeohashHelper.encode(latitude=recent_lat, longitude=recent_long)
+                return gh.encode(latitude=recent_lat, longitude=recent_long)
             return None
 
         return arrow

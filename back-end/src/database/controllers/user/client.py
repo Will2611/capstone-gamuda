@@ -25,13 +25,26 @@
 #     except Exception as e:
 #         return {'failure' :f'{e}'}
         
-from fastapi import APIRouter, HTTPException, status
+import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
+
+# Database dependencies & models
 from src.database.connection import db_dependency
 from src.database.models.user import ClientModel, UserModel
-from src.database.schemas.user import ClientRegisterRequest
-import datetime
+
+# Schemas (Pydantic models)
+from src.database.schemas.user import ClientRegisterRequest, ClientResponse
+
+# Auth dependencies (Adjust path if your auth dependency lives elsewhere, e.g., src.auth.deps)
+# from src.database.schemas.auth import get_current_client_user
 
 router = APIRouter(prefix='/client', tags=['customer'])
+
+
+# @router.get("/user/client/me", response_model=ClientResponse)
+# async def get_client_profile(current_user: ClientModel = Depends()):
+#     return current_user
+
 
 @router.post("/register")
 async def register_client(db: db_dependency, payload: ClientRegisterRequest):
@@ -43,7 +56,7 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
             detail="An account with this email already exists."
         )
 
-    # 2. Extract distance limit safely from preference string string ("5km" -> 5.0)
+    # 2. Extract distance limit safely from preference string ("5km" -> 5.0)
     try:
         dist_str = payload.preferences.distance.replace("km", "").strip() if payload.preferences.distance else "5"
         distance_limit = float(dist_str)
@@ -53,7 +66,7 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
     # 3. Hash password
     hashed_password = UserModel.hash_password(payload.password)
 
-# Parse preferred time from frontend string if available
+    # Parse preferred time from frontend string if available
     parsed_times = []
     if payload.preferences.time:
         try:
@@ -61,12 +74,12 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
             time_obj = datetime.time.fromisoformat(payload.preferences.time)
             parsed_times.append(time_obj)
         except ValueError:
-            pass # Fallback to empty list if formatting fails
+            pass  # Fallback to empty list if formatting fails
 
     # 4. Instantiate the Polymorphic ClientModel
     new_client = ClientModel(
         # Base UserModel fields
-        full_name=payload.full_name,      # Fixed variable name
+        full_name=payload.full_name,
         email=payload.email,
         hashedPassword=hashed_password,
         user_type="client", 
@@ -76,7 +89,7 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
         birth_date=payload.birthday,       
         religion=payload.religion,
         language=payload.language,
-        avatar_url=payload.profile_image,  # Fixed variable name
+        avatar_url=payload.profile_image,
         food_personality=payload.personalities,
         preferred_vibes=payload.preferences.ambience, # Maps to ARRAY(String)
         price_limit=payload.preferences.priceRange,   # Maps to ARRAY(String)
