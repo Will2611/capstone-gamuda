@@ -5,10 +5,11 @@ import { FormField } from "./FormField";
 import { Button } from "./Button";
 
 interface LoginFormProps {
+  // Modified to optionally return the role string upon success
   onSubmit: (
     email: string,
-    password: string
-  ) => Promise<{ success: boolean; error?: string }>;
+    password: string,
+  ) => Promise<{ success: boolean; error?: string; role?: string }>;
   isLoading?: boolean;
 }
 
@@ -17,9 +18,11 @@ export function LoginForm({ onSubmit, isLoading = false }: LoginFormProps) {
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>(
-    {}
-  );
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    form?: string;
+  }>({});
   const [touched, setTouched] = useState({ email: false, password: false });
 
   const validate = () => {
@@ -32,7 +35,8 @@ export function LoginForm({ onSubmit, isLoading = false }: LoginFormProps) {
     if (!password) {
       next.password = "Password is required";
     } else if (password.length < 6) {
-      next.password = "Password must be at least 6 characters";
+      // Changed to 8 to match your Pydantic backend validation constraint!
+      next.password = "Password must be at least 8 characters";
     }
     setErrors(next);
     return Object.keys(next).length === 0;

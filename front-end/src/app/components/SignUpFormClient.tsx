@@ -252,9 +252,35 @@ export function SignUpFormClient() {
       personalities,
     };
 
-    console.log("CLIENT REGISTER:", formData);
-    setSuccess(true);
-    setTimeout(() => navigate("/login"), 1500);
+    try {
+      const response = await fetch(
+        "http://localhost:8000/user/client/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Registration failed");
+      }
+
+      setSuccess(true);
+      setTimeout(() => navigate("/login"), 1500);
+    } catch (error: any) {
+      console.error("API Error:", error);
+      setErrors((prev) => ({
+        ...prev,
+        apiError: error.message || "Something went wrong",
+      }));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
