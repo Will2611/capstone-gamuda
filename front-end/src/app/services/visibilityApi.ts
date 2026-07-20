@@ -354,7 +354,7 @@ export interface FootTrafficResponse {
 }
 
 export const EMPTY_FOOT_TRAFFIC: FootTrafficResponse = {
-  restaurantId: 0,
+  restaurantId: "0",
   hourly: [],
   daily: {
     weekdayAvg: 0,
@@ -366,11 +366,11 @@ export const EMPTY_FOOT_TRAFFIC: FootTrafficResponse = {
 
 export function normalizeFootTraffic(
   raw: Partial<FootTrafficResponse> | null | undefined,
-  restaurantId = 0,
+  restaurantId = "0",
 ): FootTrafficResponse {
   const daily = raw?.daily;
   return {
-    restaurantId: safeNumber(raw?.restaurantId, restaurantId),
+    restaurantId: raw?.restaurantId || restaurantId,
     hourly: Array.isArray(raw?.hourly)
       ? raw!.hourly.map((h) => ({
           hour: safeNumber(h?.hour),

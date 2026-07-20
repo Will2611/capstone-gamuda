@@ -88,18 +88,27 @@ export default function MapInterface() {
           return rating > bestRating ? i : bestIdx;
         }, 0);
 
+        const stringToHash = (str: string): number => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return Math.abs(hash);
+        };
+
         const mapped = searchResults.map((r, index) => {
+          const numericId = typeof r.id === "string" ? stringToHash(r.id) : (r.id || 0);
           const rating = r.rating || 4.0;
           const mockMatch = MOCK_RESTAURANTS.find(
             (m) =>
-              m.id === r.id || m.name.toLowerCase() === r.name.toLowerCase(),
+              m.id === numericId || m.name.toLowerCase() === r.name.toLowerCase(),
           );
           return {
-            id: r.id,
+            id: numericId,
             name: r.name,
             rating,
             cuisine: r.cuisine || "Any",
-            distance: mockMatch?.distance || "1.2 km",
+            distance: r.distance !== undefined ? `${r.distance.toFixed(1)} km` : (mockMatch?.distance || "1.2 km"),
             dietary: mockMatch?.dietary || "Halal",
             isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
             type: index === topIndex ? ("gold" as const) : ("red" as const),
@@ -108,7 +117,7 @@ export default function MapInterface() {
                 ? [r.longitude, r.latitude]
                 : mockMatch?.coordinates || [101.71, 3.15],
             image: mockMatch?.image,
-            promotions: mockPromotions.filter((promo) => promo.id === r.id),
+            promotions: mockPromotions.filter((promo) => promo.id === numericId),
           } as Restaurant;
         });
         setDisplayedRestaurants(mapped);
@@ -272,22 +281,20 @@ export default function MapInterface() {
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "map"
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "map"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "text-bs-neutral-600 hover:text-bs-neutral-900"
-            }`}
+              }`}
           >
             Map Mode
           </button>
           <button
             type="button"
             onClick={() => setViewMode("suggestions")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              viewMode === "suggestions"
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "suggestions"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "text-bs-neutral-600 hover:text-bs-neutral-900"
-            }`}
+              }`}
           >
             Suggestion Mode
           </button>
@@ -341,7 +348,7 @@ export default function MapInterface() {
                   onClick={locate}
                   disabled={isLocating}
                   aria-label="Locate me on the map"
-                  className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+                  className="absolute top-25 right-10 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
                 >
                   <PersonPin />
                 </button>
@@ -460,7 +467,7 @@ export default function MapInterface() {
             onClick={locate}
             disabled={isLocating}
             aria-label="Locate me on the map"
-            className="absolute top-25 right-4 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
+            className="absolute top-25 right-10 z-10 pointer-events-auto bg-white rounded-lg p-2.5 shadow-md border border-bs-neutral-200 text-bs-neutral-700 hover:bg-bs-neutral-50 disabled:opacity-60"
           >
             <PersonPin />
           </button>
@@ -471,6 +478,8 @@ export default function MapInterface() {
             socketUrl={null}
             useLlm
             onLlmResponse={handleLlmResponse}
+            latitude={userCenter ? userCenter[1] : undefined}
+            longitude={userCenter ? userCenter[0] : undefined}
             dummyChat={{
               chatGroupName: "BiteScouts AI",
               chatCaption: "Your dining discovery assistant",

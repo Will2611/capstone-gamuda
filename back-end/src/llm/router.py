@@ -53,6 +53,8 @@ async def chat_endpoint(body: ChatRequest, db: db_dependency):
         reply, restaurants = await service.chat_with_restaurant_search(
             [{"role": m.role, "content": m.content} for m in body.messages],
             db,
+            latitude=body.latitude,
+            longitude=body.longitude,
         )
         return ChatResponse(message=reply, restaurants=restaurants)
     except ValueError as exc:
