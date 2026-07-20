@@ -5,7 +5,7 @@ from src.database.controllers.utils import get_subcontrollers
 from src.database.models.user import UserModel
 from src.database.controllers.utils import create_access_token
 from src.database.schemas.auth import LoginRequest, TokenResponse, AuthUserResponse
-from src.jwt import CookieCustom, setCookie
+from src.services.jwt import CookieCustom, setCookie
 
 user_router = APIRouter(tags=['users'])
 

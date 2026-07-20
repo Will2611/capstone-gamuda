@@ -8,16 +8,17 @@ import uuid_utils.compat as uuid
 from pydantic import BaseModel
 
 TOKEN_NAME = "bitescout_token"
-SECRET_KEY = "a8dd17be90513fc90532b0acef7a034c1d1df97a35dae46994cef1b8ad2a00ea"
+SECRET_KEY = "a8dd17be90513fc90532b0acef7a034c1d1df97a35dae46994cef1b8ad2a00eaa"
 ALGORITHM = 'HS256'
 COOKIE_AGE = 60*15 #in seconds, 15 min
-COOKIE_AGE = 1
+LONGER_COOKIE_AGE = 30 *24*60*60  #in seconds, 30 days
 
 class SessionToken(BaseModel):
     sessionId: uuid.UUID
     userId:Optional[uuid.UUID]
     role: Optional[USER_ROLE_TYPE]
     restuarantId:Optional[uuid.UUID]
+    remember_me:bool
 
 def encode_payload(payload:SessionToken)->str:
     return jwt.encode(
@@ -26,20 +27,30 @@ def encode_payload(payload:SessionToken)->str:
         algorithm=ALGORITHM
         )
 def decode_payload(token:str)->SessionToken:
-    return SessionToken.model_validate(
+    parsed = SessionToken.model_validate(
         jwt.decode(token,SECRET_KEY, algorithms=ALGORITHM)
         )
+    return parsed
 
+def default_session_generator()->SessionToken:
+    return SessionToken(
+        sessionId=uuid.uuid7(),
+        userId=None,
+        role=None,
+        restuarantId=None,
+        remember_me=False
+    )
 
-def setCookie(resp:Response, payload:SessionToken):
+def setCookie(resp:Response, payload:SessionToken = default_session_generator()):
+    """Resets/delete cookie if no cookie exists"""
     token = encode_payload(payload)
     resp.set_cookie(
         key=TOKEN_NAME,
         value=token,
         httponly=True,
         secure=True,
-        samesite="lax",
-        max_age=COOKIE_AGE
+        samesite="none",
+        max_age=LONGER_COOKIE_AGE if payload.remember_me else COOKIE_AGE
     )
 
 def getCookiePayload(req:Request):
@@ -53,14 +64,6 @@ def getCookiePayload(req:Request):
         raise HTTPException(status_code=400, detail='Invalid cookies')
     
 
-def default_session_generator()->SessionToken:
-    return SessionToken(
-        sessionId=uuid.uuid7(),
-        userId=None,
-        role=None,
-        restuarantId=None
-        
-    )
 
 
 def ensure_default_cookie(
@@ -70,12 +73,12 @@ def ensure_default_cookie(
     """
     Dependency to set a default cookie if it doesn't exist in the request.
     """
-    payload = request.cookies.get(TOKEN_NAME)
+    
     parsed  = getCookiePayload(request) or default_session_generator()
     # Check if the cookie was present in the incoming request, no default to ensure setting cookies
-    if payload is None:
-        # If missing, set the default on the outgoing response
-        setCookie(response,parsed)
+    # If missing, set the default on the outgoing response
+    # Reset on session timer
+    setCookie(response,parsed)
     
     # You can return the cookie value if your endpoints need it
     return parsed

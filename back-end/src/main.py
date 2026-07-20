@@ -6,7 +6,7 @@ from src.database.connection import create_tables, drop_tables, engine
 from src.database.migrate_visibility import ensure_visibility_schema
 from src.database.controllers import routers
 from src.llm.router import router as llm_router
-from .jwt import ensure_default_cookie, CookieCustom, setCookie,default_session_generator
+from src.services.jwt import ensure_default_cookie, CookieCustom, setCookie
 import os
 
     
@@ -17,13 +17,7 @@ create_tables()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        os.getenv("FE_HOST", "http://localhost:5173"),
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
+        os.getenv("FE_HOST", "http://localhost:5173")
     ],
     allow_credentials=True,
     allow_methods=["*"],
