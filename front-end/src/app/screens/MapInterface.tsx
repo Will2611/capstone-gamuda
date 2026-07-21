@@ -205,7 +205,7 @@ export default function MapInterface() {
   }, [displayedRestaurants, filters]);
 
   // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
-  const restaurants = filteredRestaurants;
+  const restaurants = displayedRestaurants;
 
   const suggestions = useMemo<SuggestedRestaurant[]>(
     () =>
