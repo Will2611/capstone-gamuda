@@ -14,7 +14,6 @@ import {
   EMPTY_SENTIMENT,
   EMPTY_FUNNEL_STAGES,
   EMPTY_FOOT_TRAFFIC,
-  FOOT_TRAFFIC_POLL_MS,
   normalizeSummary,
   normalizeFunnelStages,
   normalizeSentiment,
@@ -60,10 +59,6 @@ export default function SocialVisibilityDashboard() {
   const [sentiment, setSentiment] = useState<Sentiment>(EMPTY_SENTIMENT);
   const [footTraffic, setFootTraffic] =
     useState<FootTrafficResponse>(EMPTY_FOOT_TRAFFIC);
-  const [footTrafficUpdatedAt, setFootTrafficUpdatedAt] = useState<Date | null>(
-    null,
-  );
-  const [footTrafficRefreshing, setFootTrafficRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [restaurantsLoading, setRestaurantsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +129,7 @@ export default function SocialVisibilityDashboard() {
         getFunnelMetrics(id),
         getSocialVisibility(id),
         getSentiment(id),
-        getFootTraffic(id, { live: true }),
+        getFootTraffic(id),
       ]);
 
       const labels = [
@@ -171,15 +166,11 @@ export default function SocialVisibilityDashboard() {
           ? normalizeSentiment(sentimentRes.value)
           : EMPTY_SENTIMENT,
       );
-      if (trafficRes.status === "fulfilled") {
-        const normalized = normalizeFootTraffic(trafficRes.value, id);
-        setFootTraffic(normalized);
-        setFootTrafficUpdatedAt(
-          normalized.updatedAt ? new Date(normalized.updatedAt) : new Date(),
-        );
-      } else {
-        setFootTraffic({ ...EMPTY_FOOT_TRAFFIC, restaurantId: id });
-      }
+      setFootTraffic(
+        trafficRes.status === "fulfilled"
+          ? normalizeFootTraffic(trafficRes.value, id)
+          : { ...EMPTY_FOOT_TRAFFIC, restaurantId: id },
+      );
 
       if (failed.length > 0) {
         setError(
@@ -207,34 +198,6 @@ export default function SocialVisibilityDashboard() {
       loadDashboard(selectedRestaurantId);
     }
   }, [selectedRestaurantId, loadDashboard]);
-
-  // Silent live refresh of foot traffic every few minutes (no full-page spinner)
-  const refreshFootTrafficLive = useCallback(async (id: string) => {
-    setFootTrafficRefreshing(true);
-    try {
-      const data = await getFootTraffic(id, { live: true });
-      const normalized = normalizeFootTraffic(data, id);
-      setFootTraffic(normalized);
-      setFootTrafficUpdatedAt(
-        normalized.updatedAt ? new Date(normalized.updatedAt) : new Date(),
-      );
-    } catch {
-      // Keep last good data on poll failure
-    } finally {
-      setFootTrafficRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (selectedRestaurantId === null) return;
-
-    const restaurantId = selectedRestaurantId;
-    const intervalId = window.setInterval(() => {
-      void refreshFootTrafficLive(restaurantId);
-    }, FOOT_TRAFFIC_POLL_MS);
-
-    return () => window.clearInterval(intervalId);
-  }, [selectedRestaurantId, refreshFootTrafficLive]);
 
   const dropOffStage = funnel.find((s) => s.isDropOff);
 
@@ -366,17 +329,7 @@ export default function SocialVisibilityDashboard() {
           )}
 
           {activeTab === "traffic" && (
-            <TrafficTab
-              footTraffic={footTraffic}
-              actionSuggestions={actionSuggestions}
-              handleViewSuggestions={handleViewSuggestions}
-              lastUpdatedAt={footTrafficUpdatedAt}
-              isRefreshing={footTrafficRefreshing}
-              onRefreshLive={() =>
-                selectedRestaurantId &&
-                void refreshFootTrafficLive(selectedRestaurantId)
-              }
-            />
+            <TrafficTab footTraffic={footTraffic} />
           )}
 
           {activeTab === "promotions" && (

@@ -1,7 +1,10 @@
 import csv
 from pathlib import Path
+import asyncio
 
-from src.database.connection import SessionLocal
+from src.database.connection import SessionLocal, create_tables, drop_tables, engine
+from src.database.migrate_visibility import ensure_visibility_schema
+import src.database.models  # noqa: F401 — register all ORM tables before create_all
 from src.database.models.test import TestModel
 from src.database.models.restaurants import RestaurantModel, DAYS_OF_WEEK_TYPE
 import uuid_utils.compat as uuid
@@ -23,11 +26,13 @@ from src.database.models.visibility import (
     SentimentThemeModel,
 )
 from src.database.models.reviews import ReviewModel, SENTIMENT_TYPE
-from src.database.schemas.reviews import ThemesToReviewIds
+from src.database.schemas.reviews import ThemesToReviewIds, SentimentModelValidation
+from src.llm.sentiment_analyzer import analyze_reviews_batch
 from .fake_reviews import ReviewProvider
-from .fake_reviews import ReviewData
+from .fake_reviews import ReviewData, stars_for_sentiment
 from src.database.schemas.visibility import FUNNEL_STAGES
 import calendar
+import os
 year =2026
 month=5
 _, days_in_month = calendar.monthrange(year, month)
@@ -86,6 +91,19 @@ CSV_PATH = Path(__file__).parent / "Restaurants_in_Kuala_Lumpur_159_records.csv"
 
 IS_ALLOWED_DAY_TYPE = get_args(DAYS_OF_WEEK_TYPE)
 def seed():
+    fresh = os.getenv("SEED_FRESH", "true").lower() in ("1", "true", "yes")
+    if fresh:
+        print("Dropping and recreating database tables...")
+        drop_tables()
+    else:
+        print("Creating database tables (if missing)...")
+    create_tables()
+    ensure_visibility_schema(engine)
+    use_llm = os.getenv("SEED_USE_LLM", "").lower() in ("1", "true", "yes")
+    if use_llm:
+        print("Tables ready. Seeding with VADER + LLM on conflicts...")
+    else:
+        print("Tables ready. Seeding with VADER-only analysis (set SEED_USE_LLM=true for Gemini)...")
     db = SessionLocal()
     try:
         with CSV_PATH.open(encoding="utf-8") as f:
@@ -102,7 +120,14 @@ def seed():
                 db.add_all(funnel_stages)
                 
                 db.add(row_to_platform_metric(row,shop.id))
-                reviews, senti = random_reviews(shop.id)
+                reviews = random_reviews(shop.id)
+                reviews, analysis_stats = enrich_reviews_with_analysis(reviews, use_llm=use_llm)
+                senti = build_sentiment_data(reviews, shop.id)
+                if analysis_stats.get("llm"):
+                    print(
+                        f"  {shop.name}: {analysis_stats['llm']} conflict(s) resolved by LLM "
+                        f"({analysis_stats.get('conflicts', 0)} total conflicts)"
+                    )
                 db.add_all(reviews)
                 db.add(senti)
                 db.flush()
@@ -243,24 +268,70 @@ def random_reviews(restaurant_id:uuid.UUID):
         random_datetime = start_date + datetime.timedelta(seconds=random_seconds)
         result:tuple[SENTIMENT_TYPE,ReviewData] =  fake.any_review()
         sentiment, single_review = result
-        review_row  =ReviewModel(restaurant_id=restaurant_id, content=single_review['content'],sentiment=sentiment,theme=single_review['sentiment'], stars=random.randint(1,5), reviewer_id=None)
+        star_override = single_review.get("stars")
+        review_row  =ReviewModel(
+            restaurant_id=restaurant_id,
+            content=single_review['content'],
+            sentiment=sentiment,
+            theme=single_review['sentiment'],
+            stars=stars_for_sentiment(sentiment, star_override),
+            reviewer_id:None
+        )
         review_row.created_at = random_datetime
         review_row.id= uuid.uuid7(int(random_datetime.timestamp()))
         reviews.append(review_row)
-    positive=sum(1 for r in reviews if r.sentiment=="Positive")
-    negative=sum(1 for r in reviews if r.sentiment=="Negative")
-    mixed=sum(1 for r in reviews if r.sentiment=="Mixed")
-    neutral=sum(1 for r in reviews if r.sentiment=="Neutral")
+    return reviews
+
+
+def build_sentiment_data(reviews: list[ReviewModel], restaurant_id: uuid.UUID) -> SentimentDataModel:
+    total = len(reviews)
+    positive = sum(1 for r in reviews if r.sentiment == "Positive")
+    negative = sum(1 for r in reviews if r.sentiment == "Negative")
+    mixed = sum(1 for r in reviews if r.sentiment == "Mixed")
+    neutral = sum(1 for r in reviews if r.sentiment == "Neutral")
     senti = SentimentDataModel(
         restaurant_id=restaurant_id,
         recorded_at=end_date,
-        positive_pct=round(100* positive/total,1),
-        negative_pct=round(100* negative/total,1),
-        neutral_pct=round(100* neutral/total,1),
-        mixed_pct=round(100* mixed/total,1),
-        )
+        positive_pct=round(100 * positive / total, 1),
+        negative_pct=round(100 * negative / total, 1),
+        neutral_pct=round(100 * neutral / total, 1),
+        mixed_pct=round(100 * mixed / total, 1),
+    )
     senti.created_at = end_date
-    return reviews, senti
+    return senti
+
+
+def _theme_from_analysis(sentiment: str, theme: str) -> SentimentModelValidation:
+    if sentiment == "Positive":
+        return SentimentModelValidation(positive=[theme], negative=[], neutral=[])
+    if sentiment == "Negative":
+        return SentimentModelValidation(negative=[theme], positive=[], neutral=[])
+    return SentimentModelValidation(neutral=[theme], positive=[], negative=[])
+
+
+async def _analyze_reviews_async(
+    reviews: list[ReviewModel],
+    *,
+    use_llm: bool,
+) -> tuple[list[ReviewModel], dict]:
+    pending = [{"text": r.content, "rating": r.stars} for r in reviews]
+    analyzed, stats = await analyze_reviews_batch(pending, use_llm=use_llm)
+    for review, result in zip(reviews, analyzed):
+        sentiment = result.get("sentiment")
+        theme = result.get("theme")
+        if sentiment in ("Positive", "Negative", "Neutral") and theme:
+            review.sentiment = sentiment
+            review.theme = _theme_from_analysis(sentiment, theme)
+    return reviews, stats
+
+
+def enrich_reviews_with_analysis(
+    reviews: list[ReviewModel],
+    *,
+    use_llm: bool = False,
+) -> tuple[list[ReviewModel], dict]:
+    """Run VADER analysis on reviews; pass use_llm=True to invoke LLM on conflicts."""
+    return asyncio.run(_analyze_reviews_async(reviews, use_llm=use_llm))
 
 def sentiment_theme_from_reviews(theme_set:ThemesToReviewIds, senti_data_id:uuid.UUID):
     sentiment_themes_list:list[SentimentThemeModel] = []
