@@ -251,11 +251,29 @@ def _map_to_results(selected: list[tuple]) -> list[RestaurantResult]:
     return results
 
 
+def _exclude_shown(
+    ranked: list[tuple],
+    exclude_ids: set,
+) -> list[tuple]:
+    """Drop restaurants already shown when paging to the next top 3."""
+    if not exclude_ids:
+        return ranked
+    return [
+        (r, dist) for r, dist in ranked
+        if getattr(r, "id", None) not in exclude_ids
+    ]
+
+
+def _take_top(ranked: list[tuple], limit: int = 3) -> list[tuple]:
+    return ranked[:limit]
+
+
 async def chat_with_restaurant_search(
     messages: list[dict],
     db,
     latitude: float | None = None,
-    longitude: float | None = None
+    longitude: float | None = None,
+    exclude_restaurant_ids: list | None = None,
 ) -> tuple[str, list[RestaurantResult], list[str]]:
     llm = get_llm()
 
@@ -268,8 +286,17 @@ async def chat_with_restaurant_search(
         reply = "I didn't catch that. What kind of food are you looking for?"
         return reply, [], build_suggestions(None, [])
 
-    # 2. Chain 1 — extract intent (includes distance, price, dietary)
-    intent = await extract_intent(llm, latest_user)
+    # 2. Chain 1 — extract intent (includes distance, price, dietary + more-alternatives)
+    intent = await extract_intent(llm, latest_user, messages)
+
+    # Asking for more options always requires a restaurant search
+    if intent.wants_more_alternatives:
+        intent.needs_restaurant_search = True
+
+    # Only skip already-shown places when the user asked for alternatives
+    exclude_ids: set = set()
+    if intent.wants_more_alternatives and exclude_restaurant_ids:
+        exclude_ids = set(exclude_restaurant_ids)
 
     restaurants: list[RestaurantResult] = []
     radius_km = intent.max_distance_km if intent.max_distance_km else 10.0
@@ -288,19 +315,20 @@ async def chat_with_restaurant_search(
             price_level=intent.price_level,
             dietary=intent.dietary,
         )
+        available = _exclude_shown(db_results, exclude_ids)
 
-        if len(db_results) >= 3:
-            selected = db_results[:3]
+        if len(available) >= 3:
+            selected = _take_top(available)
         else:
-            needed_count = 3 - len(db_results)
+            needed_count = 3 - len(available)
             # Step 2: Not enough in DB — call external APIs (Google Places / SerpAPI) in parallel
             external_results = await _fetch_external(
                 loop, intent.cuisines, latitude, longitude, radius_km
             )
-            
+
             existing_place_ids = {r.google_place_id for r, _ in db_results if r.google_place_id}
             existing_names = {r.name.lower().strip() for r, _ in db_results}
-            
+
             new_external_results = []
             for r in external_results:
                 p_id = r.get("google_place_id")
@@ -308,8 +336,8 @@ async def chat_with_restaurant_search(
                 if p_id in existing_place_ids or name in existing_names:
                     continue
                 new_external_results.append(r)
-                
-            selected_external = new_external_results[:needed_count]
+
+            selected_external = new_external_results[: max(needed_count, 3)]
             _upsert_deduped(db, selected_external)
 
             # Re-query DB after upserting fresh external data
@@ -319,7 +347,7 @@ async def chat_with_restaurant_search(
                 price_level=intent.price_level,
                 dietary=intent.dietary,
             )
-            selected = db_results[:3]
+            selected = _take_top(_exclude_shown(db_results, exclude_ids))
 
         restaurants = _map_to_results(selected)
 
@@ -337,13 +365,18 @@ async def chat_with_restaurant_search(
         fallback_results = query_restaurants_by_proximity_and_cuisine(
             db, intent.cuisines, latitude, longitude, radius_km=expanded_radius
         )
-        if fallback_results:
-            restaurants = _map_to_results(fallback_results[:3])
-            latest_user = (
-                latest_user +
+        fallback_available = _exclude_shown(fallback_results, exclude_ids)
+        if fallback_available:
+            restaurants = _map_to_results(_take_top(fallback_available))
+            note = (
                 f"\n[Note: No exact matches found within {radius_km:.0f}km. "
                 f"Showing results within {expanded_radius:.0f}km instead.]"
             )
+            if intent.wants_more_alternatives:
+                note = (
+                    "\n[Note: Showing further alternatives with a wider search radius.]"
+                )
+            latest_user = latest_user + note
         else:
             # --- Fallback 2: No cuisine filter — fetch generic external data first ---
             fb2_external = await loop.run_in_executor(
@@ -357,13 +390,20 @@ async def chat_with_restaurant_search(
             any_nearby = query_restaurants_by_proximity_and_cuisine(
                 db, [], latitude, longitude, radius_km=expanded_radius
             )
-            if any_nearby:
-                restaurants = _map_to_results(any_nearby[:3])
+            any_available = _exclude_shown(any_nearby, exclude_ids)
+            if any_available:
+                restaurants = _map_to_results(_take_top(any_available))
                 latest_user = (
                     latest_user +
                     "\n[Note: No matching cuisine found nearby. "
                     "Showing highly-rated restaurants in the area instead.]"
                 )
+            elif intent.wants_more_alternatives and exclude_ids:
+                reply = (
+                    "I've shown you all the matching spots nearby for now. "
+                    "Try a different cuisine, a wider area, or refine your filters."
+                )
+                return reply, [], build_suggestions(intent, [])
             else:
                 # All stages exhausted — nothing found anywhere
                 reply = (

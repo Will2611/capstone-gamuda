@@ -55,6 +55,7 @@ async def chat_endpoint(body: ChatRequest, db: db_dependency):
             db,
             latitude=body.latitude,
             longitude=body.longitude,
+            exclude_restaurant_ids=body.exclude_restaurant_ids,
         )
         return ChatResponse(
             message=reply,

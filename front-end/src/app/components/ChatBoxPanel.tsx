@@ -158,6 +158,7 @@ export default function ChatBoxPanel({
     buildInitialSuggestionChips(getUser.profile.savedPreferences),
   );
   const hasInteractedRef = useRef(false);
+  const shownRestaurantIdsRef = useRef<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -184,6 +185,7 @@ export default function ChatBoxPanel({
     }
     setMessages(initChat.messages);
     setParticipants((initChat as ChatBox).participants);
+    shownRestaurantIdsRef.current = [];
 
     if (initChat.expiresAt) {
       const update = () => {
@@ -336,9 +338,20 @@ export default function ChatBoxPanel({
                 : ("user" as const),
             content: m.message,
           }));
-          const response = await sendChatMessage(history, latitude, longitude);
+          const response = await sendChatMessage(
+            history,
+            latitude,
+            longitude,
+            shownRestaurantIdsRef.current,
+          );
           const replyText = response.message;
           const restaurants = response.restaurants || [];
+          // Accumulate IDs so "Other suggestions" can page to the next top 3
+          for (const r of restaurants) {
+            if (r.id && !shownRestaurantIdsRef.current.includes(r.id)) {
+              shownRestaurantIdsRef.current.push(r.id);
+            }
+          }
           const nextSuggestions = response.suggestions?.length
             ? response.suggestions
             : [RANDOMIZER_CHIP];

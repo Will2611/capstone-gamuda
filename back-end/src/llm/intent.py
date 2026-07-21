@@ -4,6 +4,13 @@ class DiningIntent(BaseModel):
     needs_restaurant_search: bool = Field(
         description="True if user wants restaurant recommendations"
     )
+    wants_more_alternatives: bool = Field(
+        default=False,
+        description=(
+            "True if user wants different/more options than already shown "
+            "(e.g. 'other suggestions', 'show me more', 'anything else?')"
+        ),
+    )
     cuisines: list[str] = Field(
         default_factory=list,
         description="Cuisine keywords like Japanese, Malaysian, Italian"

@@ -31,6 +31,7 @@ def build_suggestions(
     elif intent is None:
         chips = ["Restaurants near me", "Halal options", "Budget eats"]
     elif intent.needs_restaurant_search and restaurants:
+        chips.append("Other suggestions")
         if intent.cuisines:
             primary = intent.cuisines[0]
             alts = [c for c in _ALT_CUISINES if c.lower() not in {x.lower() for x in intent.cuisines}]
@@ -40,14 +41,14 @@ def build_suggestions(
                 chips.append("Something cheaper")
             else:
                 chips.append(f"More {primary} nearby")
-            if intent.max_distance_km is None or intent.max_distance_km > 1:
-                chips.append("Within 1 km")
-            else:
-                chips.append("Open late")
+            if len(chips) < 3:
+                if intent.max_distance_km is None or intent.max_distance_km > 1:
+                    chips.append("Within 1 km")
+                else:
+                    chips.append("Open late")
         else:
-            chips.extend(["Japanese nearby", "Halal options", "Budget eats"])
+            chips.extend(["Japanese nearby", "Halal options"])
         if intent.dietary:
-            # Prefer a refine chip over duplicating dietary
             if "Open now" not in chips and len(chips) < 3:
                 chips.append("Casual vibe")
         elif len(chips) < 3:

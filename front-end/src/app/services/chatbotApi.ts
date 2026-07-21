@@ -28,11 +28,16 @@ export async function sendChatMessage(
   messages: ChatTurn[],
   latitude?: number,
   longitude?: number,
+  excludeRestaurantIds: string[] = [],
 ): Promise<ChatResponse> {
   const { data } = await axios.post<ChatResponse>(
     `${API_BASE}/llm/chat`,
-    { messages, latitude, longitude },
+    {
+      messages,
+      latitude,
+      longitude,
+      exclude_restaurant_ids: excludeRestaurantIds,
+    },
   );
   return data;
 }
-
