@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Response
 from src.database.connection import db_dependency
 import os
 from src.database.controllers.utils import get_subcontrollers
 from src.database.models.user import UserModel
 from src.database.controllers.utils import create_access_token
 from src.database.schemas.auth import LoginRequest, TokenResponse, AuthUserResponse
+from src.services.jwt import CookieCustom, setCookie
 
 user_router = APIRouter(tags=['users'])
 
@@ -31,7 +32,7 @@ router = APIRouter(prefix='/user')
 router.include_router(aggregate_router)
 
 @router.post("/login", response_model=TokenResponse) 
-async def login(payload: LoginRequest, db: db_dependency):
+async def login(payload: LoginRequest, db: db_dependency, cookie_payload:CookieCustom, resp:Response):
     # 🔍 VERIFICATION STEP 1: Find user by email in the DB
     user = db.query(UserModel).filter(UserModel.email == payload.email).first()
     if not user:
@@ -57,12 +58,19 @@ async def login(payload: LoginRequest, db: db_dependency):
     auth_user = AuthUserResponse(
         id=user.id,
         email=user.email,
-        display_name=user.full_name,
+        displayName=user.full_name,
         role=user.user_type,
-        avatar_url=getattr(user, 'avatar_url', None)
+        avatarUrl=getattr(user, 'avatar_url', None)
     )
-    
+    cookie_payload.userId = user.id
+    cookie_payload.role = user.user_type
+    setCookie(resp,cookie_payload)
     return TokenResponse(
         access_token=access_token,
         user=auth_user
     )
+
+@router.delete('/logout', status_code=status.HTTP_204_NO_CONTENT)
+async def user_logout(resp:Response, old_cookie:CookieCustom):
+    setCookie(resp)
+    return

@@ -275,6 +275,7 @@ def random_reviews(restaurant_id:uuid.UUID):
             sentiment=sentiment,
             theme=single_review['sentiment'],
             stars=stars_for_sentiment(sentiment, star_override),
+            reviewer_id:None
         )
         review_row.created_at = random_datetime
         review_row.id= uuid.uuid7(int(random_datetime.timestamp()))

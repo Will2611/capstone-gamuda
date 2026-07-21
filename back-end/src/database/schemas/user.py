@@ -1,19 +1,14 @@
-from src.database.connection import Base
-# types
-from sqlalchemy import String, ForeignKey,Uuid, Float
+
 # functions
-from sqlalchemy import CheckConstraint,func
-from uuid_utils.compat import UUID, uuid7
-from sqlalchemy.orm import mapped_column, Mapped
+from uuid_utils.compat import UUID
+
 from pydantic import Field, EmailStr, BaseModel, Field, EmailStr, ConfigDict
 from pydantic.alias_generators import to_camel
 from typing import Literal, Optional
 from .base_model import DBBaseRequest
 import pygeohash as gh
-from enum import Enum
 from typing import Literal, Optional, List
 import datetime
-from enum import Enum
 
 class UserRequest(DBBaseRequest):
     model_config = ConfigDict(
@@ -27,9 +22,8 @@ class UserRequest(DBBaseRequest):
     password: str = Field(..., min_length=8)
     user_type:Literal["client","owner"] = Field()
 
-class UserTypeEnum(Enum):
-    CLIENT ="client"
-    OWNER = "owner"
+USER_ROLE_LIST = ["client","owner"]
+USER_ROLE_TYPE = Literal["client","owner"]
 
 class ClientRequest(UserRequest):
     # PreFill as default
