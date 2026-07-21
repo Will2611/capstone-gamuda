@@ -2,7 +2,6 @@ from fastapi import Depends
 from sqlalchemy import create_engine
 # from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, DeclarativeBase, MappedAsDataclass
-from google.cloud.sql.connector import Connector
 from typing import Annotated
 from dotenv import load_dotenv
 import os
@@ -24,6 +23,8 @@ DB_PORT=os.getenv("DB_PORT", '5432')
 def get_conn():
     if(INSTANCE_CONNECTION_NAME is None):
         return None
+
+    from google.cloud.sql.connector import Connector
 
     connector = Connector()
     conn = connector.connect(

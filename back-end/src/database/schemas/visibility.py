@@ -133,10 +133,18 @@ class ReviewsByThemeResponse(BaseModel):
 
 # ---- Pydantic Response Schemas ----
 
-class HourlyTrafficItem(BaseModel):
-    hour: int
-    weekdayAvg: float
-    weekendAvg: float
+class ChartDayTrafficItem(BaseModel):
+    """One chart column — real hourly counts summed for a single traffic_date."""
+    trafficDate: str
+    dayName: str
+    dayType: str
+    dayIndex: int
+    morning: int = 0
+    lunch: int = 0
+    afternoon: int = 0
+    dinner: int = 0
+    lateNight: int = 0
+    total: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -152,33 +160,14 @@ class TrafficInsightItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class StaffingShiftItem(BaseModel):
-    day: str
-    dayIndex: int
-    date: str
-    shift: str
-    segment: str
-    shiftStart: int
-    shiftEnd: int
-    expectedVisitors: int
-    staffSuggested: int
-    priority: str
-
-    model_config = {"from_attributes": True}
-
-
 class FootTrafficResponse(BaseModel):
-    """Chart, insights, and forecast — all from foot_traffic_hourly in one response."""
+    """Chart and insights from per-date foot_traffic_hourly counts (no averaging)."""
     restaurantId: uuid.UUID
-    hourly: list[HourlyTrafficItem]
-    weekdayAvg: float = 0
-    weekendAvg: float = 0
+    chartDays: list[ChartDayTrafficItem] = []
     weekdayTotal: int = 0
     weekendTotal: int = 0
     insights: list[TrafficInsightItem] = []
-    nextWeekSchedule: list[StaffingShiftItem] = []
     updatedAt: str | None = None
-    live: bool = False
 
     model_config = {"from_attributes": True}
 

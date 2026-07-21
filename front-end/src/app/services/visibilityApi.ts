@@ -332,12 +332,19 @@ export function trendColorClass(trend: "up" | "down" | "flat"): string {
   return "text-bs-neutral-600";
 }
 
-// ──────────── Foot Traffic (hourly table only) ────────────
+// ──────────── Foot Traffic (per traffic_date hourly counts) ────────────
 
-export interface HourlyTrafficItem {
-  hour: number;
-  weekdayAvg: number;
-  weekendAvg: number;
+export interface ChartDayTrafficItem {
+  trafficDate: string;
+  dayName: string;
+  dayType: string;
+  dayIndex: number;
+  morning: number;
+  lunch: number;
+  afternoon: number;
+  dinner: number;
+  lateNight: number;
+  total: number;
 }
 
 export interface TrafficInsightItem {
@@ -349,46 +356,22 @@ export interface TrafficInsightItem {
   linkedSegment?: string | null;
 }
 
-export interface StaffingShiftItem {
-  day: string;
-  dayIndex: number;
-  date: string;
-  shift: string;
-  segment: string;
-  shiftStart: number;
-  shiftEnd: number;
-  expectedVisitors: number;
-  staffSuggested: number;
-  priority: string;
-}
-
 export interface FootTrafficResponse {
   restaurantId: string;
-  hourly: HourlyTrafficItem[];
-  weekdayAvg: number;
-  weekendAvg: number;
+  chartDays: ChartDayTrafficItem[];
   weekdayTotal: number;
   weekendTotal: number;
   insights: TrafficInsightItem[];
-  nextWeekSchedule: StaffingShiftItem[];
   updatedAt?: string | null;
-  live?: boolean;
 }
-
-/** Poll interval for live foot-traffic refresh (3 minutes). */
-export const FOOT_TRAFFIC_POLL_MS = 3 * 60 * 1000;
 
 export const EMPTY_FOOT_TRAFFIC: FootTrafficResponse = {
   restaurantId: "",
-  hourly: [],
-  weekdayAvg: 0,
-  weekendAvg: 0,
+  chartDays: [],
   weekdayTotal: 0,
   weekendTotal: 0,
   insights: [],
-  nextWeekSchedule: [],
   updatedAt: null,
-  live: false,
 };
 
 export function normalizeFootTraffic(
@@ -400,15 +383,20 @@ export function normalizeFootTraffic(
       raw?.restaurantId != null && raw.restaurantId !== ""
         ? String(raw.restaurantId)
         : restaurantId,
-    hourly: Array.isArray(raw?.hourly)
-      ? raw!.hourly.map((h) => ({
-          hour: safeNumber(h?.hour),
-          weekdayAvg: safeNumber(h?.weekdayAvg),
-          weekendAvg: safeNumber(h?.weekendAvg),
+    chartDays: Array.isArray(raw?.chartDays)
+      ? raw!.chartDays.map((d) => ({
+          trafficDate: d?.trafficDate ?? "",
+          dayName: d?.dayName ?? "",
+          dayType: d?.dayType ?? "",
+          dayIndex: safeNumber(d?.dayIndex),
+          morning: safeNumber(d?.morning),
+          lunch: safeNumber(d?.lunch),
+          afternoon: safeNumber(d?.afternoon),
+          dinner: safeNumber(d?.dinner),
+          lateNight: safeNumber(d?.lateNight),
+          total: safeNumber(d?.total),
         }))
       : [],
-    weekdayAvg: safeNumber(raw?.weekdayAvg),
-    weekendAvg: safeNumber(raw?.weekendAvg),
     weekdayTotal: safeNumber(raw?.weekdayTotal),
     weekendTotal: safeNumber(raw?.weekendTotal),
     insights: Array.isArray(raw?.insights)
@@ -424,34 +412,14 @@ export function normalizeFootTraffic(
           linkedSegment: item?.linkedSegment ?? null,
         }))
       : [],
-    nextWeekSchedule: Array.isArray(raw?.nextWeekSchedule)
-      ? raw!.nextWeekSchedule.map((s) => ({
-          day: s?.day ?? "",
-          dayIndex: safeNumber(s?.dayIndex),
-          date: s?.date ?? "",
-          shift: s?.shift ?? "",
-          segment: s?.segment ?? "",
-          shiftStart: safeNumber(s?.shiftStart),
-          shiftEnd: safeNumber(s?.shiftEnd),
-          expectedVisitors: safeNumber(s?.expectedVisitors),
-          staffSuggested: safeNumber(s?.staffSuggested),
-          priority: s?.priority ?? "low",
-        }))
-      : [],
     updatedAt: raw?.updatedAt ?? null,
-    live: Boolean(raw?.live),
   };
 }
 
 export async function getFootTraffic(
   restaurantId: string,
-  options: { live?: boolean } = {},
 ): Promise<FootTrafficResponse> {
-  const live = options.live ?? false;
-  const params = new URLSearchParams({
-    restaurantId,
-    live: String(live),
-  });
+  const params = new URLSearchParams({ restaurantId });
   const response = await fetch(
     `${API_BASE}/visibility/getFootTraffic?${params.toString()}`,
   );

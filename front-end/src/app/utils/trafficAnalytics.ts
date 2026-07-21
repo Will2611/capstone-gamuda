@@ -1,15 +1,7 @@
 /**
  * Shared segment definitions — must match back-end traffic_analytics.py
  */
-export const TRAFFIC_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
+import type { ChartDayTrafficItem } from "../services/visibilityApi";
 
 export const TRAFFIC_SEGMENT_HOURS = {
   morning: [8, 9, 10, 11],
@@ -21,12 +13,6 @@ export const TRAFFIC_SEGMENT_HOURS = {
 
 export type TrafficSegmentKey = keyof typeof TRAFFIC_SEGMENT_HOURS;
 
-export interface HourlyTrafficItem {
-  hour: number;
-  weekdayAvg: number;
-  weekendAvg: number;
-}
-
 export interface TrafficInsightItem {
   id: string;
   type: string;
@@ -36,23 +22,11 @@ export interface TrafficInsightItem {
   linkedSegment?: TrafficSegmentKey | string | null;
 }
 
-export interface StaffingShiftItem {
-  day: string;
-  dayIndex: number;
-  date: string;
-  shift: string;
-  segment: string;
-  shiftStart: number;
-  shiftEnd: number;
-  expectedVisitors: number;
-  staffSuggested: number;
-  priority: "high" | "medium" | "low" | string;
-}
-
 export interface StackedDayRow {
   dayIndex: number;
   day: string;
   label: string;
+  trafficDate: string;
   morning: number;
   lunch: number;
   afternoon: number;
@@ -61,52 +35,39 @@ export interface StackedDayRow {
   total: number;
 }
 
+function formatChartLabel(trafficDate: string, dayName: string): string {
+  if (!trafficDate) return dayName.slice(0, 3);
+  const parsed = new Date(`${trafficDate}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return dayName.slice(0, 3);
+  const month = parsed.toLocaleString("en", { month: "short" });
+  return `${dayName.slice(0, 3)} ${parsed.getDate()} ${month}`;
+}
+
 export function buildStackedChartData(
-  hourly: HourlyTrafficItem[],
+  chartDays: ChartDayTrafficItem[],
 ): StackedDayRow[] {
-  const hasHourlyData = hourly.some(
-    (h) => (h.weekdayAvg ?? 0) > 0 || (h.weekendAvg ?? 0) > 0,
-  );
+  return chartDays.map((day) => ({
+    dayIndex: day.dayIndex,
+    day: day.dayName,
+    trafficDate: day.trafficDate,
+    label: formatChartLabel(day.trafficDate, day.dayName),
+    morning: day.morning ?? 0,
+    lunch: day.lunch ?? 0,
+    afternoon: day.afternoon ?? 0,
+    dinner: day.dinner ?? 0,
+    lateNight: day.lateNight ?? 0,
+    total: day.total ?? 0,
+  }));
+}
 
-  const getHourAvg = (hour: number, isWeekend: boolean) => {
-    const row = hourly.find((x) => x.hour === hour);
-    if (!row) return 0;
-    const value = isWeekend ? row.weekendAvg : row.weekdayAvg;
-    return Math.max(0, Math.round(value ?? 0));
-  };
-
-  const sumHours = (hours: readonly number[], isWeekend: boolean) =>
-    hours.reduce((sum, hour) => sum + getHourAvg(hour, isWeekend), 0);
-
-  return TRAFFIC_DAYS.map((day, i) => {
-    const isWeekend = i >= 5;
-    const morning = hasHourlyData
-      ? sumHours(TRAFFIC_SEGMENT_HOURS.morning, isWeekend)
-      : 0;
-    const lunch = hasHourlyData
-      ? sumHours(TRAFFIC_SEGMENT_HOURS.lunch, isWeekend)
-      : 0;
-    const afternoon = hasHourlyData
-      ? sumHours(TRAFFIC_SEGMENT_HOURS.afternoon, isWeekend)
-      : 0;
-    const dinner = hasHourlyData
-      ? sumHours(TRAFFIC_SEGMENT_HOURS.dinner, isWeekend)
-      : 0;
-    const lateNight = hasHourlyData
-      ? sumHours(TRAFFIC_SEGMENT_HOURS.lateNight, isWeekend)
-      : 0;
-    return {
-      dayIndex: i,
-      day,
-      label: `${day.slice(0, 3)} Jun ${i + 1}`,
-      morning,
-      lunch,
-      afternoon,
-      dinner,
-      lateNight,
-      total: morning + lunch + afternoon + dinner + lateNight,
-    };
-  });
+export function formatChartWeekRange(chartDays: ChartDayTrafficItem[]): string {
+  if (!chartDays.length) return "Hourly Foot Traffic";
+  if (chartDays.length === 1) {
+    return `Hourly Foot Traffic (${chartDays[0].trafficDate})`;
+  }
+  const first = chartDays[0].trafficDate;
+  const last = chartDays[chartDays.length - 1].trafficDate;
+  return `Hourly Foot Traffic (${first} – ${last})`;
 }
 
 export const TRAFFIC_SEGMENTS = [
@@ -151,16 +112,5 @@ export function insightCardStyle(type: string) {
         background: "#F5F5F5",
         title: "text-bs-neutral-600",
       };
-  }
-}
-
-export function priorityBadgeClass(priority: string) {
-  switch (priority) {
-    case "high":
-      return "bg-bs-red/10 text-bs-red";
-    case "medium":
-      return "bg-bs-gold/10 text-bs-gold";
-    default:
-      return "bg-bs-neutral-100 text-bs-neutral-600";
   }
 }
