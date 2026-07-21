@@ -12,6 +12,7 @@ export interface Restaurant {
   /** [longitude, latitude] for map display */
   coordinates: [number, number];
   image?: string;
+  images?: string[];
   promotions?: Promotion[];
 }
 
