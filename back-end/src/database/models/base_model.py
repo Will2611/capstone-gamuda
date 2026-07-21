@@ -60,16 +60,21 @@ class PydanticJSONType(TypeDecorator):
         return self.pydantic_model.model_validate(value)
 
 class GeohashHelper:
-     @staticmethod
-     def column_geohash_factory(latitude_column='latitude',longitude_column="longitude"):
-        """Only use if is and SQLAlchemy class and have columns name latitude and longitude"""
+     
+
+    @staticmethod
+    def column_geohash_factory(latitude_column='latitude', longitude_column="longitude"):
+        """Only use if it is an SQLAlchemy class with columns named latitude and longitude."""
         def arrow(context):
-            current_param= context.get_current_parameters()
-            recent_lat =  current_param.get(latitude_column)
-            recent_long =  current_param.get(longitude_column )
-            if recent_lat and recent_long:
+            current_param = context.get_current_parameters()
+            recent_lat = current_param.get(latitude_column)
+            recent_long = current_param.get(longitude_column)
+            
+            if recent_lat is not None and recent_long is not None:
+                # Fixed: passing recent_long to longitude
                 return gh.encode(latitude=recent_lat, longitude=recent_long)
             return None
+
         return arrow
         
 

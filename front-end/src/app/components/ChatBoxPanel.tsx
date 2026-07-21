@@ -252,9 +252,9 @@ export default function ChatBoxPanel({
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
-        userName: getUser.profile.displayName,
-        userEmail: getUser.profile.email,
-        userId: getUser.profile.id,
+        userName: getUser.profile?.displayName || "Guest",
+        userEmail: getUser.profile?.email || "None",
+        userId: getUser.profile?.id,
         userType: "client",
         timestamp: new Date(),
         message: text,
@@ -262,6 +262,9 @@ export default function ChatBoxPanel({
 
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
+      if (wsRef.current) {
+        wsRef.current.send(JSON.stringify(userMsg));
+      }
       setInput("");
 
       if (useLlm) {
@@ -363,7 +366,7 @@ export default function ChatBoxPanel({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex gap-2 ${msg.userId === getUser.profile.id ? "flex-row-reverse" : ""}`}
+            className={`flex gap-2 ${!getUser.profile?.id || msg.userId === getUser.profile.id ? "flex-row-reverse" : ""}`}
           >
             <div
               className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
@@ -378,7 +381,7 @@ export default function ChatBoxPanel({
             </div>
             <div
               className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                msg.userId === getUser.profile.id
+                !getUser.profile?.id || msg.userId === getUser.profile.id
                   ? "bg-bs-gold text-bs-neutral-900 rounded-tr-sm"
                   : "bg-bs-neutral-100 text-bs-neutral-800 rounded-tl-sm"
               }`}

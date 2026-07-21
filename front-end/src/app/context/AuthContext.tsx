@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import {
   createContext,
   useCallback,
@@ -7,73 +8,97 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { bitescoutApi } from "../services/baseApi";
 
 export type Role = "client" | "owner";
-const AUTH_STORAGE_KEY = "bitescouts_auth";
 
+// 💡 Updated to include role and id from your backend schema
 interface AuthUser {
+  id: string;
   email: string;
   displayName: string;
+  role: Role;
+  avatarUrl?: string | null;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  // 💡 Updated to return role string on success
   login: (
     email: string,
     password: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; role?: string }>;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const MOCK_CREDENTIALS = {
-  email: "demo@bitescouts.com",
-  password: "password123",
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
 
+  // Load user from storage on initial application mount
   useEffect(() => {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored) as AuthUser);
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
-    }
-  }, []);
+    async () => {
+      const { data } = await bitescoutApi.get<{ user: AuthUser }>("/user/ping");
+      const { user: authUser } = data;
 
-  const login = useCallback(async (email: string, password: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    if (
-      email.trim().toLowerCase() === MOCK_CREDENTIALS.email &&
-      password === MOCK_CREDENTIALS.password
-    ) {
-      const authUser: AuthUser = {
-        email: MOCK_CREDENTIALS.email,
-        displayName: "Alex Foodie",
-      };
+      // Store both token string and user object locally
       setUser(authUser);
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-      return { success: true };
-    }
-
-    return { success: false, error: "Invalid email or password" };
+    };
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
+  // 💡 Rewritten to call your FastAPI Python backend instead of mocks
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const { data } = await bitescoutApi.post<{ user: AuthUser }>(
+        `/user/login`,
+        {
+          email,
+          password,
+        },
+      );
+      // const response = await fetch("http://localhost:8000/user/login", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({ email, password }),
+      // });
+
+      // const data = await response.json();
+
+      // 📦 Transform API snake_case response to match camelCase TypeScript interface
+      const { user: authUser } = data;
+
+      // Store both token string and user object locally
+      setUser(authUser);
+
+      return { success: true, role: authUser.role };
+    } catch (errorRaw) {
+      const error = errorRaw as AxiosError<{ detail: string }>;
+      console.error("Authentication backend error:", error);
+      if (error.response) {
+        const {
+          data: { detail },
+        } = error.response;
+        return { success: false, error: detail || "Invalid email or password" };
+      }
+      return {
+        success: false,
+        error: "Unable to reach the server. Check your backend status.",
+      };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    return bitescoutApi.delete(`/user/logout`);
   }, []);
 
   const value = useMemo(
     () => ({
       user,
+
       isAuthenticated: !!user,
       login,
       logout,

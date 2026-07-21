@@ -17,8 +17,14 @@ export default function LoginPage() {
     setIsLoading(true);
     const result = await login(email, password);
     setIsLoading(false);
+
     if (result.success) {
-      navigate("/map", { replace: true });
+      // 💡 Check the role returned from your Auth Context / Backend payload
+      if (result.role === "owner") {
+        navigate("/owner/dashboard", { replace: true }); // Send owners to management
+      } else {
+        navigate("/map", { replace: true }); // Send clients to the food map
+      }
     }
     return result;
   };

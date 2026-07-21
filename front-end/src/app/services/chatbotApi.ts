@@ -1,6 +1,4 @@
-import axios from "axios";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+import { bitescoutApi } from "./baseApi";
 
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -28,10 +26,10 @@ export async function sendChatMessage(
   latitude?: number,
   longitude?: number,
 ): Promise<ChatResponse> {
-  const { data } = await axios.post<ChatResponse>(
-    `${API_BASE}/llm/chat`,
-    { messages, latitude, longitude },
-  );
+  const { data } = await bitescoutApi.post<ChatResponse>(`/llm/chat`, {
+    messages,
+    latitude,
+    longitude,
+  });
   return data;
 }
-

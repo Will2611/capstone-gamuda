@@ -13,15 +13,26 @@ from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin, RestaurantDeta
 import hashlib
 import hmac
 import os
-
+from sqlalchemy.dialects.postgresql import ARRAY, TIME
+from src.database.schemas.user import USER_ROLE_TYPE
 
 class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
-    __tablename__ ='users'
-    # Check for copy from above?
-    user_type: Mapped[Literal["client","owner"]] = mapped_column(String, nullable=False)
-    full_name: Mapped[str]= mapped_column(String, nullable=False)
-    email:Mapped[EmailStr]= mapped_column(String, unique=True, index=True)
-    hashedPassword:Mapped[str] = mapped_column(String(255), nullable=False)
+    __tablename__ = 'users'
+
+    user_type: Mapped[USER_ROLE_TYPE] = mapped_column(String, nullable=False)
+    full_name: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[EmailStr] = mapped_column(String, unique=True, index=True)
+    hashedPassword: Mapped[str] = mapped_column(String(255), nullable=False)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
+    # Add property aliases so Pydantic can automatically pull display_name and role
+    @property
+    def display_name(self) -> str:
+        return self.full_name
+
+    @property
+    def role(self) -> str:
+        return self.user_type
 
     @staticmethod
     def hash_password(password:str, salt:bytes|None=None, iterations=600000):
@@ -34,7 +45,7 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
             iterations, 
             dklen=32
         )
-        return f'{'sha256_pbkdf2'}${salt.hex()}${password_hash.hex()}${iterations}'
+        return f"sha256_pbkdf2${salt.hex()}${password_hash.hex()}${iterations}"
         # return salt.hex(), password_hash.hex(), iterations
 
     @staticmethod
@@ -63,7 +74,7 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     language:Mapped[str] = mapped_column(String)
     gender:Mapped[Optional[str]]= mapped_column(String, nullable=True)
     birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True)
-    preferred_time:Mapped[List[datetime.time]]= mapped_column(Time, default_factory=list)
+    preferred_time: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
     preferred_vibes:Mapped[list[str]]= mapped_column(ARRAY(String), default_factory=list)
     price_limit:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
     # Distance limit in km
@@ -103,7 +114,7 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
         )
     
     
-    avatar_url:Mapped[Optional[str]]= mapped_column(String, default=None)
+    #avatar_url:Mapped[Optional[str]]= mapped_column(String, default=None)
 
     __mapper_args__ = {
         'polymorphic_identity': 'client', 
@@ -112,7 +123,7 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     # Don't matter on overwrite, is just a quicker way of creating foreign key relation and taking advantage of ORM to load all other UserModel Data
     __table_args__=((
         Index(
-            "ix_geohash_not_null",
+            "ix_user_geohash_not_null",
             "recent_geohash",
             postgresql_where=text("recent_geohash IS NOT NULL")
         ),
@@ -163,24 +174,26 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
 # )
 
 class OwnerModel(UserModel):
-    __tablename__ ='owners'
-    restaurant_id:Mapped[uuid.UUID] = mapped_column(
-            Uuid, 
-            ForeignKey('restaurants.id'),
-            primary_key=True, 
-            index=True, 
-            nullable=False,
-        )
-    id:Mapped[uuid.UUID] = mapped_column(
-            Uuid, 
-            ForeignKey('users.id'),
-            primary_key=True, 
-            index=True, 
-            nullable=False,
-        )
-    verified_owner:Mapped[bool] = mapped_column(nullable=False,default=False)
-    __mapper_args__ = {
-        'polymorphic_identity': 'owner',
-        'inherit_condition': id == UserModel.id # Explicitly tell SQLAlchemy how to join
-        }
+    __tablename__ = "owners"
 
+    # Explicitly specify init=False here so dataclass constructor ignores 'id'
+    id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+        init=False,
+    )
+
+    restaurant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("restaurants.id"),
+        nullable=True,
+        index=True,
+        default=None,
+    )
+
+    verified_owner: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    __mapper_args__ = {
+        "polymorphic_identity": "owner",
+        "inherit_condition": id == UserModel.id,
+    }
