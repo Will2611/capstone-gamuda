@@ -21,6 +21,7 @@ export interface RestaurantResult {
 export interface ChatResponse {
   message: string;
   restaurants: RestaurantResult[];
+  suggestions?: string[];
 }
 
 export async function sendChatMessage(

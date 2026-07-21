@@ -50,13 +50,17 @@ async def chat_endpoint(body: ChatRequest, db: db_dependency):
             raise HTTPException(status_code=400, detail="each message role must be 'user' or 'assistant'")
 
     try:
-        reply, restaurants = await service.chat_with_restaurant_search(
+        reply, restaurants, suggestions = await service.chat_with_restaurant_search(
             [{"role": m.role, "content": m.content} for m in body.messages],
             db,
             latitude=body.latitude,
             longitude=body.longitude,
         )
-        return ChatResponse(message=reply, restaurants=restaurants)
+        return ChatResponse(
+            message=reply,
+            restaurants=restaurants,
+            suggestions=suggestions,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except Exception as exc:

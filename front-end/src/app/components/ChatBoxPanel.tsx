@@ -3,7 +3,11 @@ import type { ReactNode, SubmitEvent as ReactSubmitEvent } from "react";
 import type { ChatBox, ChatMessage, DummyChatBox } from "../types/chat";
 import { useUser } from "../context/UserContext";
 import { Send, Bot, User } from "lucide-react";
-import type { DummyUserProfile, PublicUserProfileData } from "../types/user";
+import type {
+  DummyUserProfile,
+  PublicUserProfileData,
+  SearchPreferences,
+} from "../types/user";
 import { sendChatMessage, type RestaurantResult } from "../services/chatbotApi";
 
 const chatConnection = {
@@ -14,6 +18,51 @@ const chatConnection = {
 
 export type CHAT_CONNECTION =
   (typeof chatConnection)[keyof typeof chatConnection];
+
+const RANDOMIZER_CHIP = "Surprise me!";
+
+function titleCase(value: string): string {
+  return value
+    .replace(/[-_]/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildInitialSuggestionChips(
+  prefs: Partial<SearchPreferences> | null | undefined,
+): string[] {
+  const chips: string[] = [];
+  const cuisine = (prefs?.cuisine ?? []).filter(Boolean);
+  const dietary = (prefs?.dietary ?? []).filter(
+    (d) => d && d.toLowerCase() !== "none",
+  );
+  const ambience = (prefs?.ambience ?? []).filter(Boolean);
+
+  for (const c of cuisine) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(c)} nearby`);
+  }
+  for (const d of dietary) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(d)} options`);
+  }
+  for (const a of ambience) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(a)} vibe`);
+  }
+
+  while (chips.length < 2) {
+    const fallbacks = ["Restaurants near me", "What's good for dinner?"];
+    const next = fallbacks[chips.length];
+    if (!chips.includes(next)) chips.push(next);
+    else break;
+  }
+
+  chips.push(RANDOMIZER_CHIP);
+  return chips;
+}
 
 function getAvatar(isBot = true, avatarUrl?: string, displayName?: string) {
   if (isBot) {
@@ -105,7 +154,18 @@ export default function ChatBoxPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState<string[]>([]);
+  const [suggestionChips, setSuggestionChips] = useState<string[]>(() =>
+    buildInitialSuggestionChips(getUser.profile.savedPreferences),
+  );
+  const hasInteractedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasInteractedRef.current) return;
+    setSuggestionChips(
+      buildInitialSuggestionChips(getUser.profile.savedPreferences),
+    );
+  }, [getUser.profile.savedPreferences]);
   const [expirationCaption, setExpirationCaption] =
     useState<string>("missing caption");
   const [participants, setParticipants] = useState<PublicUserProfileData[]>([]);
@@ -182,7 +242,7 @@ export default function ChatBoxPanel({
     if (el) {
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, suggestionChips]);
 
   // Only if there's a dummy user
   useEffect(() => {
@@ -243,11 +303,11 @@ export default function ChatBoxPanel({
     };
   }, [messages, useLlm, dummyUser, dummyReply, onReceiveMessage]);
 
-  const handleSend = useCallback(
-    async (e: ReactSubmitEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const text = input.trim();
+  const sendText = useCallback(
+    async (rawText: string) => {
+      const text = rawText.trim();
       if (!text || isTyping.length > 0) return;
+      hasInteractedRef.current = true;
       onSendMessage(text);
 
       const userMsg: ChatMessage = {
@@ -279,6 +339,10 @@ export default function ChatBoxPanel({
           const response = await sendChatMessage(history, latitude, longitude);
           const replyText = response.message;
           const restaurants = response.restaurants || [];
+          const nextSuggestions = response.suggestions?.length
+            ? response.suggestions
+            : [RANDOMIZER_CHIP];
+          setSuggestionChips(nextSuggestions);
           const botMsg: ChatMessage = {
             id: crypto.randomUUID(),
             userName: botName,
@@ -302,6 +366,11 @@ export default function ChatBoxPanel({
             message:
               "Sorry, I'm having trouble responding right now. Please try again.",
           };
+          setSuggestionChips([
+            "Restaurants near me",
+            "What's good for dinner?",
+            RANDOMIZER_CHIP,
+          ]);
           setMessages((prev) => [...prev, errMsg]);
         } finally {
           setIsTyping([]);
@@ -312,7 +381,6 @@ export default function ChatBoxPanel({
       setIsTyping(["LLM"]);
     },
     [
-      input,
       isTyping,
       messages,
       useLlm,
@@ -320,10 +388,29 @@ export default function ChatBoxPanel({
       getUser.profile,
       onSendMessage,
       onReceiveMessage,
+      onLlmResponse,
       latitude,
       longitude,
     ],
   );
+
+  const handleSend = useCallback(
+    async (e: ReactSubmitEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      await sendText(input);
+    },
+    [input, sendText],
+  );
+
+  const handleChipClick = useCallback(
+    (chip: string) => {
+      void sendText(chip);
+    },
+    [sendText],
+  );
+
+  const showSuggestionChips = useLlm && suggestionChips.length > 0;
+
   return (
     <div
       className={`flex-grow flex flex-col bg-white rounded-xl border border-bs-neutral-200 shadow-lg h-full overflow-hidden md:h-${height}`}
@@ -404,6 +491,26 @@ export default function ChatBoxPanel({
           </div>
         )}
       </div>
+
+      {showSuggestionChips && (
+        <div className="px-3 pb-2 flex flex-wrap gap-2 border-t border-bs-neutral-100 pt-2">
+          {suggestionChips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              disabled={isTyping.length > 0}
+              onClick={() => handleChipClick(chip)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                chip === RANDOMIZER_CHIP
+                  ? "bg-bs-gold/20 border-bs-gold text-bs-neutral-900 hover:bg-bs-gold/35"
+                  : "bg-white border-bs-neutral-200 text-bs-neutral-700 hover:border-bs-gold/50 hover:bg-bs-gold/10"
+              }`}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
 
       <form
         onSubmit={handleSend}

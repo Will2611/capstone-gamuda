@@ -6,6 +6,7 @@ from src.llm.chains.intent_chain import extract_intent
 from src.llm.chains.answer_chain import generate_answer
 from langchain_core.messages.base import BaseMessage
 from src.llm.schemas import RestaurantResult
+from src.llm.suggestions import build_suggestions
 import proximityhash
 import math
 import asyncio
@@ -255,7 +256,7 @@ async def chat_with_restaurant_search(
     db,
     latitude: float | None = None,
     longitude: float | None = None
-) -> tuple[str, list[RestaurantResult]]:
+) -> tuple[str, list[RestaurantResult], list[str]]:
     llm = get_llm()
 
     # 1. Get latest user message
@@ -264,22 +265,21 @@ async def chat_with_restaurant_search(
         "",
     )
     if not latest_user:
-        return "i didn't catch that. What kind of food are you looking for?", []
+        reply = "I didn't catch that. What kind of food are you looking for?"
+        return reply, [], build_suggestions(None, [])
 
     # 2. Chain 1 — extract intent (includes distance, price, dietary)
     intent = await extract_intent(llm, latest_user)
 
     restaurants: list[RestaurantResult] = []
+    radius_km = intent.max_distance_km if intent.max_distance_km else 10.0
+    loop = asyncio.get_event_loop()
 
     # 3. Handle location requirement when search is needed
     if intent.needs_restaurant_search:
         if latitude is None or longitude is None:
             reply = "Please press the 'Locate Me' button so I can search for restaurants near your current location."
-            return reply, []
-
-        # Use radius from intent if user specified, otherwise default 10km
-        radius_km = intent.max_distance_km if intent.max_distance_km else 10.0
-        loop = asyncio.get_event_loop()
+            return reply, [], build_suggestions(intent, [], needs_location=True)
 
         # Step 1: Database-First Search (with price + dietary filters)
         db_results = query_restaurants_by_proximity_and_cuisine(
@@ -370,8 +370,9 @@ async def chat_with_restaurant_search(
                     "I couldn't find any restaurants near your location right now. "
                     "Try moving to a different area or broadening your search."
                 )
-                return reply, []
+                return reply, [], build_suggestions(intent, [])
 
     # 5. Chain 2 — grounded reply
     reply = await generate_answer(llm, latest_user, restaurants)
-    return reply, restaurants
+    suggestions = build_suggestions(intent, restaurants)
+    return reply, restaurants, suggestions

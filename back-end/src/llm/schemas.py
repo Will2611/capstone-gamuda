@@ -29,3 +29,4 @@ class RestaurantResult(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     restaurants: list[RestaurantResult] = []
+    suggestions: list[str] = []
