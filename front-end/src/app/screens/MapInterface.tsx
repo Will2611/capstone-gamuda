@@ -298,7 +298,7 @@ export default function MapInterface() {
   });
   // Dual mode
   return (
-    <div className="flex flex-col md:h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 md:gap-4 md:p-4">
+    <div className="flex flex-col h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 md:gap-4 md:p-4">
       <div className="px-4 pt-4 md:px-0 md:pt-0 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-bs-neutral-900">
@@ -333,7 +333,7 @@ export default function MapInterface() {
         </div>
       </div>
       <div className="flex-1 flex flex-col md:flex-row min-h-0 gap-0 md:gap-4">
-        <div className="flex-1 relative min-h-[45vh] md:min-h-0 rounded-none md:rounded-xl overflow-hidden border-0 md:border border-bs-neutral-200 shadow-md md:shadow-lg bg-white">
+        <div className="flex-1 relative h-full min-h-[45vh] md:min-h-0 rounded-none md:rounded-xl overflow-hidden border-0 md:border border-bs-neutral-200 shadow-md md:shadow-lg bg-white">
           {viewMode === "map" ? (
             <>
               <FilterBar filters={filters} onFilterChange={setFilters} />
@@ -363,17 +363,20 @@ export default function MapInterface() {
                 </div>
 
                 {!selectedRestaurant && (
-                  <div className="absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
-                    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
-                      Tap a pin to view restaurant details
-                    </div>
-                    {geoError && (
-                      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
-                        {geoError}
-                      </div>
-                    )}
-                  </div>
-                )}
+  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
+    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
+      Tap a pin to view restaurant details
+    </div>
+
+    {geoError && (
+      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
+        {geoError}
+      </div>
+    )}
+  </div>
+)}
+                
+              
 
                 <button
                   type="button"
@@ -508,7 +511,7 @@ export default function MapInterface() {
           </button>
         </div>
 
-        <div className="w-full md:w-80 xl:w-96 shrink-0 flex flex-col p-4 md:pb-4 min-h-[320px] max-h-[50vh] md:min-h-0 md:max-h-full overflow-y-hidden">
+        <div className="w-full md:w-80 xl:w-96 shrink-0 flex flex-col p-4 md:pb-4 min-h-[320px] max-h-[55vh] md:min-h-0 md:max-h-[80vh] overflow-y-hidden">
           <ChatBoxPanel
             socketUrl={null}
             useLlm
