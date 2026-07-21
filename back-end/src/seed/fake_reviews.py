@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import List, OrderedDict, TypedDict
+from typing import List, OrderedDict, TypedDict, Optional
 
 from faker.providers import BaseProvider
 
@@ -19,10 +19,10 @@ class BaseReviewData(TypedDict):
     theme: str
 
 
-class ReviewData(TypedDict, total=False):
+class ReviewData(TypedDict):
     content: str
     sentiment: SentimentModelValidation
-    stars: int
+    stars: Optional[int]
 
 
 class ReviewProvider(BaseProvider):
@@ -122,6 +122,7 @@ class ReviewProvider(BaseProvider):
                 negative=[],
                 neutral=[],
             ),
+            'stars':None
         }
 
     def negative_review(self) -> ReviewData:
@@ -133,6 +134,7 @@ class ReviewProvider(BaseProvider):
                 positive=[],
                 neutral=[],
             ),
+            'stars':None
         }
 
     def neutral_review(self) -> ReviewData:
@@ -144,6 +146,7 @@ class ReviewProvider(BaseProvider):
                 positive=[],
                 negative=[],
             ),
+            'stars':None
         }
 
     def mixed_review(self) -> ReviewData:
@@ -156,6 +159,7 @@ class ReviewProvider(BaseProvider):
                 positive=[pos_result["theme"]],
                 neutral=[],
             ),
+            'stars':None
         }
 
     def conflict_review(self) -> ReviewData:

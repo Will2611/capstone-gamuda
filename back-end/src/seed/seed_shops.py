@@ -121,13 +121,13 @@ def seed():
                 
                 db.add(row_to_platform_metric(row,shop.id))
                 reviews = random_reviews(shop.id)
-                reviews, analysis_stats = enrich_reviews_with_analysis(reviews, use_llm=use_llm)
+                # reviews, analysis_stats = enrich_reviews_with_analysis(reviews, use_llm=use_llm)
                 senti = build_sentiment_data(reviews, shop.id)
-                if analysis_stats.get("llm"):
-                    print(
-                        f"  {shop.name}: {analysis_stats['llm']} conflict(s) resolved by LLM "
-                        f"({analysis_stats.get('conflicts', 0)} total conflicts)"
-                    )
+                # if analysis_stats.get("llm"):
+                #     print(
+                #         f"  {shop.name}: {analysis_stats['llm']} conflict(s) resolved by LLM "
+                #         f"({analysis_stats.get('conflicts', 0)} total conflicts)"
+                #     )
                 db.add_all(reviews)
                 db.add(senti)
                 db.flush()
@@ -275,7 +275,7 @@ def random_reviews(restaurant_id:uuid.UUID):
             sentiment=sentiment,
             theme=single_review['sentiment'],
             stars=stars_for_sentiment(sentiment, star_override),
-            reviewer_id:None
+            reviewer_id=None
         )
         review_row.created_at = random_datetime
         review_row.id= uuid.uuid7(int(random_datetime.timestamp()))
