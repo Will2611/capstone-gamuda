@@ -74,7 +74,7 @@ const personalityOptions = PERSONALITY_TAG_OPTIONS.map((tag) => ({
 export function SignUpFormClient() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { profile, updatePreferences } = useUser();
+  const { profile, updateUserProfile } = useUser();
 
   const isEditMode = searchParams.get("mode") === "edit";
 
@@ -229,40 +229,22 @@ export function SignUpFormClient() {
 
     if (isEditMode) {
       try {
-        const token = localStorage.getItem("bitescouts_token");
-        const updateData = {
-          username: fullName,
-          profileImage: profileImage,
-          gender: gender,
-          birthday: birthday,
-          religion: religion,
-          language: language,
-          preferences: preferences,
-          personalities: personalities,
-        };
+        // Execute update process directly through context
+        await updateUserProfile({
+          displayName: fullName,
+          avatarUrl: profileImage || undefined,
+          gender,
+          birthday,
+          religion,
+          language,
+          personalities,
+          savedPreferences: preferences,
+        });
 
-        const response = await fetch(
-          `http://localhost:8000/user/client/${user?.id}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: token ? `Bearer ${token}` : "",
-            },
-            body: JSON.stringify(updateData),
-          },
-        );
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.detail || "Failed to update profile");
-        }
-
-        await updatePreferences(preferences);
         setSuccess(true);
         setTimeout(() => navigate("/profile"), 1500);
       } catch (error: any) {
-        console.error("Failed to update preferences:", error);
+        console.error("Failed to update profile:", error);
         setErrors((prev) => ({
           ...prev,
           apiError: error.message || "Failed to update profile",
@@ -272,6 +254,50 @@ export function SignUpFormClient() {
       }
       return;
     }
+    //   try {
+    //     const token = localStorage.getItem("bitescouts_token");
+    //     const updateData = {
+    //       username: fullName,
+    //       profileImage: profileImage,
+    //       gender: gender,
+    //       birthday: birthday,
+    //       religion: religion,
+    //       language: language,
+    //       preferences: preferences,
+    //       personalities: personalities,
+    //     };
+
+    //     const response = await fetch(
+    //       `http://localhost:8000/user/client/${user?.id}`,
+    //       {
+    //         method: "PUT",
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //           Authorization: token ? `Bearer ${token}` : "",
+    //         },
+    //         body: JSON.stringify(updateData),
+    //       },
+    //     );
+
+    //     if (!response.ok) {
+    //       const errData = await response.json();
+    //       throw new Error(errData.detail || "Failed to update profile");
+    //     }
+
+    //     await updatePreferences(preferences);
+    //     setSuccess(true);
+    //     setTimeout(() => navigate("/profile"), 1500);
+    //   } catch (error: any) {
+    //     console.error("Failed to update preferences:", error);
+    //     setErrors((prev) => ({
+    //       ...prev,
+    //       apiError: error.message || "Failed to update profile",
+    //     }));
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    //   return;
+    //}
 
     const formData = {
       profileImage,

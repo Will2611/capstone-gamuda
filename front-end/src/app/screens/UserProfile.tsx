@@ -171,45 +171,45 @@ export default function UserProfile() {
               profile.birthday ||
               profile.religion ||
               profile.language) && (
-              <div className="mt-6 pt-6 border-t border-black/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm bg-white/40 p-4 rounded-xl backdrop-blur-sm">
-                <div>
-                  <p className="text-xs text-bs-neutral-500 uppercase font-medium">
-                    Gender
-                  </p>
-                  <p className="font-medium text-bs-neutral-800 capitalize">
-                    {GENDER_LABELS[profile.gender || ""] ||
-                      profile.gender ||
-                      "Unspecified"}
-                  </p>
+                <div className="mt-6 pt-6 border-t border-black/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm bg-white/40 p-4 rounded-xl backdrop-blur-sm">
+                  <div>
+                    <p className="text-xs text-bs-neutral-500 uppercase font-medium">
+                      Gender
+                    </p>
+                    <p className="font-medium text-bs-neutral-800 capitalize">
+                      {GENDER_LABELS[profile.gender || ""] ||
+                        profile.gender ||
+                        "Unspecified"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
+                      <Calendar size={12} /> Birthday
+                    </p>
+                    <p className="font-medium text-bs-neutral-800">
+                      {profile.birthday || "Unspecified"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-bs-neutral-500 uppercase font-medium">
+                      Religion
+                    </p>
+                    <p className="font-medium text-bs-neutral-800">
+                      {profile.religion || "Unspecified"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
+                      <Languages size={12} /> Language
+                    </p>
+                    <p className="font-medium text-bs-neutral-800">
+                      {LANG_LABELS[profile.language || ""] ||
+                        profile.language ||
+                        "Unspecified"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
-                    <Calendar size={12} /> Birthday
-                  </p>
-                  <p className="font-medium text-bs-neutral-800">
-                    {profile.birthday || "Unspecified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-bs-neutral-500 uppercase font-medium">
-                    Religion
-                  </p>
-                  <p className="font-medium text-bs-neutral-800">
-                    {profile.religion || "Unspecified"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-bs-neutral-500 uppercase font-medium flex items-center gap-1">
-                    <Languages size={12} /> Language
-                  </p>
-                  <p className="font-medium text-bs-neutral-800">
-                    {LANG_LABELS[profile.language || ""] ||
-                      profile.language ||
-                      "Unspecified"}
-                  </p>
-                </div>
-              </div>
-            )}
+              )}
           </div>
         </ProfileCard>
 

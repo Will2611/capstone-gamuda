@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { NavLink } from "react-router";
 import { useAuth } from "../context/AuthContext";
+import { useUser } from "../context/UserContext";
 import BiteSccoutIcon from "@/assets/icon.svg?react";
 import { Menu, X } from "lucide-react";
 
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isAuthenticated, logout, user } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
+  const { profile } = useUser()
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -35,10 +37,9 @@ export function Navigation() {
                 <NavLink
                   to={item.path}
                   className={({ isActive }) =>
-                    `transition-colors text-sm font-medium ${
-                      isActive
-                        ? "text-bs-gold font-medium"
-                        : "text-bs-neutral-700 hover:text-bs-gold"
+                    `transition-colors text-sm font-medium ${isActive
+                      ? "text-bs-gold font-medium"
+                      : "text-bs-neutral-700 hover:text-bs-gold"
                     }`
                   }
                 >
@@ -52,7 +53,7 @@ export function Navigation() {
             {isAuthenticated ? (
               <>
                 <span className="text-sm text-bs-neutral-600">
-                  Hi, {user?.displayName?.split(" ")[0] ?? "there"}
+                  Hi, {profile?.displayName?.split(" ")[0] ?? "there"}
                 </span>
                 <button
                   onClick={logout}
@@ -107,10 +108,9 @@ export function Navigation() {
                   to={item.path}
                   onClick={() => setMenuOpen(false)}
                   className={({ isActive }) =>
-                    `block w-full text-start py-2 transition-colors font-medium ${
-                      isActive
-                        ? "text-bs-gold font-medium"
-                        : "text-bs-neutral-700 hover:text-bs-gold"
+                    `block w-full text-start py-2 transition-colors font-medium ${isActive
+                      ? "text-bs-gold font-medium"
+                      : "text-bs-neutral-700 hover:text-bs-gold"
                     }`
                   }
                 >

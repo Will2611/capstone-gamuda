@@ -25,6 +25,7 @@
 #     except Exception as e:
 #         return {'failure' :f'{e}'}
         
+from src.services.jwt import CookieCustom
 import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -43,8 +44,11 @@ from uuid_utils.compat import UUID
 router = APIRouter(prefix='/client', tags=['customer'])
 
 
-@router.get("/personal_profile/{uuid}")
-async def get_client_info(db: db_dependency, uuid: UUID):
+@router.get("/personal_profile")
+async def get_client_info(db: db_dependency, cookie_payload:CookieCustom):
+    uuid = cookie_payload.userId
+    if(uuid is None):
+        raise HTTPException(status_code=404, detail="User ID is missing")
     user_result = db.query(ClientModel).filter(ClientModel.id == uuid).first()
 
     if user_result is None: 

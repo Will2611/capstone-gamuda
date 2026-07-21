@@ -15,10 +15,7 @@ export type Role = "client" | "owner";
 // 💡 Updated to include role and id from your backend schema
 interface AuthUser {
   id: string;
-  email: string;
-  displayName: string;
   role: Role;
-  avatarUrl?: string | null;
 }
 
 interface AuthContextValue {
@@ -39,19 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Load user from storage on initial application mount
   useEffect(() => {
-    async () => {
-      const { data } = await bitescoutApi.get<{ user: AuthUser }>("/user/ping");
-      const { user: authUser } = data;
-
+    const setter = async () => {
+      const { data } = await bitescoutApi.get<AuthUser>("/user/ping");
+      console.log(data)
       // Store both token string and user object locally
-      setUser(authUser);
+      setUser(data);
     };
+    setter()
   }, []);
 
   // 💡 Rewritten to call your FastAPI Python backend instead of mocks
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const { data } = await bitescoutApi.post<{ user: AuthUser }>(
+      const { data } = await bitescoutApi.post<AuthUser>(
         `/user/login`,
         {
           email,
@@ -69,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // const data = await response.json();
 
       // 📦 Transform API snake_case response to match camelCase TypeScript interface
-      const { user: authUser } = data;
+      const authUser = data;
 
       // Store both token string and user object locally
       setUser(authUser);
@@ -77,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true, role: authUser.role };
     } catch (errorRaw) {
       const error = errorRaw as AxiosError<{ detail: string }>;
-      console.error("Authentication backend error:", error);
+      console.error("Authentication backend error:", JSON.stringify(error));
       if (error.response) {
         const {
           data: { detail },
