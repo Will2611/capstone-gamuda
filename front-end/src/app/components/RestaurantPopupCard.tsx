@@ -140,7 +140,7 @@ export function RestaurantPopupCard({
         role="dialog"
         aria-labelledby="restaurant-popup-title"
       >
-        <div className="rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl max-h-[85vh] overflow-y-auto">
+        <div className="rounded-2xl border border-bs-neutral-200 bg-white shadow-2xl max-h-[65vh] overflow-y-auto">
           <div className="relative h-44 overflow-hidden bg-bs-neutral-200">
             {currentImage ? (
               <img
