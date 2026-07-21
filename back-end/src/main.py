@@ -26,7 +26,7 @@ app.add_middleware(
 
 
 @app.get('/')
-async def read_root(response:Response):
+async def read_root():
     
     return {'message':'Hello World'}
 
@@ -38,10 +38,8 @@ async def drop_all_tables():
 
 @app.post('/recreate')
 # async def recreate_tables():
-async def recreate_tables(response:Response,sessionToken:CookieCustom):
-    print(sessionToken)
-    # sessionToken.role = 'client'
-    setCookie(response, sessionToken)
+async def recreate_tables():
+    
     return {'Recreate all tables and recreated'}
 
 app.include_router(llm_router)
