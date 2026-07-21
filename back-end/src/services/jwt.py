@@ -1,17 +1,22 @@
 from fastapi import Response, Request, Depends, HTTPException
 import jwt
-from functools import wraps
-from datetime import datetime, timedelta, timezone
-from typing import Optional, cast, TypedDict, Annotated
+from typing import Optional, cast, Annotated
 from src.database.schemas.user import USER_ROLE_TYPE
 import uuid_utils.compat as uuid
 from pydantic import BaseModel
+import os
+
 
 TOKEN_NAME = "bitescout_token"
-SECRET_KEY = "a8dd17be90513fc90532b0acef7a034c1d1df97a35dae46994cef1b8ad2a00eaa"
+SECRET_KEY = os.getenv('COOKIE_SECRET')
 ALGORITHM = 'HS256'
 COOKIE_AGE = 60*15 #in seconds, 15 min
 LONGER_COOKIE_AGE = 30 *24*60*60  #in seconds, 30 days
+
+if not SECRET_KEY:
+    raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
+
+SECRET_KEY
 
 class SessionToken(BaseModel):
     sessionId: uuid.UUID
@@ -21,12 +26,16 @@ class SessionToken(BaseModel):
     remember_me:bool
 
 def encode_payload(payload:SessionToken)->str:
+    if not SECRET_KEY:
+        raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
     return jwt.encode(
         cast(dict,payload.model_dump(mode='json')),
         SECRET_KEY,
         algorithm=ALGORITHM
         )
 def decode_payload(token:str)->SessionToken:
+    if not SECRET_KEY:
+        raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
     parsed = SessionToken.model_validate(
         jwt.decode(token,SECRET_KEY, algorithms=ALGORITHM)
         )
@@ -73,15 +82,17 @@ def ensure_default_cookie(
     """
     Dependency to set a default cookie if it doesn't exist in the request.
     """
+    try:
+        parsed  = getCookiePayload(request) or default_session_generator()
+        # Check if the cookie was present in the incoming request, no default to ensure setting cookies
+        # If missing, set the default on the outgoing response
+        # Reset on session timer
+        setCookie(response,parsed)
+        # You can return the cookie value if your endpoints need it
+        return parsed
+    except Exception as e:
+        raise HTTPException(status_code=500,detail='Missing Cookie Secret')
     
-    parsed  = getCookiePayload(request) or default_session_generator()
-    # Check if the cookie was present in the incoming request, no default to ensure setting cookies
-    # If missing, set the default on the outgoing response
-    # Reset on session timer
-    setCookie(response,parsed)
-    
-    # You can return the cookie value if your endpoints need it
-    return parsed
 
 CookieCustom = Annotated[SessionToken,Depends(ensure_default_cookie)]
 
