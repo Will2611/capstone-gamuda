@@ -8,9 +8,16 @@ services:
       dockerfile: Dockerfile
     volumes:
       # Only for development
-      - ./front-end:/app
+      - ./front-end/src:/app/src
       # For quicker npm install, maybe?
       - /app/node_modules
+    # develop:
+    #   watch:
+    #     - path: ./front-end
+    #       action: sync
+    #       target: /app
+    #       ignore:
+    #         - node_modules/
     env_file:
       - ./front-end/.env
     ports:

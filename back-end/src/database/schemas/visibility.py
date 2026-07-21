@@ -141,19 +141,44 @@ class HourlyTrafficItem(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class DailyTrafficSummary(BaseModel):
-    weekdayAvg: float
-    weekendAvg: float
-    weekdayTotal: int
-    weekendTotal: int
+class TrafficInsightItem(BaseModel):
+    id: str
+    type: str
+    title: str
+    body: str
+    linkedDayIndex: int | None = None
+    linkedSegment: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class StaffingShiftItem(BaseModel):
+    day: str
+    dayIndex: int
+    date: str
+    shift: str
+    segment: str
+    shiftStart: int
+    shiftEnd: int
+    expectedVisitors: int
+    staffSuggested: int
+    priority: str
 
     model_config = {"from_attributes": True}
 
 
 class FootTrafficResponse(BaseModel):
+    """Chart, insights, and forecast — all from foot_traffic_hourly in one response."""
     restaurantId: uuid.UUID
     hourly: list[HourlyTrafficItem]
-    daily: DailyTrafficSummary
+    weekdayAvg: float = 0
+    weekendAvg: float = 0
+    weekdayTotal: int = 0
+    weekendTotal: int = 0
+    insights: list[TrafficInsightItem] = []
+    nextWeekSchedule: list[StaffingShiftItem] = []
+    updatedAt: str | None = None
+    live: bool = False
 
     model_config = {"from_attributes": True}
 

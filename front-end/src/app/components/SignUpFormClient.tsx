@@ -37,7 +37,6 @@ import {
 } from "./config/FilterOption";
 
 import { useUser } from "../context/UserContext";
-import { useAuth } from "../context/AuthContext";
 
 // const GENDER_OPTIONS = [
 //   { label: "Male", value: "male" },
@@ -76,7 +75,6 @@ export function SignUpFormClient() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { profile, updatePreferences } = useUser();
-  const { user } = useAuth();
 
   const isEditMode = searchParams.get("mode") === "edit";
 
@@ -111,8 +109,8 @@ export function SignUpFormClient() {
     if (isEditMode && profile) {
       const extendedProfile = profile as any;
 
-      setFullName(user?.displayName ?? profile.displayName ?? "");
-      setEmail(user?.email ?? profile.email ?? "");
+      setFullName(profile.displayName ?? "");
+      setEmail(profile.email ?? "");
       setProfileImage(profile.avatarUrl ?? null);
 
       if (extendedProfile.gender) setGender(extendedProfile.gender);
@@ -133,7 +131,7 @@ export function SignUpFormClient() {
         });
       }
     }
-  }, [profile, user, isEditMode]);
+  }, [profile, isEditMode]);
 
   const getValidationErrors = (
     values: {

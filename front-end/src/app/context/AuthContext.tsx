@@ -1,3 +1,4 @@
+import { AxiosError } from "axios";
 import {
   createContext,
   useCallback,
@@ -7,10 +8,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { bitescoutApi } from "../services/baseApi";
 
 export type Role = "client" | "owner";
-const AUTH_STORAGE_KEY = "bitescouts_auth";
-const TOKEN_STORAGE_KEY = "bitescouts_token";
 
 // 💡 Updated to include role and id from your backend schema
 interface AuthUser {
@@ -23,7 +23,6 @@ interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null;
-  token: string | null;
   isAuthenticated: boolean;
   // 💡 Updated to return role string on success
   login: (
@@ -37,63 +36,54 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
 
   // Load user from storage on initial application mount
   useEffect(() => {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored) as AuthUser);
-        setToken(storedToken);
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-      }
-    }
+    async () => {
+      const { data } = await bitescoutApi.get<{ user: AuthUser }>("/user/ping");
+      const { user: authUser } = data;
+
+      // Store both token string and user object locally
+      setUser(authUser);
+    };
   }, []);
 
   // 💡 Rewritten to call your FastAPI Python backend instead of mocks
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const response = await fetch("http://localhost:8000/user/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const { data } = await bitescoutApi.post<{ user: AuthUser }>(
+        `/user/login`,
+        {
+          email,
+          password,
         },
-        body: JSON.stringify({ email, password }),
-      });
+      );
+      // const response = await fetch("http://localhost:8000/user/login", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify({ email, password }),
+      // });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Fallback to error message from FastAPI exception detail
-        return {
-          success: false,
-          error: data.detail || "Invalid email or password",
-        };
-      }
+      // const data = await response.json();
 
       // 📦 Transform API snake_case response to match camelCase TypeScript interface
-      const authUser: AuthUser = {
-        id: data.user.id,
-        email: data.user.email,
-        displayName: data.user.display_name,
-        role: data.user.role as Role,
-        avatarUrl: data.user.avatar_url,
-      };
+      const { user: authUser } = data;
 
       // Store both token string and user object locally
       setUser(authUser);
-      setToken(data.access_token);
-
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-      localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token);
 
       return { success: true, role: authUser.role };
-    } catch (error) {
+    } catch (errorRaw) {
+      const error = errorRaw as AxiosError<{ detail: string }>;
       console.error("Authentication backend error:", error);
+      if (error.response) {
+        const {
+          data: { detail },
+        } = error.response;
+        return { success: false, error: detail || "Invalid email or password" };
+      }
       return {
         success: false,
         error: "Unable to reach the server. Check your backend status.",
@@ -101,17 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  const logout = useCallback(async () => {
+    return bitescoutApi.delete(`/user/logout`);
   }, []);
 
   const value = useMemo(
     () => ({
       user,
-      token,
+
       isAuthenticated: !!user,
       login,
       logout,

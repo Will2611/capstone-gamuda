@@ -243,7 +243,7 @@ def random_reviews(restaurant_id:uuid.UUID):
         random_datetime = start_date + datetime.timedelta(seconds=random_seconds)
         result:tuple[SENTIMENT_TYPE,ReviewData] =  fake.any_review()
         sentiment, single_review = result
-        review_row  =ReviewModel(restaurant_id=restaurant_id, content=single_review['content'],sentiment=sentiment,theme=single_review['sentiment'], stars=random.randint(1,5))
+        review_row  =ReviewModel(restaurant_id=restaurant_id, content=single_review['content'],sentiment=sentiment,theme=single_review['sentiment'], stars=random.randint(1,5), reviewer_id=None)
         review_row.created_at = random_datetime
         review_row.id= uuid.uuid7(int(random_datetime.timestamp()))
         reviews.append(review_row)
