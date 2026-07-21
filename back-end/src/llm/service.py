@@ -181,6 +181,9 @@ def upsert_external_results(db, normalized_results: list[dict]):
 # Private helpers
 # ---------------------------------------------------------------------------
 
+RESULT_LIMIT = 3
+
+
 async def _fetch_external(
     loop: asyncio.AbstractEventLoop,
     cuisines: list[str],
@@ -188,32 +191,19 @@ async def _fetch_external(
     longitude: float,
     radius_km: float,
 ) -> list[dict]:
-    """Call search_external_restaurants for every cuisine in parallel.
-    Falls back to a single generic search when no cuisine is specified."""
+    """One external search: primary cuisine only (or generic if none).
+
+    Strict gap-fill only needs enough new places to fill remaining slots,
+    so we avoid one SerpAPI call per cuisine.
+    """
     radius_m = int(radius_km * 1000)
-    if cuisines:
-        tasks = [
-            loop.run_in_executor(
-                _executor,
-                search_external_restaurants,
-                cuisine, latitude, longitude, radius_m,
-            )
-            for cuisine in cuisines
-        ]
-        batches = await asyncio.gather(*tasks, return_exceptions=True)
-        return [
-            r
-            for batch in batches
-            if isinstance(batch, list)
-            for r in batch
-        ]
-    else:
-        result = await loop.run_in_executor(
-            _executor,
-            search_external_restaurants,
-            "", latitude, longitude, radius_m,
-        )
-        return result if isinstance(result, list) else []
+    cuisine = cuisines[0] if cuisines else ""
+    result = await loop.run_in_executor(
+        _executor,
+        search_external_restaurants,
+        cuisine, latitude, longitude, radius_m,
+    )
+    return result if isinstance(result, list) else []
 
 
 def _upsert_deduped(db, external_results: list[dict]) -> None:
@@ -264,8 +254,91 @@ def _exclude_shown(
     ]
 
 
-def _take_top(ranked: list[tuple], limit: int = 3) -> list[tuple]:
+def _take_top(ranked: list[tuple], limit: int = RESULT_LIMIT) -> list[tuple]:
     return ranked[:limit]
+
+
+def _merge_unique(primary: list[tuple], extra: list[tuple], limit: int = RESULT_LIMIT) -> list[tuple]:
+    """Keep primary order, then append extras not already selected (by id)."""
+    seen: set = {getattr(r, "id", None) for r, _ in primary}
+    merged = list(primary)
+    for item in extra:
+        r, _ = item
+        rid = getattr(r, "id", None)
+        if rid in seen:
+            continue
+        seen.add(rid)
+        merged.append(item)
+        if len(merged) >= limit:
+            break
+    return merged[:limit]
+
+
+def _fresh_external_slice(
+    external_results: list[dict],
+    db_results: list[tuple],
+    needed: int,
+) -> list[dict]:
+    """Keep only places not already in DB, capped at the gap size."""
+    if needed <= 0:
+        return []
+    existing_place_ids = {r.google_place_id for r, _ in db_results if r.google_place_id}
+    existing_names = {r.name.lower().strip() for r, _ in db_results}
+    fresh: list[dict] = []
+    for r in external_results:
+        p_id = r.get("google_place_id")
+        name = (r.get("name") or "").lower().strip()
+        if p_id in existing_place_ids or name in existing_names:
+            continue
+        fresh.append(r)
+        if len(fresh) >= needed:
+            break
+    return fresh
+
+
+async def _gap_fill_external(
+    db,
+    loop: asyncio.AbstractEventLoop,
+    selected: list[tuple],
+    exclude_ids: set,
+    *,
+    cuisines: list[str],
+    latitude: float,
+    longitude: float,
+    radius_km: float,
+    price_level: int | None = None,
+    dietary: list[str] | None = None,
+) -> list[tuple]:
+    """If selected has fewer than RESULT_LIMIT, SerpAPI only for the remaining gap."""
+    if len(selected) >= RESULT_LIMIT:
+        return selected[:RESULT_LIMIT]
+
+    needed = RESULT_LIMIT - len(selected)
+    external_results = await _fetch_external(
+        loop, cuisines, latitude, longitude, radius_km
+    )
+
+    # Known rows before upsert (used to skip duplicates)
+    prior_db = query_restaurants_by_proximity_and_cuisine(
+        db, cuisines, latitude, longitude,
+        radius_km=radius_km,
+        price_level=price_level,
+        dietary=dietary or [],
+    )
+    fresh = _fresh_external_slice(external_results, prior_db, needed)
+    if not fresh:
+        return selected
+
+    _upsert_deduped(db, fresh)
+
+    db_results = query_restaurants_by_proximity_and_cuisine(
+        db, cuisines, latitude, longitude,
+        radius_km=radius_km,
+        price_level=price_level,
+        dietary=dietary or [],
+    )
+    available = _exclude_shown(db_results, exclude_ids)
+    return _merge_unique(selected, available, RESULT_LIMIT)
 
 
 async def chat_with_restaurant_search(
@@ -301,6 +374,8 @@ async def chat_with_restaurant_search(
     restaurants: list[RestaurantResult] = []
     radius_km = intent.max_distance_km if intent.max_distance_km else 10.0
     loop = asyncio.get_event_loop()
+    selected: list[tuple] = []
+    used_fallback_note: str | None = None
 
     # 3. Handle location requirement when search is needed
     if intent.needs_restaurant_search:
@@ -308,109 +383,108 @@ async def chat_with_restaurant_search(
             reply = "Please press the 'Locate Me' button so I can search for restaurants near your current location."
             return reply, [], build_suggestions(intent, [], needs_location=True)
 
-        # Step 1: Database-First Search (with price + dietary filters)
+        # Step 1: Exhaust local DB matches first
         db_results = query_restaurants_by_proximity_and_cuisine(
             db, intent.cuisines, latitude, longitude,
             radius_km=radius_km,
             price_level=intent.price_level,
             dietary=intent.dietary,
         )
-        available = _exclude_shown(db_results, exclude_ids)
+        selected = _take_top(_exclude_shown(db_results, exclude_ids))
 
-        if len(available) >= 3:
-            selected = _take_top(available)
-        else:
-            needed_count = 3 - len(available)
-            # Step 2: Not enough in DB — call external APIs (Google Places / SerpAPI) in parallel
-            external_results = await _fetch_external(
-                loop, intent.cuisines, latitude, longitude, radius_km
-            )
-
-            existing_place_ids = {r.google_place_id for r, _ in db_results if r.google_place_id}
-            existing_names = {r.name.lower().strip() for r, _ in db_results}
-
-            new_external_results = []
-            for r in external_results:
-                p_id = r.get("google_place_id")
-                name = r.get("name", "").lower().strip()
-                if p_id in existing_place_ids or name in existing_names:
-                    continue
-                new_external_results.append(r)
-
-            selected_external = new_external_results[: max(needed_count, 3)]
-            _upsert_deduped(db, selected_external)
-
-            # Re-query DB after upserting fresh external data
-            db_results = query_restaurants_by_proximity_and_cuisine(
-                db, intent.cuisines, latitude, longitude,
+        # Step 2: Strict gap-fill — SerpAPI only for remaining slots (e.g. 2 local → 1 call worth)
+        if len(selected) < RESULT_LIMIT:
+            selected = await _gap_fill_external(
+                db, loop, selected, exclude_ids,
+                cuisines=intent.cuisines,
+                latitude=latitude,
+                longitude=longitude,
                 radius_km=radius_km,
                 price_level=intent.price_level,
                 dietary=intent.dietary,
             )
-            selected = _take_top(_exclude_shown(db_results, exclude_ids))
 
         restaurants = _map_to_results(selected)
 
-    # 4. Graceful fallback — each stage calls external APIs before querying DB
-    if intent.needs_restaurant_search and not restaurants:
+    # 4. Fallbacks — widen/relax local DB first; SerpAPI only to fill remaining gap
+    if intent.needs_restaurant_search and len(selected) < RESULT_LIMIT:
         expanded_radius = radius_km * 1.5
+        count_before_fb1 = len(selected)
 
-        # --- Fallback 1: Same cuisine, expanded radius — fetch fresh external data first ---
-        fb1_external = await _fetch_external(
-            loop, intent.cuisines, latitude, longitude, expanded_radius
-        )
-        _upsert_deduped(db, fb1_external)
-
-        # Query DB with wider radius (price/dietary filters relaxed to maximise results)
+        # --- Fallback 1: Same cuisine, expanded radius — DB first ---
         fallback_results = query_restaurants_by_proximity_and_cuisine(
             db, intent.cuisines, latitude, longitude, radius_km=expanded_radius
         )
-        fallback_available = _exclude_shown(fallback_results, exclude_ids)
-        if fallback_available:
-            restaurants = _map_to_results(_take_top(fallback_available))
-            note = (
-                f"\n[Note: No exact matches found within {radius_km:.0f}km. "
-                f"Showing results within {expanded_radius:.0f}km instead.]"
+        selected = _merge_unique(
+            selected,
+            _exclude_shown(fallback_results, exclude_ids),
+            RESULT_LIMIT,
+        )
+
+        if len(selected) < RESULT_LIMIT:
+            selected = await _gap_fill_external(
+                db, loop, selected, exclude_ids,
+                cuisines=intent.cuisines,
+                latitude=latitude,
+                longitude=longitude,
+                radius_km=expanded_radius,
             )
+
+        if len(selected) > count_before_fb1:
             if intent.wants_more_alternatives:
-                note = (
+                used_fallback_note = (
                     "\n[Note: Showing further alternatives with a wider search radius.]"
                 )
-            latest_user = latest_user + note
-        else:
-            # --- Fallback 2: No cuisine filter — fetch generic external data first ---
-            fb2_external = await loop.run_in_executor(
-                _executor,
-                search_external_restaurants,
-                "", latitude, longitude, int(expanded_radius * 1000),
-            )
-            if isinstance(fb2_external, list):
-                _upsert_deduped(db, fb2_external)
+            else:
+                used_fallback_note = (
+                    f"\n[Note: No exact matches found within {radius_km:.0f}km. "
+                    f"Showing results within {expanded_radius:.0f}km instead.]"
+                )
 
+        # --- Fallback 2: No cuisine filter — DB first, then gap-fill ---
+        if len(selected) < RESULT_LIMIT:
+            count_before_fb2 = len(selected)
             any_nearby = query_restaurants_by_proximity_and_cuisine(
                 db, [], latitude, longitude, radius_km=expanded_radius
             )
-            any_available = _exclude_shown(any_nearby, exclude_ids)
-            if any_available:
-                restaurants = _map_to_results(_take_top(any_available))
-                latest_user = (
-                    latest_user +
+            selected = _merge_unique(
+                selected,
+                _exclude_shown(any_nearby, exclude_ids),
+                RESULT_LIMIT,
+            )
+
+            if len(selected) < RESULT_LIMIT:
+                selected = await _gap_fill_external(
+                    db, loop, selected, exclude_ids,
+                    cuisines=[],
+                    latitude=latitude,
+                    longitude=longitude,
+                    radius_km=expanded_radius,
+                )
+
+            if len(selected) > count_before_fb2:
+                used_fallback_note = (
                     "\n[Note: No matching cuisine found nearby. "
                     "Showing highly-rated restaurants in the area instead.]"
                 )
-            elif intent.wants_more_alternatives and exclude_ids:
+
+        restaurants = _map_to_results(selected)
+
+        if not restaurants:
+            if intent.wants_more_alternatives and exclude_ids:
                 reply = (
                     "I've shown you all the matching spots nearby for now. "
                     "Try a different cuisine, a wider area, or refine your filters."
                 )
                 return reply, [], build_suggestions(intent, [])
-            else:
-                # All stages exhausted — nothing found anywhere
-                reply = (
-                    "I couldn't find any restaurants near your location right now. "
-                    "Try moving to a different area or broadening your search."
-                )
-                return reply, [], build_suggestions(intent, [])
+            reply = (
+                "I couldn't find any restaurants near your location right now. "
+                "Try moving to a different area or broadening your search."
+            )
+            return reply, [], build_suggestions(intent, [])
+
+        if used_fallback_note:
+            latest_user = latest_user + used_fallback_note
 
     # 5. Chain 2 — grounded reply
     reply = await generate_answer(llm, latest_user, restaurants)
