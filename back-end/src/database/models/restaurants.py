@@ -71,15 +71,15 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
     __tablename__ ='restaurants'
     name: Mapped[str]= mapped_column(String, nullable=False)
     rating: Mapped[Optional[float]]=mapped_column(Float, default=None)
-    longitude:Mapped[float]=mapped_column(Float, nullable=False)
-    latitude:Mapped[float]=mapped_column(Float, nullable=False)
+    longitude:Mapped[float]=mapped_column(Float, nullable=False) # pyright: ignore[reportGeneralTypeIssues]
+    latitude:Mapped[float]=mapped_column(Float, nullable=False) # pyright: ignore[reportGeneralTypeIssues]
     geohash:Mapped[str]= mapped_column(String(12),
                                        nullable=False,
                                        index=True,
                                        init=False,
                                        insert_default=GeohashHelper.column_geohash_factory()
                                        )
-    about:Mapped[str] = mapped_column(Text, nullable=False)
+    about:Mapped[str] = mapped_column(Text, nullable=False) # pyright: ignore[reportGeneralTypeIssues]
     # e.g.+6011-100-2999 becomes +60111002999
     contact_no:Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
     # Set structure?, assume array with each index making into

@@ -5,7 +5,8 @@ from fastapi import APIRouter, HTTPException, status
 from src.database.connection import db_dependency
 from src.database.models.user import OwnerModel, UserModel
 from src.database.models.restaurants import RestaurantModel, GeohashHelper
-from src.database.schemas.auth import OwnerRegisterRequest, RegisterSuccessResponse
+from src.database.schemas.auth import OwnerRegisterRequest, RegisterSuccessResponse, AuthUserResponse
+from zoneinfo import ZoneInfo
 
 router = APIRouter(prefix='/owner', tags=['owner'])
 
@@ -56,7 +57,7 @@ async def register_owner(payload: OwnerRegisterRequest, db: db_dependency):
             about=f"Welcome to {rest_data.name}!",
             contact_no=rest_data.contact_number or "",
             address=address_list,
-            timezone="Asia/Kuala_Lumpur",
+            timezone=ZoneInfo("Asia/Kuala_Lumpur"),
             timezone_offset=480,
             opening_hours_struct={},
             source="owner_registration",
@@ -87,7 +88,7 @@ async def register_owner(payload: OwnerRegisterRequest, db: db_dependency):
 
         return RegisterSuccessResponse(
             message="Restaurant owner registered successfully!",
-            user=new_owner
+            user=AuthUserResponse.model_validate(new_owner)
         )
 
     except Exception as e:

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import {
   User,
@@ -10,93 +11,90 @@ import {
   Calendar,
   Languages,
   Sparkles,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { ProfileCard } from "../components/ProfileCard";
 import { Button } from "../components/Button";
 import { useUser } from "../context/UserContext";
 import { useAuth } from "../context/AuthContext";
+import {
+  CUISINE_OPTIONS,
+  PRICE_OPTIONS,
+  DIETARY_OPTIONS,
+  DISTANCE_OPTIONS,
+  AMBIENCE_OPTIONS,
+  TIME_OPTIONS,
+  GENDER_OPTIONS,
+  LANG_OPTIONS,
+} from "../components/config/FilterOption";
+import type { SearchPreferences } from "../types/user";
 
-// 最新对齐的配置映射表
+// Helper: convert [{value, label}] array into a value->label lookup map
+const optionsToLookupMap = (options: Array<{ value: string; label: string }>) =>
+  options.reduce(
+    (acc, option) => {
+      acc[option.value] = option.label;
+      return acc;
+    },
+    {} as Record<string, string>,
+  );
+
+// Lookup maps derived from the shared FilterOption constants
 const PREFERENCE_LABELS: Record<string, Record<string, string>> = {
-  cuisine: {
-    italian: "Italian",
-    mexican: "Mexican",
-    asian: "Asian",
-    american: "American",
-    mediterranean: "Mediterranean",
-    indian: "Indian",
-  },
-  priceRange: {
-    "1": "$ < RM20",
-    "2": "$$ RM20 - RM60",
-    "3": "$$$ RM60 - RM110",
-    "4": "$$$$ RM110 - RM250",
-    "5": "$$$$$ > RM250",
-  },
-  dietary: {
-    none: "No restrictions",
-    vegetarian: "Vegetarian",
-    vegan: "Vegan",
-    "gluten-free": "Gluten-Free",
-    halal: "Halal",
-    kosher: "Kosher",
-  },
-  distance: {
-    "1": "Within 1 mile",
-    "3": "Within 3 miles",
-    "5": "Within 5 miles",
-    "10": "Within 10 miles",
-    "20": "Within 20 miles",
-  },
-  ambience: {
-    casual: "Casual",
-    finedining: "Fine Dining",
-    romantic: "Romantic",
-    family: "Family",
-    business: "Business",
-    trendy: "Trendy",
-    quiet: "Quiet",
-    cozy: "Cozy",
-    lively: "Lively",
-  },
-  time: {
-    breakfast: "Breakfast",
-    lunch: "Lunch",
-    dinner: "Dinner",
-    "late-night": "Late Night",
-  },
+  cuisine: optionsToLookupMap(CUISINE_OPTIONS),
+  priceRange: optionsToLookupMap(PRICE_OPTIONS),
+  dietary: optionsToLookupMap(DIETARY_OPTIONS),
+  distance: optionsToLookupMap(DISTANCE_OPTIONS),
+  ambience: optionsToLookupMap(AMBIENCE_OPTIONS),
+  time: optionsToLookupMap(TIME_OPTIONS),
 };
 
-// 🟢 语言与性别的显示转换映射
-const GENDER_LABELS: Record<string, string> = {
-  male: "Male",
-  female: "Female",
-};
-const LANG_LABELS: Record<string, string> = {
-  en: "English",
-  ms: "Bahasa Melayu",
-};
+const GENDER_LABELS = optionsToLookupMap(GENDER_OPTIONS);
+const LANG_LABELS = optionsToLookupMap(LANG_OPTIONS);
 
 export default function UserProfile() {
   const navigate = useNavigate();
-  const { profile } = useUser();
+  const { profile, profileLoading, profileError } = useUser();
   const { user } = useAuth();
 
-  // 🟢 类型断言以防 TS 抱怨没有这些字段
-  const extendedProfile = profile as any;
+  // Redirect non-client users away
+  useEffect(() => {
+    if (user && user.role !== "client") {
+      if (user.role === "owner") {
+        navigate("/owner/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
+    }
+  }, [user, navigate]);
 
-  const displayName = user?.displayName ?? profile.displayName;
-  const email = user?.email ?? profile.email;
-  const prefs = profile.savedPreferences;
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-bs-neutral-100 flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 text-bs-neutral-700 font-medium">
+          <Loader2 className="animate-spin" size={24} />
+          Loading your profile...
+        </div>
+      </div>
+    );
+  }
 
-  // 获取新增的注册字段
-  const gender = extendedProfile.gender || "";
-  const birthday = extendedProfile.birthday || "";
-  const religion = extendedProfile.religion || "";
-  const language = extendedProfile.language || "";
-  const personalities = extendedProfile.personalities || [];
+  if (profileError) {
+    return (
+      <div className="min-h-screen bg-bs-neutral-100 flex items-center justify-center p-4">
+        <div className="bg-white border border-red-200 rounded-xl p-6 max-w-md w-full text-center space-y-4 shadow-sm">
+          <AlertCircle className="mx-auto text-red-500" size={40} />
+          <h2 className="text-lg font-semibold text-bs-neutral-900">
+            Failed to Load Profile
+          </h2>
+          <p className="text-sm text-bs-neutral-600">{profileError}</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
-  // 动态渲染偏好内容的方法（支持多选数组与单选字符串）
   const renderPrefValue = (
     key: string,
     value: string | string[] | undefined,
@@ -127,19 +125,23 @@ export default function UserProfile() {
     );
   };
 
+  const prefs = profile.savedPreferences as Partial<SearchPreferences> | null;
+  const personalities = profile.personalities ?? [];
+  const searchHistory = profile.searchHistory ?? [];
+  const favoriteRestaurants = profile.favoriteRestaurants ?? [];
+
   return (
     <div className="min-h-screen bg-bs-neutral-100 py-8 md:py-12">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6">
-        {/* 用户名片区 */}
         <ProfileCard title="" className="!p-0 overflow-hidden">
           <div className="bg-gradient-to-r from-bs-gold/25 via-bs-red/10 to-bs-blue/15 p-6 md:p-8">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="w-24 h-24 rounded-full bg-bs-gold/40 border-4 border-white shadow-lg flex items-center justify-center shrink-0">
+              <div className="w-24 h-24 rounded-full bg-bs-gold/40 border-4 border-white shadow-lg flex items-center justify-center shrink-0 overflow-hidden">
                 {profile.avatarUrl ? (
                   <img
                     src={profile.avatarUrl}
-                    alt={displayName}
-                    className="w-full h-full rounded-full object-cover"
+                    alt={profile.displayName}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <User size={40} className="text-bs-neutral-700" />
@@ -147,11 +149,11 @@ export default function UserProfile() {
               </div>
               <div className="text-center sm:text-left flex-1">
                 <h1 className="text-2xl mb-1 font-semibold text-bs-neutral-900">
-                  {displayName}
+                  {profile.displayName}
                 </h1>
-                <p className="text-bs-neutral-600 text-sm">{email}</p>
+                <p className="text-bs-neutral-600 text-sm">{profile.email}</p>
                 <p className="text-xs text-bs-neutral-500 mt-2">
-                  Food explorer · Member since 2026
+                  Food explorer · Client Account
                 </p>
               </div>
 
@@ -165,15 +167,19 @@ export default function UserProfile() {
               </Button>
             </div>
 
-            {/* 🟢 新增点 1：展示 Gender, Birthday, Religion, Language 基本资料网格 */}
-            {(gender || birthday || religion || language) && (
+            {(profile.gender ||
+              profile.birthday ||
+              profile.religion ||
+              profile.language) && (
               <div className="mt-6 pt-6 border-t border-black/10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm bg-white/40 p-4 rounded-xl backdrop-blur-sm">
                 <div>
                   <p className="text-xs text-bs-neutral-500 uppercase font-medium">
                     Gender
                   </p>
                   <p className="font-medium text-bs-neutral-800 capitalize">
-                    {GENDER_LABELS[gender] || gender || "Unspecified"}
+                    {GENDER_LABELS[profile.gender || ""] ||
+                      profile.gender ||
+                      "Unspecified"}
                   </p>
                 </div>
                 <div>
@@ -181,7 +187,7 @@ export default function UserProfile() {
                     <Calendar size={12} /> Birthday
                   </p>
                   <p className="font-medium text-bs-neutral-800">
-                    {birthday || "Unspecified"}
+                    {profile.birthday || "Unspecified"}
                   </p>
                 </div>
                 <div>
@@ -189,7 +195,7 @@ export default function UserProfile() {
                     Religion
                   </p>
                   <p className="font-medium text-bs-neutral-800">
-                    {religion || "Unspecified"}
+                    {profile.religion || "Unspecified"}
                   </p>
                 </div>
                 <div>
@@ -197,7 +203,9 @@ export default function UserProfile() {
                     <Languages size={12} /> Language
                   </p>
                   <p className="font-medium text-bs-neutral-800">
-                    {LANG_LABELS[language] || language || "Unspecified"}
+                    {LANG_LABELS[profile.language || ""] ||
+                      profile.language ||
+                      "Unspecified"}
                   </p>
                 </div>
               </div>
@@ -205,7 +213,6 @@ export default function UserProfile() {
           </div>
         </ProfileCard>
 
-        {/* 最新偏好列表 */}
         <ProfileCard
           title="Saved Preferences"
           action={<Settings size={18} className="text-bs-neutral-500" />}
@@ -230,12 +237,11 @@ export default function UserProfile() {
                     <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide font-medium">
                       {label}
                     </dt>
-                    <dd>{renderPrefValue(key, prefs[key])}</dd>
+                    <dd>{renderPrefValue(key, (prefs as any)[key])}</dd>
                   </div>
                 ))}
               </dl>
 
-              {/* 🟢 新增点 2：在偏好设置卡片底部，追加渲染 Food Personality 标签云 */}
               {personalities.length > 0 && (
                 <div className="pt-4 border-t border-bs-neutral-200">
                   <dt className="text-xs text-bs-neutral-500 uppercase tracking-wide font-semibold mb-2 flex items-center gap-1">
@@ -268,14 +274,13 @@ export default function UserProfile() {
           )}
         </ProfileCard>
 
-        {/* 历史记录区 */}
         <ProfileCard
           title="Search History"
           action={<History size={18} className="text-bs-neutral-500" />}
         >
-          {profile.searchHistory.length > 0 ? (
+          {searchHistory.length > 0 ? (
             <ul className="space-y-3">
-              {profile.searchHistory.map((entry) => (
+              {searchHistory.map((entry) => (
                 <li
                   key={entry.id}
                   className="flex items-start justify-between gap-4 p-3 rounded-lg bg-bs-neutral-100 hover:bg-bs-neutral-200/80 transition-colors"
@@ -302,14 +307,13 @@ export default function UserProfile() {
           )}
         </ProfileCard>
 
-        {/* 收藏美食店 */}
         <ProfileCard
           title="Favorite Restaurants"
           action={<Heart size={18} className="text-bs-red" />}
         >
-          {profile.favoriteRestaurants.length > 0 ? (
+          {favoriteRestaurants.length > 0 ? (
             <ul className="space-y-3">
-              {profile.favoriteRestaurants.map((r) => (
+              {favoriteRestaurants.map((r) => (
                 <li
                   key={r.id}
                   className="flex items-center gap-4 p-3 rounded-lg border border-bs-neutral-200 hover:shadow-md transition-shadow cursor-pointer bg-white"
