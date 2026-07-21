@@ -21,7 +21,7 @@ export function FunnelTab({ funnel, dropOffStage }: FunnelTabProps) {
           )}
         />
 
-        {dropOffStage && (
+        {/* {dropOffStage && ( REMOVE THIS COMMENTED CODE AS IT IS NOT NEEDED
           <div className="mt-4 p-3 bg-bs-red/5 border border-bs-red/20 rounded-lg">
             <div className="flex items-center gap-2 text-sm text-bs-neutral-900">
               <AlertCircle size={16} className="text-bs-red" />
@@ -32,7 +32,7 @@ export function FunnelTab({ funnel, dropOffStage }: FunnelTabProps) {
               </span>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </section>
   );
