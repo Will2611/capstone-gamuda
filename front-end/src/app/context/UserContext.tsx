@@ -63,7 +63,7 @@ interface UserContextValue {
   updatePreferences: (prefs: SearchPreferences) => void;
   addSearchHistory: (entry: Omit<SearchHistoryEntry, "id">) => void;
   toggleFavorite: (restaurant: Restaurant) => void;
-  isFavorite: (restaurantId: number) => boolean;
+  isFavorite: (restaurantId: string) => boolean;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -256,7 +256,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isFavorite = useCallback(
-    (restaurantId: number) =>
+    (restaurantId: string) =>
       profile.favoriteRestaurants.some((r) => r.id === restaurantId),
     [profile.favoriteRestaurants],
   );

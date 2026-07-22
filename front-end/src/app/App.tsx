@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router";
-import { lazy, useEffect, useMemo, type ReactNode } from "react";
+import { lazy, type ReactNode } from "react";
 import { Navigation } from "./components/Navigation";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { UserProvider, useUser } from "./context/UserContext";
+import { UserProvider } from "./context/UserContext";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FoodMatchProvider } from "./context/FoodMatchContext";
 
@@ -53,10 +53,6 @@ function ContextNest({ children }: { children: ReactNode }) {
 function RoutesCompiled() {
   const { user } = useAuth();
   const { isLoading } = useLoading();
-
-  const isGuest = useMemo(() => {
-    return !user || isLoading;
-  }, [user, isLoading]);
 
   return (
     <BrowserRouter>

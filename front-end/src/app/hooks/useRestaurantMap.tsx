@@ -23,7 +23,7 @@ function renderMapPin(
   root: Root,
   restaurant: Restaurant,
   selected: boolean,
-  onPinClick: (id: number) => void,
+  onPinClick: (id: string) => void,
 ) {
   const pinType = restaurant.type === "gold" ? "gold" : "red";
   root.render(
@@ -38,8 +38,8 @@ function renderMapPin(
 
 export interface UseRestaurantMapOptions {
   restaurants: Restaurant[];
-  selectedPin: number | null;
-  onPinClick: (id: number) => void;
+  selectedPin: string | null;
+  onPinClick: (id: string) => void;
   onMapBackgroundClick?: () => void;
   /** Set after the user clicks "Locate me"; triggers user-centered fitBounds. */
   userCenter?: [number, number] | null;
@@ -54,8 +54,8 @@ export function useRestaurantMap({
 }: UseRestaurantMapOptions) {
   const mapRef = useRef<MapLibreMap | null>(null);
   const userMarkerRef = useRef<MapLibreMarker | null>(null);
-  const markerEntriesRef = useRef<Map<number, MarkerEntry>>(new Map());
-  const prevSelectedPinRef = useRef<number | null>(null);
+  const markerEntriesRef = useRef<Map<string, MarkerEntry>>(new Map());
+  const prevSelectedPinRef = useRef<string | null>(null);
   const onPinClickRef = useRef(onPinClick);
   const onMapBackgroundClickRef = useRef(onMapBackgroundClick);
 
@@ -64,7 +64,7 @@ export function useRestaurantMap({
   onPinClickRef.current = onPinClick;
   onMapBackgroundClickRef.current = onMapBackgroundClick;
 
-  const handlePinClickStable = useCallback((id: number) => {
+  const handlePinClickStable = useCallback((id: string) => {
     onPinClickRef.current(id);
   }, []);
 
@@ -227,7 +227,7 @@ export function useRestaurantMap({
     const prev = prevSelectedPinRef.current;
     if (prev === selectedPin) return;
 
-    const idsToUpdate = new Set<number>();
+    const idsToUpdate = new Set<string>();
     if (prev !== null) idsToUpdate.add(prev);
     if (selectedPin !== null) idsToUpdate.add(selectedPin);
 

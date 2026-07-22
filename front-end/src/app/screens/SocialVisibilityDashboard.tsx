@@ -73,18 +73,18 @@ export default function SocialVisibilityDashboard() {
     useState<ActionSuggestionsResponse | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const handleViewSuggestions = async () => {
-    if (!selectedRestaurantId) return;
-    setShowSuggestions(true);
-    if (!actionSuggestions) {
-      try {
-        const data = await getActionSuggestions(selectedRestaurantId);
-        setActionSuggestions(data);
-      } catch {
-        setActionSuggestions(null);
-      }
-    }
-  };
+  // const handleViewSuggestions = async () => {
+  //   if (!selectedRestaurantId) return;
+  //   setShowSuggestions(true);
+  //   if (!actionSuggestions) {
+  //     try {
+  //       const data = await getActionSuggestions(selectedRestaurantId);
+  //       setActionSuggestions(data);
+  //     } catch {
+  //       setActionSuggestions(null);
+  //     }
+  //   }
+  // };
 
   const handleThemeClick = async (theme: string) => {
     if (!selectedRestaurantId) return;
@@ -198,11 +198,11 @@ export default function SocialVisibilityDashboard() {
     }
   }, [selectedRestaurantId, loadDashboard]);
 
-  const dropOffStage = funnel.find((s) => s.isDropOff);
+  // const dropOffStage = funnel.find((s) => s.isDropOff);
 
-  const handleQuickFix = (action: string) => {
-    setSelectedModal(action);
-  };
+  // const handleQuickFix = (action: string) => {
+  //   setSelectedModal(action);
+  // };
 
   const modals = {
     "reply-reviews": {
@@ -315,7 +315,8 @@ export default function SocialVisibilityDashboard() {
           {activeTab === "metrics" && <MetricsTab summary={summary} />}
 
           {activeTab === "funnel" && (
-            <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
+            <FunnelTab funnel={funnel} />
+            // <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
           )}
 
           {activeTab === "reviews-sentiment" && (
@@ -331,7 +332,8 @@ export default function SocialVisibilityDashboard() {
           {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}
 
           {activeTab === "promotions" && (
-            <PromotionsTab handleQuickFix={handleQuickFix} />
+            <PromotionsTab />
+            // <PromotionsTab handleQuickFix={handleQuickFix} />
           )}
         </div>
       )}

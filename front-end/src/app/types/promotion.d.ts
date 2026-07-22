@@ -1,6 +1,6 @@
 export interface Promotion {
   promoId: string;
-  id: number; //restaurant id
+  id: string; //restaurant id
   title: string;
   description: string;
 
