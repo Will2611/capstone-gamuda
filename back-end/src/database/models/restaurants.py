@@ -29,7 +29,7 @@ DAYS_OF_WEEK_TYPE= Literal[
     ]
 
 from sqlalchemy import TypeDecorator
-
+from src.database.schemas.base_model import OptionalCleansedTZStr
 
 
 # Define your specific type structure for clarity
@@ -76,7 +76,7 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
     about:Mapped[str] = mapped_column(Text, nullable=False)
     # In Minutes
     timezone_offset:Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    timezone:Mapped[Optional[ZoneInfo]] = mapped_column(String(64), nullable=True, default=None)
+    timezone:Mapped[OptionalCleansedTZStr] = mapped_column(String(64), nullable=True, default=None)
     rating: Mapped[Optional[float]]=mapped_column(Float, default=None)
     geohash:Mapped[str]= mapped_column(String(12),
                                        nullable=False,

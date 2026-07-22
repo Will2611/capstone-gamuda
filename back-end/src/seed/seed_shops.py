@@ -171,7 +171,7 @@ def row_to_restaurant(row:dict[str|Any,str|Any]):
     
     
     timezone =str(row.get('Time Zone')).strip() if row.get('Time Zone') else None
-    castTimeZone = cast(ZoneInfo, timezone) if testZoneInfoType(timezone) else None
+    castTimeZone = timezone if testZoneInfoType(timezone) else None
     shop = RestaurantModel(
         name=row["Name"].strip(),
         rating=float(row["Average Rating"]) if row["Average Rating"] else None,

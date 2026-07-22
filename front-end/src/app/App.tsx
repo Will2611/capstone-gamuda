@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router";
-import { lazy } from "react";
+import { lazy, useEffect, useMemo, type ReactNode } from "react";
 import { Navigation } from "./components/Navigation";
-import { AuthProvider } from "./context/AuthContext";
-import { UserProvider } from "./context/UserContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { UserProvider, useUser } from "./context/UserContext";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { FoodMatchProvider } from "./context/FoodMatchContext";
 
@@ -19,10 +19,8 @@ import { FoodMatchProvider } from "./context/FoodMatchContext";
 // import FoodMatch from "./screens/FoodMatch";
 
 const LandingPage = lazy(() => import("./screens/LandingPage"));
-const PreferenceForm = lazy(() => import("./screens/PreferenceForm"));
 const MapInterface = lazy(() => import("./screens/MapInterface"));
 const SuggestionsPage = lazy(() => import("./screens/SuggestionsPage"));
-const OwnerDashboard = lazy(() => import("./screens/OwnerDashboard"));
 const PrivacyPage = lazy(() => import("./screens/PrivacyPage"));
 const BusinessPage = lazy(() => import("./screens/BusinessPage"));
 const LoginPage = lazy(() => import("./screens/LoginPage"));
@@ -36,52 +34,89 @@ const SocialVisibilityDashboard = lazy(
 import PWABadge from "./PWABadge";
 import PromotionManagement from "./screens/PromotionManagement";
 import PromotionFormPage from "./screens/PromotionFormPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoadingProvider, useLoading } from "./context/LoadingContext";
 
-export default function App() {
+function ContextNest({ children }: { children: ReactNode }) {
   return (
-    <BrowserRouter>
+    <LoadingProvider>
       <AuthProvider>
         <UserProvider>
           <FoodMatchProvider>
-            <PWABadge>
-              <div className="min-h-screen bg-white">
-                <Navigation />
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/map" element={<MapInterface />} />
-                  <Route path="/suggestions" element={<SuggestionsPage />} />
-                  <Route path="/privacy" element={<PrivacyPage />} />
-                  <Route path="/business" element={<BusinessPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignUpPage />} />
-                  {/* Update to nested in /user */}
-                  {/* Update to be in /user/profile */}
-                  <Route path="/profile" element={<UserProfile />} />
-                  {/* Update to be in /user/updatePreference */}
-                  <Route path="/search" element={<PreferenceForm />} />
-                  {/* Update to nested in /owner */}
-                  <Route path="/dashboard" element={<OwnerDashboard />} />
-                  <Route path="/food-match" element={<FoodMatch />} />
-                  <Route
-                    path="/social-visibility"
-                    element={<SocialVisibilityDashboard />}
-                  />
-                  <Route path="/promotion" element={<PromotionManagement />} />
-                  <Route
-                    path="/promotion-form"
-                    element={<PromotionFormPage />}
-                  />
-
-                  <Route
-                    path="/promotion/edit/:promoId"
-                    element={<PromotionFormPage />}
-                  />
-                </Routes>
-              </div>
-            </PWABadge>
+            <PWABadge>{children}</PWABadge>
           </FoodMatchProvider>
         </UserProvider>
       </AuthProvider>
+    </LoadingProvider>
+  );
+}
+function RoutesCompiled() {
+  const { user } = useAuth();
+  const { isLoading } = useLoading();
+
+  const isGuest = useMemo(() => {
+    return !user || isLoading;
+  }, [user, isLoading]);
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/map" element={<MapInterface />} />
+          <Route path="/suggestions" element={<SuggestionsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/business" element={<BusinessPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+
+          {/* Update to nested in /user */}
+          {/* Update to be in /user/profile */}
+          <Route
+            element={
+              <ProtectedRoute
+                isAuthenticated={isLoading || user?.role == "client"}
+                redirectPath=""
+              />
+            }
+          >
+            <Route path="/profile" element={<UserProfile />} />
+            <Route path="/food-match" element={<FoodMatch />} />
+          </Route>
+          {/* Update to be in /user/updatePreference */}
+
+          {/* Update to nested in /owner */}
+          <Route
+            element={
+              <ProtectedRoute
+                isAuthenticated={isLoading || user?.role == "owner"}
+                redirectPath="/"
+              />
+            }
+          >
+            <Route
+              path="/social-visibility"
+              element={<SocialVisibilityDashboard />}
+            />
+            <Route path="/promotion" element={<PromotionManagement />} />
+            <Route path="/promotion-form" element={<PromotionFormPage />} />
+
+            <Route
+              path="/promotion/edit/:promoId"
+              element={<PromotionFormPage />}
+            />
+          </Route>
+        </Routes>
+      </div>
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <ContextNest>
+      <RoutesCompiled />
+    </ContextNest>
   );
 }

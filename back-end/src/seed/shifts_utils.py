@@ -1,6 +1,7 @@
 import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+
 def parse_time_string(time_str: str) -> datetime.time:
     """Parses a single time string into a datetime.time object."""
     clean_str = time_str.replace('\u00A0', ' ').strip()

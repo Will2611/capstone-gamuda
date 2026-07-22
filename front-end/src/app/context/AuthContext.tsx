@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { bitescoutApi } from "../services/baseApi";
+import { useLoading } from "./LoadingContext";
 
 export type Role = "client" | "owner";
 
@@ -33,42 +34,32 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-
+  const { withLoading } = useLoading();
   // Load user from storage on initial application mount
   useEffect(() => {
     const setter = async () => {
-      const { data } = await bitescoutApi.get<AuthUser>("/user/ping");
-      console.log(data)
+      try {
+        const { data } = await bitescoutApi.get<AuthUser>("/user/ping");
+        setUser(data);
+      } catch {
+        setUser(null);
+      }
       // Store both token string and user object locally
-      setUser(data);
     };
-    setter()
+    withLoading(setter)();
   }, []);
 
   // 💡 Rewritten to call your FastAPI Python backend instead of mocks
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const { data } = await bitescoutApi.post<AuthUser>(
+      const { data: authUser } = await bitescoutApi.post<AuthUser>(
         `/user/login`,
         {
           email,
           password,
         },
       );
-      // const response = await fetch("http://localhost:8000/user/login", {
-      //   method: "POST",
-      //   headers: {
-      //     "Content-Type": "application/json",
-      //   },
-      //   body: JSON.stringify({ email, password }),
-      // });
 
-      // const data = await response.json();
-
-      // 📦 Transform API snake_case response to match camelCase TypeScript interface
-      const authUser = data;
-
-      // Store both token string and user object locally
       setUser(authUser);
 
       return { success: true, role: authUser.role };
@@ -91,11 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await bitescoutApi.delete(`/user/logout`);
-      setUser(null)
-
-    } catch {
-
-    }
+      setUser(null);
+    } catch {}
   }, []);
 
   const value = useMemo(
@@ -104,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       isAuthenticated: !!user,
       login,
-      logout,
+      logout: withLoading(logout),
     }),
     [user, login, logout],
   );
