@@ -37,6 +37,16 @@ def _weekday_name(d: datetime.date) -> str:
     return DAYS_OF_WEEK[d.weekday()]
 
 
+def _time_in_shift(t: datetime.time, open_t: datetime.time, close_t: datetime.time) -> bool:
+    """True if clock time `t` falls inside [open_t, close_t), including overnight shifts."""
+    if open_t == close_t:
+        return True  # treat as 24h
+    if open_t < close_t:
+        return open_t <= t < close_t
+    # Overnight e.g. 08:30 → 01:00 next day
+    return t >= open_t or t < close_t
+
+
 def _is_open_during(
     restaurant: RestaurantModel,
     on_date: datetime.date,
@@ -49,13 +59,11 @@ def _is_open_during(
     if not shifts:
         # Unknown hours — keep candidate rather than over-filtering
         return True
-    meet_start = start
-    meet_end = end
     for open_t, close_t in shifts:
-        if open_t <= meet_start and close_t >= meet_end:
+        # Prefer full meeting window covered; otherwise accept if open at meeting start
+        if _time_in_shift(start, open_t, close_t) and _time_in_shift(end, open_t, close_t):
             return True
-        # Also accept if open covers meeting start with at least 60 min open after
-        if open_t <= meet_start < close_t:
+        if _time_in_shift(start, open_t, close_t):
             return True
     return False
 
@@ -453,6 +461,17 @@ def retrieve_top_restaurants_for_pair(
         meeting_time=meeting_time,
         window_end=window_end,
     )
+    # Many places lack dietary tags; don't hard-fail the whole plan on that alone
+    if not scored and (ctx["dietary_a"] or ctx["dietary_b"]):
+        logger.info("Local dietary filter yielded 0 — retrying without dietary enforce")
+        scored = _score_local(
+            db,
+            ctx,
+            on_date=on_date,
+            meeting_time=meeting_time,
+            window_end=window_end,
+            enforce_dietary=False,
+        )
     results = _filter_excluded(scored, excluded)
 
     # External fill when we still need more slots
