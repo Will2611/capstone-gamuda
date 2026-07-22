@@ -336,22 +336,32 @@ export function SignUpFormOwner() {
         return;
       }
 
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Image size should be less than 5MB.",
+        }));
+        return;
+      }
+
       setErrors((prev) => {
         const { form, ...rest } = prev;
         return rest;
       });
 
-      const imageUrl = URL.createObjectURL(file);
-      setProfileImage(imageUrl);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          setProfileImage(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleImageRemove = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (profileImage) {
-      URL.revokeObjectURL(profileImage);
-      setProfileImage(null);
-    }
+    setProfileImage(null);
   };
 
   const handleRestaurantImagesUpload = (
@@ -374,15 +384,44 @@ export function SignUpFormOwner() {
       return;
     }
 
+    const hasTooLargeFile = files.some((file) => file.size > 5 * 1024 * 1024);
+    if (hasTooLargeFile) {
+      setErrors((prev) => ({
+        ...prev,
+        restaurantImages: "Each image size should be less than 5MB",
+      }));
+      return;
+    }
+
     if (files.length > 0) {
-      const imageUrls = files.map((file) => URL.createObjectURL(file));
-      setErrors((prev) => {
-        const { restaurantImages, ...rest } = prev;
-        return rest;
+      const promises = files.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (typeof reader.result === "string") {
+              resolve(reader.result);
+            } else {
+              reject(new Error("Failed to read file"));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
       });
-      const updated = [...restaurantImages, ...imageUrls];
-      setRestaurantImages(updated);
-      runValidation({ restaurantImages: updated });
+
+      Promise.all(promises)
+        .then((base64Images) => {
+          setErrors((prev) => {
+            const { restaurantImages, ...rest } = prev;
+            return rest;
+          });
+          const updated = [...restaurantImages, ...base64Images];
+          setRestaurantImages(updated);
+          runValidation({ restaurantImages: updated });
+        })
+        .catch((err) => {
+          console.error("Error reading restaurant images:", err);
+        });
     }
   };
 

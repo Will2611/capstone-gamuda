@@ -58,7 +58,7 @@ def setCookie(resp:Response, payload:SessionToken = default_session_generator())
         value=token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite="lax",
         max_age=LONGER_COOKIE_AGE if payload.remember_me else COOKIE_AGE
     )
 
@@ -87,6 +87,7 @@ def ensure_default_cookie(
         # Check if the cookie was present in the incoming request, no default to ensure setting cookies
         # If missing, set the default on the outgoing response
         # Reset on session timer
+        print(parsed)
         setCookie(response,parsed)
         # You can return the cookie value if your endpoints need it
         return parsed

@@ -29,38 +29,42 @@ import {
   DISTANCE_OPTIONS,
   AMBIENCE_OPTIONS,
   TIME_OPTIONS,
+  GENDER_OPTIONS,
+  RELIGION_OPTIONS,
+  LANG_OPTIONS,
+  PERSONALITY_TAG_OPTIONS,
   getDropdownOptions,
 } from "./config/FilterOption";
 
 import { useUser } from "../context/UserContext";
 
-const GENDER_OPTIONS = [
-  { label: "Male", value: "male" },
-  { label: "Female", value: "female" },
-];
+// const GENDER_OPTIONS = [
+//   { label: "Male", value: "male" },
+//   { label: "Female", value: "female" },
+// ];
 
-const RELIGION_OPTIONS = [
-  { value: "Islam", label: "Islam" },
-  { value: "Christianity", label: "Christianity" },
-  { value: "Buddhism", label: "Buddhism" },
-  { value: "Hinduism", label: "Hinduism" },
-  { value: "Others", label: "Others" },
-];
+// const RELIGION_OPTIONS = [
+//   { value: "Islam", label: "Islam" },
+//   { value: "Christianity", label: "Christianity" },
+//   { value: "Buddhism", label: "Buddhism" },
+//   { value: "Hinduism", label: "Hinduism" },
+//   { value: "Others", label: "Others" },
+// ];
 
-const LANG_OPTIONS = [
-  { value: "en", label: "English" },
-  { value: "ms", label: "Bahasa Melayu" },
-];
+// const LANG_OPTIONS = [
+//   { value: "en", label: "English" },
+//   { value: "ms", label: "Bahasa Melayu" },
+// ];
 
-const PERSONALITY_TAG_OPTIONS = [
-  "Adventurous eater",
-  "Cafe hopper",
-  "Fine dining lover",
-  "Street food hunter",
-  "Late night foodie",
-  "Healthy eater",
-  "Dessert addict",
-];
+// const PERSONALITY_TAG_OPTIONS = [
+//   "Adventurous eater",
+//   "Cafe hopper",
+//   "Fine dining lover",
+//   "Street food hunter",
+//   "Late night foodie",
+//   "Healthy eater",
+//   "Dessert addict",
+// ];
 
 const personalityOptions = PERSONALITY_TAG_OPTIONS.map((tag) => ({
   label: tag,
@@ -70,7 +74,7 @@ const personalityOptions = PERSONALITY_TAG_OPTIONS.map((tag) => ({
 export function SignUpFormClient() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { profile, updatePreferences } = useUser();
+  const { profile, updateUserProfile } = useUser();
 
   const isEditMode = searchParams.get("mode") === "edit";
 
@@ -225,16 +229,75 @@ export function SignUpFormClient() {
 
     if (isEditMode) {
       try {
-        await updatePreferences(preferences);
+        // Execute update process directly through context
+        await updateUserProfile({
+          displayName: fullName,
+          avatarUrl: profileImage || undefined,
+          gender,
+          birthday,
+          religion,
+          language,
+          personalities,
+          savedPreferences: preferences,
+        });
+
         setSuccess(true);
         setTimeout(() => navigate("/profile"), 1500);
-      } catch (error) {
-        console.error("Failed to update preferences:", error);
+      } catch (error: any) {
+        console.error("Failed to update profile:", error);
+        setErrors((prev) => ({
+          ...prev,
+          apiError: error.message || "Failed to update profile",
+        }));
       } finally {
         setIsLoading(false);
       }
       return;
     }
+    //   try {
+    //     const token = localStorage.getItem("bitescouts_token");
+    //     const updateData = {
+    //       username: fullName,
+    //       profileImage: profileImage,
+    //       gender: gender,
+    //       birthday: birthday,
+    //       religion: religion,
+    //       language: language,
+    //       preferences: preferences,
+    //       personalities: personalities,
+    //     };
+
+    //     const response = await fetch(
+    //       `http://localhost:8000/user/client/${user?.id}`,
+    //       {
+    //         method: "PUT",
+    //         headers: {
+    //           "Content-Type": "application/json",
+    //           Authorization: token ? `Bearer ${token}` : "",
+    //         },
+    //         body: JSON.stringify(updateData),
+    //       },
+    //     );
+
+    //     if (!response.ok) {
+    //       const errData = await response.json();
+    //       throw new Error(errData.detail || "Failed to update profile");
+    //     }
+
+    //     await updatePreferences(preferences);
+    //     setSuccess(true);
+    //     setTimeout(() => navigate("/profile"), 1500);
+    //   } catch (error: any) {
+    //     console.error("Failed to update preferences:", error);
+    //     setErrors((prev) => ({
+    //       ...prev,
+    //       apiError: error.message || "Failed to update profile",
+    //     }));
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    //   return;
+    //}
 
     const formData = {
       profileImage,
@@ -294,22 +357,32 @@ export function SignUpFormClient() {
         return;
       }
 
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({
+          ...prev,
+          form: "Image size should be less than 5MB.",
+        }));
+        return;
+      }
+
       setErrors((prev) => {
         const { form, ...rest } = prev;
         return rest;
       });
 
-      const imageUrl = URL.createObjectURL(file);
-      setProfileImage(imageUrl);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          setProfileImage(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleImageRemove = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (profileImage) {
-      URL.revokeObjectURL(profileImage);
-      setProfileImage(null);
-    }
+    setProfileImage(null);
   };
 
   return (
@@ -362,9 +435,9 @@ export function SignUpFormClient() {
         </p>
       </div>
 
-      {errors.form && (
+      {(errors.form || errors.apiError) && (
         <div className="p-3 text-sm rounded-lg bg-rose-50 border border-rose-200 text-rose-600">
-          {errors.form}
+          {errors.form || errors.apiError}
         </div>
       )}
 

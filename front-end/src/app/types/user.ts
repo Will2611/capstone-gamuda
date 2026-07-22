@@ -42,7 +42,7 @@ export interface PublicUserProfileData {
 
   bio?: string;
   favoriteFoods?: string[];
-  personalityTags?: string[];
+  personalities?: string[];
   lookingFor?: string;
   likesBack?: boolean;
 }
@@ -53,6 +53,11 @@ export interface PublicUserProfileData {
 export interface FullUserProfileData extends PublicUserProfileData {
   email: string;
   searchHistory: SearchHistoryEntry[];
+  // Personal info fields returned by the backend
+  gender?: string;
+  birthday?: string;
+  religion?: string;
+  language?: string;
 }
 
 export interface DummyUserProfile extends Omit<

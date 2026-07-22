@@ -70,10 +70,10 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
 class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     __tablename__ ='clients'
     # change to enum or whatever later, dependant on what is needed, is also considered subjective
-    religion:Mapped[str] = mapped_column(String)
-    language:Mapped[str] = mapped_column(String)
-    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True)
-    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True)
+    religion:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
+    language:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
+    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True) # pyright: ignore[reportGeneralTypeIssues]
+    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True) # pyright: ignore[reportGeneralTypeIssues]
     preferred_time: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
     preferred_vibes:Mapped[list[str]]= mapped_column(ARRAY(String), default_factory=list)
     price_limit:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)

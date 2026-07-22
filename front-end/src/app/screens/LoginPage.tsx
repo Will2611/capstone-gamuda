@@ -6,12 +6,10 @@ import BiteSccoutIcon from "@/assets/icon.svg?react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  if (isAuthenticated) {
-    return <Navigate to="/map" replace />;
-  }
+
 
   const handleLogin = async (email: string, password: string) => {
     setIsLoading(true);
@@ -21,7 +19,7 @@ export default function LoginPage() {
     if (result.success) {
       // 💡 Check the role returned from your Auth Context / Backend payload
       if (result.role === "owner") {
-        navigate("/owner/dashboard", { replace: true }); // Send owners to management
+        navigate("/social-visibility", { replace: true }); // Send owners to management
       } else {
         navigate("/map", { replace: true }); // Send clients to the food map
       }

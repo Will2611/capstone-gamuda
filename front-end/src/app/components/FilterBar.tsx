@@ -24,6 +24,7 @@ import {
 interface FilterBarProps {
   filters: SearchPreferences;
   onFilterChange: (filters: SearchPreferences) => void;
+  defaultFilters?: SearchPreferences; // 1. Add optional defaultFilters prop
 }
 
 // Defining the initial/empty state of filters for clean resetting
@@ -36,7 +37,11 @@ const DEFAULT_FILTERS: SearchPreferences = {
   time: "",
 };
 
-export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
+export default function FilterBar({
+  filters,
+  onFilterChange,
+  defaultFilters = DEFAULT_FILTERS
+}: FilterBarProps) {
   const handleChange = (
     key: keyof SearchPreferences,
     value: string | string[],
@@ -54,7 +59,7 @@ export default function FilterBar({ filters, onFilterChange }: FilterBarProps) {
     !!filters.time;
 
   const handleReset = () => {
-    onFilterChange(DEFAULT_FILTERS);
+    onFilterChange(defaultFilters);
   };
 
   return (

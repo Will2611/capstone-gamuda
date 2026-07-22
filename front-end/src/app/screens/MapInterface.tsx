@@ -28,39 +28,39 @@ const emptyForm: SearchPreferences = {
 type ViewMode = "map" | "suggestions";
 
 export default function MapInterface() {
-  // 1. 修正解构：从 useUser 拿到 profile 而不是不存在的 preferences
   const { toggleFavorite, isFavorite, profile } = useUser();
 
-  // 2. 健壮性初始化：将 profile.savedPreferences 中的字符串或数组安全转换为 MapInterface 期望的过滤格式
-  const [filters, setFilters] = useState<SearchPreferences>(() => {
-    const saved = profile?.savedPreferences;
-    if (!saved) return emptyForm;
+  const [filters, setFilters] = useState<SearchPreferences>(emptyForm);
 
-    return {
-      cuisine: Array.isArray(saved.cuisine)
-        ? saved.cuisine
-        : saved.cuisine
-          ? [saved.cuisine]
-          : [],
-      priceRange: Array.isArray(saved.priceRange)
-        ? saved.priceRange
-        : saved.priceRange
-          ? [saved.priceRange]
-          : [],
-      dietary: Array.isArray(saved.dietary)
-        ? saved.dietary
-        : saved.dietary
-          ? [saved.dietary]
-          : [],
-      distance: typeof saved.distance === "string" ? saved.distance : "",
-      ambience: Array.isArray(saved.ambience)
-        ? saved.ambience
-        : saved.ambience
-          ? [saved.ambience]
-          : [],
-      time: typeof saved.time === "string" ? saved.time : "",
-    };
-  });
+  useEffect(() => {
+    if (profile?.savedPreferences) {
+      const saved = profile.savedPreferences;
+      setFilters({
+        cuisine: Array.isArray(saved.cuisine)
+          ? saved.cuisine
+          : saved.cuisine
+            ? [saved.cuisine]
+            : [],
+        priceRange: Array.isArray(saved.priceRange)
+          ? saved.priceRange
+          : saved.priceRange
+            ? [saved.priceRange]
+            : [],
+        dietary: Array.isArray(saved.dietary)
+          ? saved.dietary
+          : saved.dietary
+            ? [saved.dietary]
+            : [],
+        distance: typeof saved.distance === "string" ? saved.distance : "",
+        ambience: Array.isArray(saved.ambience)
+          ? saved.ambience
+          : saved.ambience
+            ? [saved.ambience]
+            : [],
+        time: typeof saved.time === "string" ? saved.time : "",
+      });
+    }
+  }, [profile]);
 
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
@@ -138,7 +138,6 @@ export default function MapInterface() {
 
   const filteredRestaurants = useMemo(() => {
     return displayedRestaurants.filter((restaurant) => {
-      // 菜系过滤 (多选)
       if (filters.cuisine && filters.cuisine.length > 0) {
         const rCuisine = restaurant.cuisine?.toLowerCase() || "";
         const hasCuisine = filters.cuisine.some((c) =>
@@ -147,7 +146,6 @@ export default function MapInterface() {
         if (!hasCuisine) return false;
       }
 
-      // 价格区间过滤 (多选)
       if (filters.priceRange && filters.priceRange.length > 0) {
         if (
           (restaurant as any).priceRange &&
@@ -157,7 +155,6 @@ export default function MapInterface() {
         }
       }
 
-      // 宗教/饮食习惯过滤 (多选)
       if (
         filters.dietary &&
         filters.dietary.length > 0 &&
@@ -170,7 +167,6 @@ export default function MapInterface() {
         if (!hasDietary) return false;
       }
 
-      // 氛围过滤 (多选)
       if (filters.ambience && filters.ambience.length > 0) {
         const rAmbience = (restaurant as any).ambience?.toLowerCase() || "";
         const hasAmbience = filters.ambience.some((a) =>
@@ -179,7 +175,6 @@ export default function MapInterface() {
         if (!hasAmbience) return false;
       }
 
-      // 距离过滤 (单选)
       if (filters.distance) {
         const maxDistance = parseFloat(filters.distance);
         const currentDistance = parseFloat(restaurant.distance || "0");
@@ -192,7 +187,6 @@ export default function MapInterface() {
         }
       }
 
-      // 营业时间/时段过滤 (单选)
       if (filters.time) {
         const rTime = (restaurant as any).time?.toLowerCase() || "";
         if (rTime && !rTime.includes(filters.time.toLowerCase())) {
@@ -204,8 +198,7 @@ export default function MapInterface() {
     });
   }, [displayedRestaurants, filters]);
 
-  // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
-  const restaurants = displayedRestaurants;
+  const restaurants = filteredRestaurants;
 
   const suggestions = useMemo<SuggestedRestaurant[]>(
     () =>
@@ -314,8 +307,8 @@ export default function MapInterface() {
             type="button"
             onClick={() => setViewMode("map")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "map"
-                ? "bg-bs-gold text-bs-neutral-900"
-                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+              ? "bg-bs-gold text-bs-neutral-900"
+              : "text-bs-neutral-600 hover:text-bs-neutral-900"
               }`}
           >
             Map Mode
@@ -324,8 +317,8 @@ export default function MapInterface() {
             type="button"
             onClick={() => setViewMode("suggestions")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "suggestions"
-                ? "bg-bs-gold text-bs-neutral-900"
-                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+              ? "bg-bs-gold text-bs-neutral-900"
+              : "text-bs-neutral-600 hover:text-bs-neutral-900"
               }`}
           >
             Suggestion Mode
@@ -363,20 +356,20 @@ export default function MapInterface() {
                 </div>
 
                 {!selectedRestaurant && (
-  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
-    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
-      Tap a pin to view restaurant details
-    </div>
+                  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
+                    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
+                      Tap a pin to view restaurant details
+                    </div>
 
-    {geoError && (
-      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
-        {geoError}
-      </div>
-    )}
-  </div>
-)}
-                
-              
+                    {geoError && (
+                      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
+                        {geoError}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
 
                 <button
                   type="button"
