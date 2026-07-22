@@ -14,6 +14,7 @@ import {
 } from "../data/mockFoodMatch";
 import type {
   ChatMessage,
+  DatePlan,
   FoodMatch,
   FoodPreferenceProfile,
   MatchUser,
@@ -30,6 +31,7 @@ interface FoodMatchState {
   savedIds: string[];
   blockedIds: string[];
   chatMessages: Record<string, ChatMessage[]>;
+  datePlans: Record<string, DatePlan>;
 }
 
 interface FoodMatchContextValue extends FoodMatchState {
@@ -43,6 +45,16 @@ interface FoodMatchContextValue extends FoodMatchState {
   getDiscoverUsers: () => MatchUser[];
   addChatMessage: (matchId: string, text: string, senderId: string) => void;
   resetDiscoverPool: () => void;
+  attachBackendMatch: (
+    localMatchId: string,
+    backend: {
+      matchId: string;
+      chatRoomId: string;
+      participantId: string;
+    },
+  ) => void;
+  setDatePlan: (localMatchId: string, plan: DatePlan) => void;
+  getDatePlan: (localMatchId: string) => DatePlan | null;
 }
 
 const FoodMatchContext = createContext<FoodMatchContextValue | null>(null);
@@ -71,6 +83,7 @@ const DEFAULT_STATE: FoodMatchState = {
   savedIds: [],
   blockedIds: [],
   chatMessages: {},
+  datePlans: {},
 };
 
 export function FoodMatchProvider({ children }: { children: ReactNode }) {
@@ -80,7 +93,12 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        setState(JSON.parse(stored) as FoodMatchState);
+        const parsed = JSON.parse(stored) as FoodMatchState;
+        setState({
+          ...DEFAULT_STATE,
+          ...parsed,
+          datePlans: parsed.datePlans ?? {},
+        });
       } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
@@ -213,6 +231,40 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const attachBackendMatch = useCallback(
+    (
+      localMatchId: string,
+      backend: { matchId: string; chatRoomId: string; participantId: string },
+    ) => {
+      setState((prev) => ({
+        ...prev,
+        matches: prev.matches.map((m) =>
+          m.id === localMatchId
+            ? {
+                ...m,
+                backendMatchId: backend.matchId,
+                chatRoomId: backend.chatRoomId,
+                backendParticipantId: backend.participantId,
+              }
+            : m,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const setDatePlan = useCallback((localMatchId: string, plan: DatePlan) => {
+    setState((prev) => ({
+      ...prev,
+      datePlans: { ...prev.datePlans, [localMatchId]: plan },
+    }));
+  }, []);
+
+  const getDatePlan = useCallback(
+    (localMatchId: string) => state.datePlans[localMatchId] ?? null,
+    [state.datePlans],
+  );
+
   const value = useMemo(
     () => ({
       ...state,
@@ -226,6 +278,9 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       getDiscoverUsers,
       addChatMessage,
       resetDiscoverPool,
+      attachBackendMatch,
+      setDatePlan,
+      getDatePlan,
     }),
     [
       state,
@@ -239,6 +294,9 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       getDiscoverUsers,
       addChatMessage,
       resetDiscoverPool,
+      attachBackendMatch,
+      setDatePlan,
+      getDatePlan,
     ],
   );
 

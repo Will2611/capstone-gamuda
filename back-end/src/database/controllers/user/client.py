@@ -95,6 +95,9 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
         price_limit=payload.preferences.priceRange,   # Maps to ARRAY(String)
         distance_limit=distance_limit,
         preferred_time=payload.preferences.time,
+        cuisine=payload.preferences.cuisine or [],
+        dietary=payload.preferences.dietary or [],
+        ambience=payload.preferences.ambience or [],
     )
 
     try:

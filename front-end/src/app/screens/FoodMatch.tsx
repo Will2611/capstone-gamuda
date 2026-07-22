@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import {
   Users,
@@ -10,14 +10,28 @@ import {
 } from "lucide-react";
 import { useFoodMatch } from "../context/FoodMatchContext";
 import { useUser } from "../context/UserContext";
+import { useAuth } from "../context/AuthContext";
 import { computeCompatibility } from "../data/mockFoodMatch";
 import type { FoodMatch as FoodMatchType, MatchUser } from "../types/foodMatch";
 import { FoodPreferenceForm } from "../components/foodMatch/FoodPreferenceForm";
 import { MatchCard } from "../components/foodMatch/MatchCard";
 import { MatchModal } from "../components/foodMatch/MatchModal";
-import { FoodDatePlanner } from "../components/foodMatch/FoodDatePlanner";
+import { AvailabilityModal } from "../components/foodMatch/AvailabilityModal";
+import { DatePlanStatusPanel } from "../components/foodMatch/DatePlanStatusPanel";
+import { RestaurantRecommendationPopup } from "../components/foodMatch/RestaurantRecommendationPopup";
 import { FoodMatchSafetyBar } from "../components/foodMatch/FoodMatchSafetyBar";
 import ChatBoxPanel from "../components/ChatBoxPanel";
+import {
+  acceptDatePlan,
+  acceptSuggestion,
+  buildChatSocketUrl,
+  createDatePlan,
+  ensureMatch,
+  getDatePlan,
+  nextRestaurant,
+  recommendRestaurants,
+  submitAvailability,
+} from "../services/datePlanApi";
 
 type Tab = "discover" | "matches";
 
@@ -37,29 +51,268 @@ export default function FoodMatch() {
     chatMessages,
     addChatMessage,
     resetDiscoverPool,
+    attachBackendMatch,
+    setDatePlan,
+    datePlans,
   } = useFoodMatch();
 
   const { profile: userProfile } = useUser();
-  const [activeTab, setActiveTab] = useState<Tab>("discover"); //starting tab is discover
-  const [newMatch, setNewMatch] = useState<FoodMatchType | null>(null); //new match
-  const [activeChat, setActiveChat] = useState<FoodMatchType | null>(null); //active chat
-  const [plannerMatch, setPlannerMatch] = useState<FoodMatchType | null>(null); //planner match
-  const [plannerOpen, setPlannerOpen] = useState(false); //planner open
-  const [safetyTarget, setSafetyTarget] = useState<MatchUser | null>(null); //safety target
+  const { token, isAuthenticated, user } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("discover");
+  const [newMatch, setNewMatch] = useState<FoodMatchType | null>(null);
+  const [activeChat, setActiveChat] = useState<FoodMatchType | null>(null);
+  const [plannerMatch, setPlannerMatch] = useState<FoodMatchType | null>(null);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [safetyTarget, setSafetyTarget] = useState<MatchUser | null>(null);
 
-  const discoverUsers = getDiscoverUsers(); //get discover users
-  const currentUser = discoverUsers[0] ?? null; //current user is the first user in the discover users array
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [cycling, setCycling] = useState(false);
+  const [acceptingSuggestion, setAcceptingSuggestion] = useState(false);
 
-  //Swipe Left to Pass
-  const handlePass = () => {
-    if (!currentUser) return; //if there is no current user, return
-    setTimeout(() => {
-      passUser(currentUser.id); //pass the user
-      setSafetyTarget(null); //reset the safety target
-    }, 300); //wait 300ms before resetting the drag direction and safety target
+  const discoverUsers = getDiscoverUsers();
+  const currentUser = discoverUsers[0] ?? null;
+
+  const activePlan = activeChat ? datePlans[activeChat.id] : null;
+  const plannerPlan = plannerMatch ? datePlans[plannerMatch.id] : null;
+
+  const resolveBackendMatch = useCallback(
+    async (match: FoodMatchType) => {
+      if (!token) {
+        throw new Error("Please log in to plan a food date.");
+      }
+      if (match.backendMatchId && match.chatRoomId) {
+        return {
+          matchId: match.backendMatchId,
+          chatRoomId: match.chatRoomId,
+          participantId: match.backendParticipantId || match.user.id,
+        };
+      }
+      const lat =
+        typeof navigator !== "undefined"
+          ? await new Promise<GeolocationPosition | null>((resolve) => {
+              if (!navigator.geolocation) {
+                resolve(null);
+                return;
+              }
+              navigator.geolocation.getCurrentPosition(
+                (pos) => resolve(pos),
+                () => resolve(null),
+                { timeout: 5000 },
+              );
+            })
+          : null;
+
+      const ensured = await ensureMatch(
+        token,
+        match.user,
+        lat?.coords.latitude,
+        lat?.coords.longitude,
+      );
+      attachBackendMatch(match.id, {
+        matchId: ensured.match_id,
+        chatRoomId: ensured.chat_room_id,
+        participantId: ensured.participant_id,
+      });
+      return {
+        matchId: ensured.match_id,
+        chatRoomId: ensured.chat_room_id,
+        participantId: ensured.participant_id,
+      };
+    },
+    [token, attachBackendMatch],
+  );
+
+  const openPlanner = async (match: FoodMatchType) => {
+    setPlanError(null);
+    setPlannerMatch(match);
+    if (!isAuthenticated || !token) {
+      setPlanError("Please log in to plan a food date with real match IDs.");
+      setPlannerOpen(true);
+      return;
+    }
+    setPlanBusy(true);
+    try {
+      const backend = await resolveBackendMatch(match);
+      const plan = await createDatePlan(token, backend.matchId);
+      setDatePlan(match.id, plan);
+      setPlannerOpen(true);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
+        (err as Error)?.message ||
+        "Could not start date plan";
+      setPlanError(String(msg));
+      setPlannerOpen(true);
+    } finally {
+      setPlanBusy(false);
+    }
   };
 
-  //Swipe Right to Like
+  const handleAvailabilitySubmit = async (payload: {
+    available_date: string;
+    start_time: string;
+    end_time: string;
+  }) => {
+    if (!plannerMatch || !token) {
+      setPlanError("Please log in to submit availability.");
+      return;
+    }
+    setPlanBusy(true);
+    setPlanError(null);
+    try {
+      let plan = datePlans[plannerMatch.id];
+      if (!plan) {
+        const backend = await resolveBackendMatch(plannerMatch);
+        plan = await createDatePlan(token, backend.matchId);
+        setDatePlan(plannerMatch.id, plan);
+      }
+      const updated = await submitAvailability(token, plan.id, payload);
+      setDatePlan(plannerMatch.id, updated);
+      setPlannerOpen(false);
+      setActiveChat(plannerMatch);
+      setActiveTab("matches");
+
+      if (updated.status === "overlap_found" || updated.status === "recommending") {
+        // Poll until restaurant ready
+        void pollRecommendation(plannerMatch.id, updated.id);
+      }
+      if (updated.status === "restaurant_ready") {
+        setPopupOpen(true);
+      }
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
+        (err as Error)?.message ||
+        "Failed to submit availability";
+      setPlanError(String(msg));
+    } finally {
+      setPlanBusy(false);
+    }
+  };
+
+  const pollRecommendation = async (localMatchId: string, planId: string) => {
+    if (!token) return;
+    for (let i = 0; i < 15; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        let plan = await getDatePlan(token, planId);
+        if (plan.status === "overlap_found") {
+          // Trigger recommend if background didn't finish
+          plan = await recommendRestaurants(token, planId);
+        }
+        setDatePlan(localMatchId, plan);
+        if (plan.status === "restaurant_ready") {
+          setPopupOpen(true);
+          return;
+        }
+        if (plan.status === "overlap_found" && (plan.candidate_count ?? 0) === 0) {
+          return;
+        }
+      } catch {
+        /* retry */
+      }
+    }
+  };
+
+  const handleAcceptSuggestion = async () => {
+    if (!activeChat || !token || !activePlan) return;
+    setAcceptingSuggestion(true);
+    try {
+      const updated = await acceptSuggestion(token, activePlan.id);
+      setDatePlan(activeChat.id, updated);
+      void pollRecommendation(activeChat.id, updated.id);
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setAcceptingSuggestion(false);
+    }
+  };
+
+  const handleAcceptPlan = async () => {
+    if (!activeChat || !token || !activePlan) return;
+    setAccepting(true);
+    try {
+      const updated = await acceptDatePlan(token, activePlan.id);
+      setDatePlan(activeChat.id, updated);
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  const handleChooseAnother = async () => {
+    if (!activeChat || !token || !activePlan) return;
+    setCycling(true);
+    try {
+      const updated = await nextRestaurant(
+        token,
+        activePlan.id,
+        activePlan.version,
+      );
+      setDatePlan(activeChat.id, updated);
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setCycling(false);
+    }
+  };
+
+  // Sync activeChat reference when matches update (backend ids attached)
+  useEffect(() => {
+    if (!activeChat) return;
+    const fresh = matches.find((m) => m.id === activeChat.id);
+    if (fresh && fresh !== activeChat) setActiveChat(fresh);
+  }, [matches, activeChat]);
+
+  // Live date-plan events on the match chat room
+  useEffect(() => {
+    if (!activeChat?.chatRoomId || !token) return;
+    const url = buildChatSocketUrl(activeChat.chatRoomId, token);
+    const ws = new WebSocket(url);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data as string);
+        const planEvents = new Set([
+          "availability_submitted",
+          "availability_updated",
+          "overlap_found",
+          "no_overlap",
+          "restaurant_ready",
+          "restaurant_cycled",
+          "date_confirmed",
+          "plan_accepted",
+          "plan_cancelled",
+        ]);
+        if (!planEvents.has(data.type)) return;
+        const payload = data.payload;
+        if (payload?.id && payload?.status) {
+          setDatePlan(activeChat.id, payload);
+          if (payload.status === "restaurant_ready") setPopupOpen(true);
+        } else if (payload?.plan_id && token) {
+          void getDatePlan(token, payload.plan_id).then((plan) => {
+            setDatePlan(activeChat.id, plan);
+            if (plan.status === "restaurant_ready") setPopupOpen(true);
+          });
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    return () => ws.close();
+  }, [activeChat?.id, activeChat?.chatRoomId, token, setDatePlan]);
+
+  const handlePass = () => {
+    if (!currentUser) return;
+    setTimeout(() => {
+      passUser(currentUser.id);
+      setSafetyTarget(null);
+    }, 300);
+  };
+
   const handleLike = () => {
     if (!currentUser) return;
     setTimeout(() => {
@@ -69,13 +322,10 @@ export default function FoodMatch() {
     }, 300);
   };
 
-  //Save User to Matches
-
   const handleSave = () => {
     if (currentUser) saveUser(currentUser.id);
   };
 
-  //Report User to Safety Team
   const handleReport = () => {
     const target = safetyTarget ?? currentUser;
     if (target) {
@@ -84,7 +334,6 @@ export default function FoodMatch() {
     }
   };
 
-  //Block User from Discover Pool
   const handleBlock = () => {
     const target = safetyTarget ?? currentUser;
     if (target) {
@@ -93,7 +342,6 @@ export default function FoodMatch() {
     }
   };
 
-  //If Profile is Not Complete, Show Preference Form
   if (!profile.profileComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10 py-12 px-4">
@@ -106,89 +354,83 @@ export default function FoodMatch() {
     );
   }
 
-  const score = currentUser
-    ? computeCompatibility(profile, currentUser).score
-    : 0;
+  const socketUrl =
+    activeChat?.chatRoomId && token
+      ? buildChatSocketUrl(activeChat.chatRoomId, token)
+      : null;
+
+  const displayPlan = activePlan ?? plannerPlan;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header of discover and matches tabs */}
-        <header className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-bs-neutral-900 via-bs-red to-bs-gold bg-clip-text text-transparent mb-2">
-            Find Your Perfect Food Buddy!
-          </h1>
-          <p className="text-bs-neutral-600 max-w-md mx-auto">
-            Find friends, dates, and food buddies through shared taste.
-          </p>
-        </header>
-
-        {/* Tabs for discover and matches */}
-        <div className="flex justify-center gap-2 mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10 pb-24">
+      <div className="max-w-lg mx-auto px-4 pt-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-bs-neutral-900">
+              Food Buddy
+            </h1>
+            <p className="text-sm text-bs-neutral-600">
+              Match · Chat · Plan a food date
+            </p>
+          </div>
           <button
+            type="button"
+            onClick={() =>
+              updateProfile({ profileVisible: !profile.profileVisible })
+            }
+            className="p-2 rounded-lg hover:bg-white/60"
+            title="Visibility"
+          >
+            <Settings2 className="w-5 h-5 text-bs-neutral-700" />
+          </button>
+        </div>
+
+        <FoodMatchSafetyBar
+          profileVisible={profile.profileVisible}
+          onToggleVisibility={() =>
+            updateProfile({ profileVisible: !profile.profileVisible })
+          }
+          onReport={handleReport}
+          onBlock={handleBlock}
+        />
+
+        <div className="flex gap-2 mb-6 mt-4">
+          <button
+            type="button"
             onClick={() => setActiveTab("discover")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               activeTab === "discover"
-                ? "bg-bs-gold text-bs-neutral-900 shadow-md"
-                : "bg-white/80 text-bs-neutral-600 hover:bg-white"
+                ? "bg-bs-gold text-bs-neutral-900"
+                : "bg-white/70 text-bs-neutral-600"
             }`}
           >
-            <Heart className="w-4 h-4" />
+            <Users className="w-4 h-4 inline mr-1.5" />
             Discover
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("matches")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all relative ${
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               activeTab === "matches"
-                ? "bg-bs-gold text-bs-neutral-900 shadow-md"
-                : "bg-white/80 text-bs-neutral-600 hover:bg-white"
+                ? "bg-bs-gold text-bs-neutral-900"
+                : "bg-white/70 text-bs-neutral-600"
             }`}
           >
-            <MessageCircle className="w-4 h-4" />
-            Matches
-            {matches.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-bs-red text-white text-xs flex items-center justify-center">
-                {matches.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => updateProfile({ profileComplete: false })}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm bg-white/80 text-bs-neutral-600 hover:bg-white transition-all"
-            title="Edit preferences"
-          >
-            <Settings2 className="w-4 h-4" />
+            <Heart className="w-4 h-4 inline mr-1.5" />
+            Matches ({matches.length})
           </button>
         </div>
 
-        <div className="mb-6">
-          <FoodMatchSafetyBar
-            profileVisible={profile.profileVisible}
-            onToggleVisibility={() =>
-              updateProfile({ profileVisible: !profile.profileVisible })
-            }
-            onReport={handleReport}
-            onBlock={handleBlock}
-          />
-        </div>
-
-        {/* Discover Tab and Action */}
         {activeTab === "discover" && (
-          <div className="py-4 overflow-x-hidden">
-            {!profile.profileVisible ? (
-              <div className="text-center py-16 bg-white/70 rounded-2xl border border-bs-neutral-200">
-                <Users className="w-12 h-12 mx-auto text-bs-neutral-400 mb-4" />
-                <p className="text-bs-neutral-600">
-                  Your profile is hidden. Toggle visibility to start
-                  discovering.
-                </p>
-              </div>
-            ) : currentUser ? (
+          <div>
+            {currentUser ? (
               <AnimatePresence mode="wait">
                 <MatchCard
                   key={currentUser.id}
                   user={currentUser}
-                  compatibilityScore={score}
+                  compatibilityScore={
+                    computeCompatibility(profile, currentUser).score
+                  }
                   isSaved={savedIds.includes(currentUser.id)}
                   onLike={handleLike}
                   onPass={handlePass}
@@ -201,7 +443,6 @@ export default function FoodMatch() {
           </div>
         )}
 
-        {/* Matches Tab and Action */}
         {activeTab === "matches" && (
           <div className="space-y-4">
             {matches.length === 0 ? (
@@ -210,7 +451,7 @@ export default function FoodMatch() {
                 <p className="text-bs-neutral-600">
                   No matches yet. Keep swiping to find your food soulmate!
                 </p>
-              </div> //if there are no matches, show this message
+              </div>
             ) : (
               matches.map((match) => (
                 <div
@@ -232,19 +473,24 @@ export default function FoodMatch() {
                     <p className="text-xs text-bs-neutral-500 truncate">
                       {match.sharedInterests.slice(0, 3).join(" · ")}
                     </p>
+                    {match.backendMatchId && (
+                      <p className="text-[10px] text-bs-green mt-0.5">
+                        Synced · room ready
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <button
+                      type="button"
                       onClick={() => setActiveChat(match)}
                       className="px-4 py-2 rounded-lg bg-bs-gold text-bs-neutral-900 text-sm font-medium hover:bg-[#FFE44D] transition-colors"
                     >
+                      <MessageCircle className="w-3.5 h-3.5 inline mr-1" />
                       Chat
                     </button>
                     <button
-                      onClick={() => {
-                        setPlannerMatch(match);
-                        setPlannerOpen(true);
-                      }}
+                      type="button"
+                      onClick={() => void openPlanner(match)}
                       className="px-4 py-2 rounded-lg border border-bs-red text-bs-red text-sm hover:bg-bs-red/10 transition-colors"
                     >
                       Plan Food Date
@@ -263,85 +509,114 @@ export default function FoodMatch() {
         onClose={() => setNewMatch(null)}
         onStartChat={() => {
           if (newMatch) {
-            //if there is a new match, set the active chat to the new match and set the active tab to matches
             setActiveChat(newMatch);
             setActiveTab("matches");
           }
-          setNewMatch(null); //reset the new match
+          setNewMatch(null);
         }}
       />
+
       {activeChat && (
-        <div className="fixed inset-0 md:left-[calc(100vw-32rem)] md:w-md z-[56] md:top-[45vh]">
-          <ChatBoxPanel
-            socketUrl={null}
-            dummyChat={{
-              chatGroupName: activeChat.user.name,
-              avatarUrl: activeChat.user.avatarUrl,
-              expiresAt: activeChat.chatExpiresAt,
-              messages: (chatMessages[activeChat.id] ?? []).map((v) => {
-                return {
+        <div className="fixed inset-0 md:left-[calc(100vw-32rem)] md:w-md z-[56] md:top-[45vh] flex flex-col">
+          <div className="flex-1 min-h-0">
+            <ChatBoxPanel
+              socketUrl={socketUrl}
+              dummyChat={{
+                chatGroupName: activeChat.user.name,
+                avatarUrl: activeChat.user.avatarUrl,
+                expiresAt: activeChat.chatExpiresAt,
+                messages: (chatMessages[activeChat.id] ?? []).map((v) => ({
                   id: v.id,
                   userId: v.senderId,
                   userName: activeChat.user.name,
-                  userType: "client",
-
+                  userType: "client" as const,
                   timestamp: new Date(v.timestamp),
                   message: v.text,
-                };
-              }),
-              participants: [
-                {
-                  id: activeChat.user.id,
-                  displayName: activeChat.user.name,
-                  avatarUrl: activeChat.user.avatarUrl,
-                  type: "client",
-                  dummyResponses: [
-                    "Based on your cravings, I'd suggest trying Spice Haven — great spicy noodles nearby!",
-                    "How about Italian? Pasta Paradise has excellent gluten-free options.",
-                    "For something quick, Taco Fiesta is only 8–12 minutes away.",
-                    "Sushi Supreme is perfect if you're in the mood for Japanese tonight.",
-                    "Tell me more about your dietary needs and I'll narrow it down!",
-                  ],
-                },
-              ],
-            }}
-            onSendMessage={(text) => {
-              addChatMessage(activeChat.id, text, "0");
-            }}
-            onReceiveMessage={(text, senderId) => {
-              addChatMessage(activeChat.id, text, senderId || "0");
-            }}
-            height={"55vh"}
-          >
-            <button
-              onClick={() => {
-                setPlannerMatch(activeChat);
-                setPlannerOpen(true);
-              }} //plan the food date
-              className="p-2 rounded-lg bg-bs-gold/20 hover:bg-bs-gold/40 transition-colors"
-              title="Plan Food Date"
+                })),
+                participants: [
+                  {
+                    id: activeChat.user.id,
+                    displayName: activeChat.user.name,
+                    avatarUrl: activeChat.user.avatarUrl,
+                    type: "client" as const,
+                    // Suppress scripted replies when live socket is connected
+                    dummyResponses: socketUrl
+                      ? []
+                      : [
+                          "Can't wait to try somewhere new!",
+                          "That time works for me — let's lock it in.",
+                          "I'm free this weekend for a food date!",
+                        ],
+                  },
+                ],
+              }}
+              onSendMessage={(text) => {
+                addChatMessage(activeChat.id, text, user?.id ?? "0");
+              }}
+              onReceiveMessage={(text, senderId) => {
+                addChatMessage(
+                  activeChat.id,
+                  text,
+                  senderId || activeChat.user.id,
+                );
+              }}
+              height={"50vh"}
             >
-              <Calendar className="w-5 h-5 text-bs-neutral-800" />
-            </button>
-            <button
-              onClick={() => {
-                setActiveChat(null);
-              }} //close the chat
-              className="p-2 rounded-lg hover:bg-bs-neutral-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </ChatBoxPanel>
+              <button
+                type="button"
+                onClick={() => void openPlanner(activeChat)}
+                className="p-2 rounded-lg bg-bs-gold/20 hover:bg-bs-gold/40 transition-colors"
+                title="Plan Food Date"
+              >
+                <Calendar className="w-5 h-5 text-bs-neutral-800" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveChat(null)}
+                className="p-2 rounded-lg hover:bg-bs-neutral-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </ChatBoxPanel>
+          </div>
+          {activePlan && (
+            <div className="bg-white/95 border-t border-bs-neutral-200 max-h-[40vh] overflow-y-auto">
+              <DatePlanStatusPanel
+                plan={activePlan}
+                onEditAvailability={() => {
+                  setPlannerMatch(activeChat);
+                  setPlannerOpen(true);
+                }}
+                onAcceptSuggestion={() => void handleAcceptSuggestion()}
+                onOpenRecommendation={() => setPopupOpen(true)}
+                acceptingSuggestion={acceptingSuggestion}
+              />
+            </div>
+          )}
         </div>
       )}
 
-      <FoodDatePlanner
+      <AvailabilityModal
         match={plannerMatch}
         isOpen={plannerOpen}
+        isSubmitting={planBusy}
+        error={planError}
         onClose={() => {
           setPlannerOpen(false);
-          setPlannerMatch(null);
+          setPlanError(null);
         }}
+        onSubmit={(p) => void handleAvailabilitySubmit(p)}
+      />
+
+      <RestaurantRecommendationPopup
+        plan={displayPlan}
+        isOpen={popupOpen && Boolean(displayPlan?.recommendation)}
+        onClose={() => setPopupOpen(false)}
+        onAccept={() => void handleAcceptPlan()}
+        onChooseAnother={() => void handleChooseAnother()}
+        accepting={accepting}
+        cycling={cycling}
+        currentUserId={user?.id}
       />
     </div>
   );
@@ -358,6 +633,7 @@ function EmptyDiscoverState({ onReset }: { onReset: () => void }) {
         Check back later or update your preferences for new matches.
       </p>
       <button
+        type="button"
         onClick={onReset}
         className="text-sm text-bs-gold font-medium hover:underline"
       >
