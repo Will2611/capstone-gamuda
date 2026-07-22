@@ -198,7 +198,7 @@ export default function MapInterface() {
     });
   }, [displayedRestaurants, filters]);
 
-  const restaurants = displayedRestaurants;
+  const restaurants = filteredRestaurants;
 
   const suggestions = useMemo<SuggestedRestaurant[]>(
     () =>
@@ -356,20 +356,20 @@ export default function MapInterface() {
                 </div>
 
                 {!selectedRestaurant && (
-  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
-    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
-      Tap a pin to view restaurant details
-    </div>
+                  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
+                    <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
+                      Tap a pin to view restaurant details
+                    </div>
 
-    {geoError && (
-      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
-        {geoError}
-      </div>
-    )}
-  </div>
-)}
-                
-              
+                    {geoError && (
+                      <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
+                        {geoError}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+
 
                 <button
                   type="button"
