@@ -121,9 +121,20 @@ def retrieve_top_restaurants_for_pair(
         logger.warning("Missing location for one or both clients")
         return []
 
-    # Midpoint search center
+    # Midpoint search center (shared meetup area → geohash neighborhood)
     mid_lat = (lat_a + lat_b) / 2
     mid_lng = (lng_a + lng_b) / 2
+    try:
+        import pygeohash as gh
+
+        meetup_gh = gh.encode(mid_lat, mid_lng)[:5]
+        logger.info(
+            "Date-plan restaurant pull around meetup geohash=%s radius=%.1fkm",
+            meetup_gh,
+            radius_km,
+        )
+    except Exception:
+        pass
 
     cuisine_a = list(client_a.cuisine or [])
     cuisine_b = list(client_b.cuisine or [])

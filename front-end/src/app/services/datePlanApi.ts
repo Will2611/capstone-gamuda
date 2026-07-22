@@ -55,6 +55,100 @@ export async function updateFoodMatchLocation(
   return data;
 }
 
+export interface DiscoverMatchUserDto {
+  id: string;
+  name: string;
+  age: number;
+  avatarUrl?: string | null;
+  bio: string;
+  favoriteFoods: string[];
+  favoriteRestaurants: string[];
+  personalityTags: string[];
+  lookingFor: string;
+  distanceKm?: number | null;
+}
+
+export interface DiscoverResponse {
+  users: DiscoverMatchUserDto[];
+  radius_km: number;
+  geohash_prefix?: string | null;
+  message?: string | null;
+}
+
+export async function discoverNearby(
+  token: string,
+  radiusKm?: number,
+): Promise<DiscoverResponse> {
+  const { data } = await axios.get<DiscoverResponse>(
+    `${API_BASE}/food-match/discover`,
+    {
+      headers: authHeaders(token),
+      params: radiusKm != null ? { radius_km: radiusKm } : undefined,
+    },
+  );
+  return data;
+}
+
+export interface LikeResponse {
+  matched: boolean;
+  match_id?: string | null;
+  chat_room_id?: string | null;
+  participant_id?: string | null;
+  participant?: DiscoverMatchUserDto | null;
+  message: string;
+}
+
+export async function likeNearbyUser(
+  token: string,
+  userId: string,
+): Promise<LikeResponse> {
+  const { data } = await axios.post<LikeResponse>(
+    `${API_BASE}/food-match/like`,
+    { user_id: userId },
+    { headers: authHeaders(token) },
+  );
+  return data;
+}
+
+export async function passNearbyUser(token: string, userId: string) {
+  const { data } = await axios.post(
+    `${API_BASE}/food-match/pass`,
+    { user_id: userId },
+    { headers: authHeaders(token) },
+  );
+  return data;
+}
+
+export interface FoodMatchListItemDto {
+  match_id: string;
+  chat_room_id?: string | null;
+  participant: DiscoverMatchUserDto;
+  matched_at?: string | null;
+  is_connected: boolean;
+}
+
+export async function listFoodMatches(token: string) {
+  const { data } = await axios.get<{ matches: FoodMatchListItemDto[] }>(
+    `${API_BASE}/food-match/matches`,
+    { headers: authHeaders(token) },
+  );
+  return data.matches;
+}
+
+export function toMatchUser(dto: DiscoverMatchUserDto): MatchUser {
+  return {
+    id: String(dto.id),
+    name: dto.name,
+    age: dto.age || 0,
+    avatarUrl: dto.avatarUrl || "",
+    bio: dto.bio || "",
+    favoriteFoods: dto.favoriteFoods || [],
+    favoriteRestaurants: dto.favoriteRestaurants || [],
+    personalityTags: dto.personalityTags || [],
+    lookingFor: (dto.lookingFor as MatchUser["lookingFor"]) || "food-buddy",
+  };
+}
+
 export async function createDatePlan(
   token: string,
   matchId: string,

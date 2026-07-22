@@ -154,3 +154,52 @@ class EnsureMatchResponse(BaseModel):
 class LocationUpdateRequest(BaseModel):
     latitude: float
     longitude: float
+
+
+class DiscoverMatchUser(BaseModel):
+    id: UUID
+    name: str
+    age: int = 0
+    avatarUrl: Optional[str] = None
+    bio: str = ""
+    favoriteFoods: list[str] = Field(default_factory=list)
+    favoriteRestaurants: list[str] = Field(default_factory=list)
+    personalityTags: list[str] = Field(default_factory=list)
+    lookingFor: str = "food-buddy"
+    distanceKm: Optional[float] = None
+
+
+class DiscoverResponse(BaseModel):
+    users: list[DiscoverMatchUser]
+    radius_km: float
+    geohash_prefix: Optional[str] = None
+    message: Optional[str] = None
+
+
+class LikeRequest(BaseModel):
+    user_id: UUID
+
+
+class PassRequest(BaseModel):
+    user_id: UUID
+
+
+class LikeResponse(BaseModel):
+    matched: bool
+    match_id: Optional[UUID] = None
+    chat_room_id: Optional[UUID] = None
+    participant_id: Optional[UUID] = None
+    participant: Optional[DiscoverMatchUser] = None
+    message: str = ""
+
+
+class FoodMatchListItem(BaseModel):
+    match_id: UUID
+    chat_room_id: Optional[UUID] = None
+    participant: DiscoverMatchUser
+    matched_at: Optional[str] = None
+    is_connected: bool = True
+
+
+class FoodMatchListResponse(BaseModel):
+    matches: list[FoodMatchListItem]

@@ -26,14 +26,30 @@ import {
   acceptSuggestion,
   buildChatSocketUrl,
   createDatePlan,
+  discoverNearby,
   ensureMatch,
   getDatePlan,
+  likeNearbyUser,
+  listFoodMatches,
   nextRestaurant,
   recommendRestaurants,
   submitAvailability,
+  toMatchUser,
+  updateFoodMatchLocation,
 } from "../services/datePlanApi";
 
 type Tab = "discover" | "matches";
+
+async function readGeolocation(): Promise<GeolocationPosition | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return null;
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 60_000 },
+    );
+  });
+}
 
 export default function FoodMatch() {
   const {
@@ -54,6 +70,12 @@ export default function FoodMatch() {
     attachBackendMatch,
     setDatePlan,
     datePlans,
+    setNearbyUsers,
+    setUseNearbyDiscover,
+    upsertMatchFromBackend,
+    syncMatchesFromBackend,
+    discoverMessage,
+    useNearbyDiscover,
   } = useFoodMatch();
 
   const { profile: userProfile } = useUser();
@@ -71,9 +93,63 @@ export default function FoodMatch() {
   const [accepting, setAccepting] = useState(false);
   const [cycling, setCycling] = useState(false);
   const [acceptingSuggestion, setAcceptingSuggestion] = useState(false);
+  const [discoverBusy, setDiscoverBusy] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
 
   const discoverUsers = getDiscoverUsers();
   const currentUser = discoverUsers[0] ?? null;
+
+  const refreshNearby = useCallback(async () => {
+    if (!token || !isAuthenticated) {
+      setUseNearbyDiscover(false);
+      return;
+    }
+    setDiscoverBusy(true);
+    try {
+      const pos = await readGeolocation();
+      if (pos) {
+        await updateFoodMatchLocation(
+          token,
+          pos.coords.latitude,
+          pos.coords.longitude,
+        );
+      }
+      const discovered = await discoverNearby(token);
+      setNearbyUsers(
+        discovered.users.map(toMatchUser),
+        discovered.message ?? null,
+      );
+
+      const remoteMatches = await listFoodMatches(token);
+      syncMatchesFromBackend(
+        remoteMatches.map((m) => ({
+          user: toMatchUser(m.participant),
+          backendMatchId: m.match_id,
+          chatRoomId: m.chat_room_id ?? null,
+          matchedAt: m.matched_at,
+        })),
+      );
+    } catch (err) {
+      console.error("Nearby discover failed", err);
+      setNearbyUsers(
+        [],
+        "Could not load nearby buddies. Check that you are logged in and location is enabled.",
+      );
+    } finally {
+      setDiscoverBusy(false);
+    }
+  }, [
+    token,
+    isAuthenticated,
+    setNearbyUsers,
+    setUseNearbyDiscover,
+    syncMatchesFromBackend,
+  ]);
+
+  useEffect(() => {
+    if (!profile.profileComplete) return;
+    void refreshNearby();
+  }, [profile.profileComplete, refreshNearby]);
 
   const activePlan = activeChat ? datePlans[activeChat.id] : null;
   const plannerPlan = plannerMatch ? datePlans[plannerMatch.id] : null;
@@ -90,20 +166,7 @@ export default function FoodMatch() {
           participantId: match.backendParticipantId || match.user.id,
         };
       }
-      const lat =
-        typeof navigator !== "undefined"
-          ? await new Promise<GeolocationPosition | null>((resolve) => {
-              if (!navigator.geolocation) {
-                resolve(null);
-                return;
-              }
-              navigator.geolocation.getCurrentPosition(
-                (pos) => resolve(pos),
-                () => resolve(null),
-                { timeout: 5000 },
-              );
-            })
-          : null;
+      const lat = await readGeolocation();
 
       const ensured = await ensureMatch(
         token,
@@ -306,7 +369,7 @@ export default function FoodMatch() {
   }, [activeChat?.id, activeChat?.chatRoomId, token, setDatePlan]);
 
   const handlePass = () => {
-    if (!currentUser) return;
+    if (!currentUser || likeBusy) return;
     setTimeout(() => {
       passUser(currentUser.id);
       setSafetyTarget(null);
@@ -314,12 +377,36 @@ export default function FoodMatch() {
   };
 
   const handleLike = () => {
-    if (!currentUser) return;
-    setTimeout(() => {
-      const match = likeUser(currentUser);
-      if (match) setNewMatch(match);
-      setSafetyTarget(null);
-    }, 300);
+    if (!currentUser || likeBusy) return;
+    void (async () => {
+      setLikeBusy(true);
+      try {
+        if (isAuthenticated && token && useNearbyDiscover) {
+          const result = await likeNearbyUser(token, currentUser.id);
+          passUser(currentUser.id);
+          if (result.matched && result.match_id && result.chat_room_id) {
+            const partner = result.participant
+              ? toMatchUser(result.participant)
+              : currentUser;
+            const match = upsertMatchFromBackend({
+              user: partner,
+              backendMatchId: result.match_id,
+              chatRoomId: result.chat_room_id,
+            });
+            setNewMatch(match);
+          }
+        } else {
+          const match = likeUser(currentUser);
+          if (match) setNewMatch(match);
+        }
+      } catch (err) {
+        console.error(err);
+        passUser(currentUser.id);
+      } finally {
+        setLikeBusy(false);
+        setSafetyTarget(null);
+      }
+    })();
   };
 
   const handleSave = () => {
@@ -370,7 +457,9 @@ export default function FoodMatch() {
               Food Buddy
             </h1>
             <p className="text-sm text-bs-neutral-600">
-              Match · Chat · Plan a food date
+              {isAuthenticated
+                ? "Nearby · Match · Plan a food date"
+                : "Match · Chat · Plan a food date (log in for nearby)"}
             </p>
           </div>
           <button
@@ -423,6 +512,16 @@ export default function FoodMatch() {
 
         {activeTab === "discover" && (
           <div>
+            {discoverBusy && (
+              <p className="text-sm text-bs-neutral-600 mb-3 text-center">
+                Finding food buddies near you…
+              </p>
+            )}
+            {!discoverBusy && discoverMessage && !currentUser && (
+              <p className="text-sm text-bs-neutral-600 mb-3 text-center">
+                {discoverMessage}
+              </p>
+            )}
             {currentUser ? (
               <AnimatePresence mode="wait">
                 <MatchCard
@@ -438,7 +537,14 @@ export default function FoodMatch() {
                 />
               </AnimatePresence>
             ) : (
-              <EmptyDiscoverState onReset={resetDiscoverPool} />
+              <EmptyDiscoverState
+                onReset={() => {
+                  if (isAuthenticated) void refreshNearby();
+                  else resetDiscoverPool();
+                }}
+                isNearby={useNearbyDiscover}
+                isLoggedIn={isAuthenticated}
+              />
             )}
           </div>
         )}
@@ -622,22 +728,34 @@ export default function FoodMatch() {
   );
 }
 
-function EmptyDiscoverState({ onReset }: { onReset: () => void }) {
+function EmptyDiscoverState({
+  onReset,
+  isNearby,
+  isLoggedIn,
+}: {
+  onReset: () => void;
+  isNearby: boolean;
+  isLoggedIn: boolean;
+}) {
   return (
     <div className="text-center py-16 bg-white/70 rounded-2xl border border-bs-neutral-200">
       <Users className="w-12 h-12 mx-auto text-bs-neutral-400 mb-4" />
       <h3 className="font-semibold text-bs-neutral-900 mb-2">
-        You&apos;ve seen everyone!
+        {isNearby ? "No one nearby right now" : "You've seen everyone!"}
       </h3>
-      <p className="text-bs-neutral-600 mb-4 text-sm">
-        Check back later or update your preferences for new matches.
+      <p className="text-bs-neutral-600 mb-4 text-sm px-6">
+        {isNearby
+          ? "Make sure location is on and another client nearby has Food Buddy visibility enabled."
+          : isLoggedIn
+            ? "Check back later or update your preferences for new matches."
+            : "Log in to discover real food buddies near you via geohash."}
       </p>
       <button
         type="button"
         onClick={onReset}
         className="text-sm text-bs-gold font-medium hover:underline"
       >
-        Refresh discover pool (demo)
+        {isNearby ? "Refresh nearby" : "Refresh discover pool (demo)"}
       </button>
     </div>
   );
