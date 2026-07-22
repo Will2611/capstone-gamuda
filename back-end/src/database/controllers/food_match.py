@@ -14,7 +14,12 @@ from sqlalchemy import func
 from src.database.connection import db_dependency
 from src.database.controllers.utils import CurrentUser
 from src.database.models.chat import ChatRoomModel
-from src.database.models.personal_connection import FoodLikeModel, FoodMatchModel
+from src.database.models.date_plan import DatePlanAvailabilityModel, DatePlanModel
+from src.database.models.personal_connection import (
+    BaseConnectionModel,
+    FoodLikeModel,
+    FoodMatchModel,
+)
 from src.database.models.user import ClientModel, UserModel
 from src.database.schemas.date_plan import (
     DiscoverMatchUser,
@@ -405,6 +410,62 @@ async def list_matches(
             )
         )
     return FoodMatchListResponse(matches=items)
+
+
+@router.delete("/matches")
+async def clear_my_matches(
+    db: db_dependency,
+    current_user: CurrentUser,
+):
+    """Clear likes, matches, and date plans for the current user (dev/retest helper)."""
+    me = _require_client(db, current_user)
+
+    my_matches = (
+        db.query(FoodMatchModel)
+        .filter(
+            (FoodMatchModel.creator_id == me.id)
+            | (FoodMatchModel.participant_id == me.id)
+        )
+        .all()
+    )
+    match_ids = [m.id for m in my_matches]
+
+    if match_ids:
+        plan_ids = [
+            p.id
+            for p in db.query(DatePlanModel)
+            .filter(DatePlanModel.match_id.in_(match_ids))
+            .all()
+        ]
+        if plan_ids:
+            db.query(DatePlanAvailabilityModel).filter(
+                DatePlanAvailabilityModel.date_plan_id.in_(plan_ids)
+            ).delete(synchronize_session=False)
+            db.query(DatePlanModel).filter(DatePlanModel.id.in_(plan_ids)).delete(
+                synchronize_session=False
+            )
+
+        db.query(FoodMatchModel).filter(FoodMatchModel.id.in_(match_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(BaseConnectionModel).filter(
+            BaseConnectionModel.id.in_(match_ids)
+        ).delete(synchronize_session=False)
+
+    likes_deleted = (
+        db.query(FoodLikeModel)
+        .filter(
+            (FoodLikeModel.liker_id == me.id) | (FoodLikeModel.liked_id == me.id)
+        )
+        .delete(synchronize_session=False)
+    )
+
+    db.commit()
+    return {
+        "status": "ok",
+        "cleared_matches": len(match_ids),
+        "cleared_likes": likes_deleted,
+    }
 
 
 @router.post("/ensure-match", response_model=EnsureMatchResponse)

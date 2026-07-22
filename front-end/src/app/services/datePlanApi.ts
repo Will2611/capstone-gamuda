@@ -135,6 +135,15 @@ export async function listFoodMatches(token: string) {
   return data.matches;
 }
 
+export async function clearFoodMatches(token: string) {
+  const { data } = await axios.delete<{
+    status: string;
+    cleared_matches: number;
+    cleared_likes: number;
+  }>(`${API_BASE}/food-match/matches`, { headers: authHeaders(token) });
+  return data;
+}
+
 export function toMatchUser(dto: DiscoverMatchUserDto): MatchUser {
   return {
     id: String(dto.id),

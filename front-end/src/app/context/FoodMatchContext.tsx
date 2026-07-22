@@ -49,6 +49,7 @@ interface FoodMatchContextValue extends FoodMatchState {
   getDiscoverUsers: () => MatchUser[];
   addChatMessage: (matchId: string, text: string, senderId: string) => void;
   resetDiscoverPool: () => void;
+  clearAllMatches: () => void;
   attachBackendMatch: (
     localMatchId: string,
     backend: {
@@ -329,6 +330,17 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, passedIds: [] }));
   }, []);
 
+  const clearAllMatches = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      matches: [],
+      passedIds: [],
+      chatMessages: {},
+      datePlans: {},
+      savedIds: [],
+    }));
+  }, []);
+
   const setNearbyUsers = useCallback(
     (users: MatchUser[], message?: string | null) => {
       setState((prev) => ({
@@ -467,6 +479,7 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       getDiscoverUsers,
       addChatMessage,
       resetDiscoverPool,
+      clearAllMatches,
       attachBackendMatch,
       setDatePlan,
       getDatePlan,
@@ -487,6 +500,7 @@ export function FoodMatchProvider({ children }: { children: ReactNode }) {
       getDiscoverUsers,
       addChatMessage,
       resetDiscoverPool,
+      clearAllMatches,
       attachBackendMatch,
       setDatePlan,
       getDatePlan,

@@ -25,6 +25,7 @@ import {
   acceptDatePlan,
   acceptSuggestion,
   buildChatSocketUrl,
+  clearFoodMatches,
   createDatePlan,
   discoverNearby,
   ensureMatch,
@@ -67,6 +68,7 @@ export default function FoodMatch() {
     chatMessages,
     addChatMessage,
     resetDiscoverPool,
+    clearAllMatches,
     attachBackendMatch,
     setDatePlan,
     datePlans,
@@ -95,6 +97,7 @@ export default function FoodMatch() {
   const [acceptingSuggestion, setAcceptingSuggestion] = useState(false);
   const [discoverBusy, setDiscoverBusy] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
 
   const discoverUsers = getDiscoverUsers();
   const currentUser = discoverUsers[0] ?? null;
@@ -150,6 +153,35 @@ export default function FoodMatch() {
     if (!profile.profileComplete) return;
     void refreshNearby();
   }, [profile.profileComplete, refreshNearby]);
+
+  const handleClearMatches = useCallback(async () => {
+    if (
+      !window.confirm(
+        "Clear all matches, likes, and date plans? You can swipe the same people again.",
+      )
+    ) {
+      return;
+    }
+    setClearBusy(true);
+    try {
+      if (token) {
+        await clearFoodMatches(token);
+      }
+      clearAllMatches();
+      setActiveChat(null);
+      setPlannerMatch(null);
+      setPlannerOpen(false);
+      setNewMatch(null);
+      if (isAuthenticated && token) {
+        await refreshNearby();
+      }
+    } catch (err) {
+      console.error(err);
+      window.alert("Failed to clear matches. Check the console for details.");
+    } finally {
+      setClearBusy(false);
+    }
+  }, [token, clearAllMatches, isAuthenticated, refreshNearby]);
 
   const activePlan = activeChat ? datePlans[activeChat.id] : null;
   const plannerPlan = plannerMatch ? datePlans[plannerMatch.id] : null;
@@ -551,6 +583,18 @@ export default function FoodMatch() {
 
         {activeTab === "matches" && (
           <div className="space-y-4">
+            {(matches.length > 0 || isAuthenticated) && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handleClearMatches()}
+                  disabled={clearBusy}
+                  className="text-sm text-bs-neutral-500 hover:text-bs-neutral-800 underline disabled:opacity-50"
+                >
+                  {clearBusy ? "Clearing…" : "Clear my matches"}
+                </button>
+              </div>
+            )}
             {matches.length === 0 ? (
               <div className="text-center py-16 bg-white/70 rounded-2xl border border-bs-neutral-200">
                 <Heart className="w-12 h-12 mx-auto text-bs-neutral-300 mb-4" />
