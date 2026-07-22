@@ -11,6 +11,7 @@ interface SocialMediaCardProps {
   ctaLabel: string;
   url: string;
   color: string;
+  hideOpenButton?: boolean;
 }
 
 export function SocialMediaCard({
@@ -20,6 +21,7 @@ export function SocialMediaCard({
   ctaLabel,
   url,
   color,
+  hideOpenButton = false,
 }: SocialMediaCardProps) {
   const handleOpen = () => {
     window.open(url, "_blank", "noopener,noreferrer");
@@ -45,14 +47,16 @@ export function SocialMediaCard({
         ))}
       </div>
 
-      <button
-        onClick={handleOpen}
-        className="w-full py-2 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors flex items-center justify-center gap-2 font-medium"
-        aria-label={`Open ${platform}`}
-      >
-        <ExternalLink size={16} />
-        {ctaLabel}
-      </button>
+      {!hideOpenButton && (
+        <button
+          onClick={handleOpen}
+          className="w-full py-2 bg-bs-gold text-bs-neutral-900 rounded-lg hover:bg-[#FFE44D] transition-colors flex items-center justify-center gap-2 font-medium"
+          aria-label={`Open ${platform}`}
+        >
+          <ExternalLink size={16} />
+          {ctaLabel}
+        </button>
+      )}
     </div>
   );
 }

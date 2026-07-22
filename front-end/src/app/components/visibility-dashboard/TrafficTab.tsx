@@ -262,7 +262,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
+      {/* REMOVE <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
         <h3 className="font-bold text-bs-neutral-900 mb-4">Traffic Insight</h3>
         <div className="space-y-3">
           {insights.length === 0 ? (
@@ -303,7 +303,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
             })
           )}
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }
