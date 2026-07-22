@@ -1,9 +1,15 @@
-"""VADER-based sentiment analysis — no LLM calls."""
+"""Hybrid sentiment analysis — VADER first, LLM on rating/text conflicts."""
 
 from __future__ import annotations
 
+import logging
+
+from src.llm.chains.sentiment_chain import classify_conflict_with_llm
 from src.llm.conflict_detector import sentiment_from_rating
+from src.llm.service import get_llm
 from src.llm.vader_sentiment import analyze_review_text
+
+logger = logging.getLogger(__name__)
 
 
 async def analyze_review(
@@ -11,6 +17,7 @@ async def analyze_review(
     rating: int,
     *,
     stats: dict[str, int] | None = None,
+    use_llm: bool = True,
 ) -> dict:
     """Classify one review. Returns dict ready for sentiment_data.reviews JSON."""
     if stats is None:
@@ -22,19 +29,45 @@ async def analyze_review(
         stats["vader"] = stats.get("vader", 0) + 1
         if result["conflict"]:
             stats["conflicts"] = stats.get("conflicts", 0) + 1
+            if not use_llm:
+                return result
+            try:
+                llm = get_llm()
+                rating_sentiment = sentiment_from_rating(rating)
+                text_sentiment = result["sentiment"]
+                llm_result = await classify_conflict_with_llm(
+                    llm,
+                    text,
+                    rating,
+                    rating_sentiment,
+                    text_sentiment,
+                )
+                result["sentiment"] = llm_result.sentiment
+                result["theme"] = llm_result.theme
+                result["source"] = "llm"
+                stats["llm"] = stats.get("llm", 0) + 1
+            except Exception as exc:
+                logger.warning("LLM conflict resolution failed, keeping VADER result: %s", exc)
+                stats["llm_errors"] = stats.get("llm_errors", 0) + 1
     else:
         stats["rating_only"] = stats.get("rating_only", 0) + 1
 
     return result
 
 
-async def analyze_reviews_batch(reviews: list[dict]) -> tuple[list[dict], dict]:
+async def analyze_reviews_batch(
+    reviews: list[dict],
+    *,
+    use_llm: bool = True,
+) -> tuple[list[dict], dict]:
     """Analyze reviews. Input: {text, rating} or partial."""
     stats: dict[str, int] = {
         "total": len(reviews),
         "vader": 0,
         "rating_only": 0,
         "conflicts": 0,
+        "llm": 0,
+        "llm_errors": 0,
     }
     analyzed: list[dict] = []
 
@@ -53,7 +86,7 @@ async def analyze_reviews_batch(reviews: list[dict]) -> tuple[list[dict], dict]:
             })
             stats["rating_only"] = stats.get("rating_only", 0) + 1
             continue
-        result = await analyze_review(text, rating, stats=stats)
+        result = await analyze_review(text, rating, stats=stats, use_llm=use_llm)
         analyzed.append(result)
 
     return analyzed, stats

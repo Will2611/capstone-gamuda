@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Query, HTTPException
 from datetime import date, datetime, timedelta, timezone
-import random
 from sqlalchemy import func, desc
 from src.database.connection import db_dependency
 from src.database.models.visibility import (
@@ -35,7 +34,6 @@ from src.database.schemas.visibility import (
     RestaurantListItemResponse,
     ReviewsByThemeResponse,
     ReviewItemResponse,
-    HourlyTrafficItem,
     FootTrafficResponse,
     ActionSuggestion,
     ActionSuggestionsResponse,
@@ -48,7 +46,8 @@ from src.database.calculations import (
     compute_average_rating,
 )
 from src.database.traffic_analytics import (
-    build_next_week_schedule,
+    CHART_DAY_COUNT,
+    build_chart_days,
     build_traffic_insights,
 )
 import  uuid_utils.compat as uuid
@@ -390,122 +389,64 @@ async def get_reviews_by_theme(
 async def get_foot_traffic(
     db: db_dependency,
     restaurantId: uuid.UUID = Query(...),
-    live: bool = Query(
-        False,
-        description="When true, apply small demo jitter so polling looks live",
-    ),
 ):
-    """Foot traffic from foot_traffic_hourly only (bar chart + weekday/weekend stats)."""
-    # Optional: nudge the latest day's current hour in DB so successive live polls drift
-    if live:
-        latest_date = (
-            db.query(func.max(FootTrafficHourlyModel.traffic_date))
-            .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
-            .scalar()
+    """Foot traffic from foot_traffic_hourly — latest 7 dates, real counts per day."""
+    chart_date_rows = (
+        db.query(FootTrafficHourlyModel.traffic_date)
+        .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
+        .distinct()
+        .order_by(FootTrafficHourlyModel.traffic_date.desc())
+        .limit(CHART_DAY_COUNT)
+        .all()
+    )
+    chart_dates = sorted(row[0] for row in chart_date_rows)
+
+    if not chart_dates:
+        return FootTrafficResponse(
+            restaurantId=restaurantId,
+            chartDays=[],
+            weekdayTotal=0,
+            weekendTotal=0,
+            insights=build_traffic_insights([], []),
+            updatedAt=datetime.now(timezone.utc).isoformat(),
         )
-        if latest_date is not None:
-            current_hour = datetime.now().hour
-            row = (
-                db.query(FootTrafficHourlyModel)
-                .filter(
-                    FootTrafficHourlyModel.restaurant_id == restaurantId,
-                    FootTrafficHourlyModel.traffic_date == latest_date,
-                    FootTrafficHourlyModel.hour == current_hour,
-                )
-                .first()
-            )
-            if row is not None:
-                delta = random.randint(-3, 5)
-                row.visitors = max(0, int(row.visitors) + delta)
-                db.commit()
 
     hourly_rows = (
         db.query(
-            FootTrafficHourlyModel.hour,
-            FootTrafficHourlyModel.day_type,
-            func.avg(FootTrafficHourlyModel.visitors).label("avg_visitors"),
-        )
-        .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
-        .group_by(FootTrafficHourlyModel.hour, FootTrafficHourlyModel.day_type)
-        .order_by(FootTrafficHourlyModel.hour)
-        .all()
-    )
-
-    hourly_map: dict[int, dict[str, float]] = {}
-    for hr, dt, avg in hourly_rows:
-        hourly_map.setdefault(hr, {})[dt] = round(float(avg), 1)
-
-    hourly = [
-        HourlyTrafficItem(
-            hour=hr,
-            weekdayAvg=hourly_map[hr].get("Weekday", 0),
-            weekendAvg=hourly_map[hr].get("Weekend", 0),
-        )
-        for hr in sorted(hourly_map.keys())
-    ]
-
-    if live:
-        hourly = [
-            HourlyTrafficItem(
-                hour=item.hour,
-                weekdayAvg=round(
-                    max(0.0, item.weekdayAvg * random.uniform(0.90, 1.12)), 1
-                ),
-                weekendAvg=round(
-                    max(0.0, item.weekendAvg * random.uniform(0.90, 1.12)), 1
-                ),
-            )
-            for item in hourly
-        ]
-
-    # Day totals from hourly rows → weekday/weekend averages (no daily table)
-    day_totals = (
-        db.query(
-            FootTrafficHourlyModel.day_type,
             FootTrafficHourlyModel.traffic_date,
-            func.sum(FootTrafficHourlyModel.visitors).label("day_total"),
+            FootTrafficHourlyModel.day_name,
+            FootTrafficHourlyModel.day_type,
+            FootTrafficHourlyModel.hour,
+            FootTrafficHourlyModel.visitors,
         )
-        .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
-        .group_by(FootTrafficHourlyModel.day_type, FootTrafficHourlyModel.traffic_date)
+        .filter(
+            FootTrafficHourlyModel.restaurant_id == restaurantId,
+            FootTrafficHourlyModel.traffic_date.in_(chart_dates),
+        )
+        .order_by(
+            FootTrafficHourlyModel.traffic_date,
+            FootTrafficHourlyModel.hour,
+        )
         .all()
     )
 
-    weekday_day_totals: list[int] = []
-    weekend_day_totals: list[int] = []
-    for dt, _date, day_total in day_totals:
-        total = int(day_total or 0)
-        if dt == "Weekday":
-            weekday_day_totals.append(total)
-        elif dt == "Weekend":
-            weekend_day_totals.append(total)
+    raw_rows = [
+        (r.traffic_date, r.day_name, r.day_type, r.hour, r.visitors)
+        for r in hourly_rows
+    ]
+    chart_days = build_chart_days(raw_rows)
+    insights = build_traffic_insights(chart_days, raw_rows)
 
-    weekday_total = sum(weekday_day_totals)
-    weekend_total = sum(weekend_day_totals)
-    weekday_avg = (
-        round(weekday_total / len(weekday_day_totals), 1) if weekday_day_totals else 0.0
-    )
-    weekend_avg = (
-        round(weekend_total / len(weekend_day_totals), 1) if weekend_day_totals else 0.0
-    )
-
-    if live:
-        weekday_avg = round(max(0.0, weekday_avg * random.uniform(0.94, 1.08)), 1)
-        weekend_avg = round(max(0.0, weekend_avg * random.uniform(0.94, 1.08)), 1)
-
-    insights = build_traffic_insights(hourly, weekday_avg, weekend_avg)
-    next_week_schedule = build_next_week_schedule(hourly)
+    weekday_total = sum(d.total for d in chart_days if d.dayType == "Weekday")
+    weekend_total = sum(d.total for d in chart_days if d.dayType == "Weekend")
 
     return FootTrafficResponse(
         restaurantId=restaurantId,
-        hourly=hourly,
-        weekdayAvg=weekday_avg,
-        weekendAvg=weekend_avg,
+        chartDays=chart_days,
         weekdayTotal=weekday_total,
         weekendTotal=weekend_total,
         insights=insights,
-        nextWeekSchedule=next_week_schedule,
         updatedAt=datetime.now(timezone.utc).isoformat(),
-        live=live,
     )
 
 

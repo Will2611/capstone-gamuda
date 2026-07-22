@@ -63,7 +63,7 @@ export default function FilterBar({
   };
 
   return (
-    <div className="w-full bg-white border-b border-bs-neutral-200 px-4 py-2 shadow-sm relative z-30">
+    <div className="w-full bg-white border-b border-bs-neutral-200 px-4 py-2 shadow-sm relative z-10">
       <div className="max-w-7xl mx-auto flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-bs-neutral-700 font-medium shrink-0">
           <SlidersHorizontal size={16} className="text-bs-gold" />

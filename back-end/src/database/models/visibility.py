@@ -8,6 +8,7 @@ from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
 import uuid_utils.compat as uuid
 from src.database.schemas.reviews import SENTIMENT_TYPE, SentimentModelValidation
 
+
 class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
     __tablename__ = "restaurants_measured"
 
@@ -71,6 +72,7 @@ class SentimentDataModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,Base):
     negative_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     neutral_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     mixed_pct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    reviews: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=None)
 
 
 class ComplaintThemeModel(DBBaseModelTimeMixIn, Base, DBBaseModelIdMixin):
