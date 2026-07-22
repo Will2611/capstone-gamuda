@@ -39,12 +39,30 @@ export function DatePlanStatusPanel({
   }
 
   if (plan.status === "overlap_found" || plan.status === "recommending") {
-    return plan.overlap ? (
-      <OverlapFoundCard
-        overlap={plan.overlap}
-        loadingRestaurant={plan.status === "recommending" || !plan.recommendation}
-      />
-    ) : null;
+    if (!plan.overlap) return null;
+
+    const noRestaurant =
+      plan.status === "overlap_found" &&
+      (plan.candidate_count ?? 0) === 0 &&
+      Boolean(plan.ranking_reason);
+
+    return (
+      <div className="mx-2 my-2">
+        <OverlapFoundCard
+          overlap={plan.overlap}
+          loadingRestaurant={
+            !noRestaurant &&
+            (plan.status === "recommending" || !plan.recommendation)
+          }
+        />
+        {noRestaurant && (
+          <p className="mt-2 rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 px-4 py-3 text-sm text-bs-neutral-700">
+            {plan.ranking_reason ||
+              "No suitable restaurant found near both of you for this time."}
+          </p>
+        )}
+      </div>
+    );
   }
 
   if (plan.status === "restaurant_ready" && plan.recommendation) {
