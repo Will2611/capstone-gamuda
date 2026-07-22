@@ -56,7 +56,7 @@ function RoutesCompiled() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-transparent">
         <Navigation />
         <Routes>
           <Route path="/" element={<LandingPage />} />
