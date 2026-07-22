@@ -123,6 +123,7 @@ class DatePlanResponse(BaseModel):
     accepted_by: list[UUID] = Field(default_factory=list)
     candidate_index: int = 0
     candidate_count: int = 0
+    restaurants_exhausted: bool = False
     version: int = 1
     message: Optional[str] = None
 

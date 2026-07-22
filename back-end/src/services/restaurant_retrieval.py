@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 DATE_PLAN_RADIUS_KM = float(os.getenv("DATE_PLAN_RADIUS_KM", "10"))
 DATE_PLAN_TOP_K = int(os.getenv("DATE_PLAN_TOP_K", "5"))
+DATE_PLAN_FETCH_MORE = int(os.getenv("DATE_PLAN_FETCH_MORE", "3"))
+DATE_PLAN_SNAPSHOT_MAX = int(os.getenv("DATE_PLAN_SNAPSHOT_MAX", "15"))
 AVG_SPEED_KMH = 25.0  # urban heuristic for travel time
 
 
@@ -222,26 +224,29 @@ def _external_mutual_fill(
     mid_lat: float,
     mid_lng: float,
     pull_radius: float,
+    search_cuisines: list[str] | None = None,
 ) -> int:
     """
-    Exactly one SerpAPI/Google Places call for the mutual cuisine at the meetup midpoint.
+    Exactly one SerpAPI/Google Places call at the meetup midpoint.
+    Prefers mutual cuisine; falls back to first search cuisine.
     Upserts results into the restaurant DB. Returns number of rows upserted.
     """
-    if not shared_cuisine:
-        logger.info("Skipping external fill — no mutual cuisine preference")
+    cuisine_list = shared_cuisine or (search_cuisines or [])
+    if not cuisine_list:
+        logger.info("Skipping external fill — no cuisine preference")
         return 0
 
-    mutual = shared_cuisine[0]
+    cuisine = cuisine_list[0]
     radius_m = int(pull_radius * 1.5 * 1000)
     logger.info(
         "Date-plan external fill (1 call): cuisine=%s mid=(%.5f,%.5f) radius_m=%d",
-        mutual,
+        cuisine,
         mid_lat,
         mid_lng,
         radius_m,
     )
     try:
-        external = search_external_restaurants(mutual, mid_lat, mid_lng, radius_m)
+        external = search_external_restaurants(cuisine, mid_lat, mid_lng, radius_m)
     except Exception as exc:
         logger.exception("External restaurant search failed: %s", exc)
         return 0
@@ -251,6 +256,158 @@ def _external_mutual_fill(
         return 0
 
     return _upsert_deduped(db, external)
+
+
+def _pair_search_context(
+    client_a: ClientModel,
+    client_b: ClientModel,
+    *,
+    radius_km: float,
+) -> dict[str, Any] | None:
+    lat_a, lng_a = client_a.recent_latitude, client_a.recent_longitude
+    lat_b, lng_b = client_b.recent_latitude, client_b.recent_longitude
+
+    if None in (lat_a, lng_a, lat_b, lng_b):
+        logger.warning("Missing location for one or both clients")
+        return None
+
+    mid_lat = (lat_a + lat_b) / 2
+    mid_lng = (lng_a + lng_b) / 2
+
+    cuisine_a = list(client_a.cuisine or [])
+    cuisine_b = list(client_b.cuisine or [])
+    shared_cuisine = list(set(cuisine_a) & set(cuisine_b)) if cuisine_a and cuisine_b else []
+    search_cuisines = shared_cuisine or list(set(cuisine_a) | set(cuisine_b))
+
+    dietary_a = list(client_a.dietary or [])
+    dietary_b = list(client_b.dietary or [])
+    combined_dietary = list(set(dietary_a) | set(dietary_b))
+
+    pull_radius = max(
+        radius_km,
+        max(client_a.distance_limit or 5, client_b.distance_limit or 5),
+    )
+
+    return {
+        "lat_a": lat_a,
+        "lng_a": lng_a,
+        "lat_b": lat_b,
+        "lng_b": lng_b,
+        "mid_lat": mid_lat,
+        "mid_lng": mid_lng,
+        "shared_cuisine": shared_cuisine,
+        "search_cuisines": search_cuisines,
+        "dietary_a": dietary_a,
+        "dietary_b": dietary_b,
+        "combined_dietary": combined_dietary,
+        "pull_radius": pull_radius,
+        "radius_km": radius_km,
+        "client_a": client_a,
+        "client_b": client_b,
+    }
+
+
+def _filter_excluded(
+    scored: list[tuple[tuple, dict[str, Any]]],
+    exclude_ids: set[str],
+) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for _, item in scored:
+        rid = str(item.get("id", ""))
+        if rid and rid not in exclude_ids:
+            out.append(item)
+    return out
+
+
+def _score_local(
+    db: Session,
+    ctx: dict[str, Any],
+    *,
+    on_date: datetime.date,
+    meeting_time: datetime.time,
+    window_end: datetime.time,
+    enforce_dietary: bool = True,
+) -> list[tuple[tuple, dict[str, Any]]]:
+    raw = _query_local_raw(
+        db,
+        search_cuisines=ctx["search_cuisines"],
+        mid_lat=ctx["mid_lat"],
+        mid_lng=ctx["mid_lng"],
+        pull_radius=ctx["pull_radius"],
+        combined_dietary=ctx["combined_dietary"],
+    )
+    return _score_pair_candidates(
+        raw,
+        lat_a=ctx["lat_a"],
+        lng_a=ctx["lng_a"],
+        lat_b=ctx["lat_b"],
+        lng_b=ctx["lng_b"],
+        radius_km=ctx["radius_km"],
+        on_date=on_date,
+        meeting_time=meeting_time,
+        window_end=window_end,
+        dietary_a=ctx["dietary_a"],
+        dietary_b=ctx["dietary_b"],
+        shared_cuisine=ctx["shared_cuisine"],
+        client_a=ctx["client_a"],
+        client_b=ctx["client_b"],
+        enforce_dietary=enforce_dietary,
+    )
+
+
+def _rescore_after_external(
+    db: Session,
+    ctx: dict[str, Any],
+    *,
+    on_date: datetime.date,
+    meeting_time: datetime.time,
+    window_end: datetime.time,
+) -> list[tuple[tuple, dict[str, Any]]]:
+    """Re-query local DB after upsert; relax dietary if needed for external rows."""
+    cuisines = ctx["shared_cuisine"] or ctx["search_cuisines"]
+    raw = _query_local_raw(
+        db,
+        search_cuisines=cuisines,
+        mid_lat=ctx["mid_lat"],
+        mid_lng=ctx["mid_lng"],
+        pull_radius=ctx["pull_radius"],
+        combined_dietary=ctx["combined_dietary"],
+    )
+    scored = _score_pair_candidates(
+        raw,
+        lat_a=ctx["lat_a"],
+        lng_a=ctx["lng_a"],
+        lat_b=ctx["lat_b"],
+        lng_b=ctx["lng_b"],
+        radius_km=ctx["radius_km"],
+        on_date=on_date,
+        meeting_time=meeting_time,
+        window_end=window_end,
+        dietary_a=ctx["dietary_a"],
+        dietary_b=ctx["dietary_b"],
+        shared_cuisine=ctx["shared_cuisine"],
+        client_a=ctx["client_a"],
+        client_b=ctx["client_b"],
+    )
+    if not scored and (ctx["dietary_a"] or ctx["dietary_b"]):
+        scored = _score_pair_candidates(
+            raw,
+            lat_a=ctx["lat_a"],
+            lng_a=ctx["lng_a"],
+            lat_b=ctx["lat_b"],
+            lng_b=ctx["lng_b"],
+            radius_km=ctx["radius_km"],
+            on_date=on_date,
+            meeting_time=meeting_time,
+            window_end=window_end,
+            dietary_a=ctx["dietary_a"],
+            dietary_b=ctx["dietary_b"],
+            shared_cuisine=ctx["shared_cuisine"],
+            client_a=ctx["client_a"],
+            client_b=ctx["client_b"],
+            enforce_dietary=False,
+        )
+    return scored
 
 
 def retrieve_top_restaurants_for_pair(
@@ -263,29 +420,24 @@ def retrieve_top_restaurants_for_pair(
     window_end: datetime.time,
     radius_km: float = DATE_PLAN_RADIUS_KM,
     top_k: int = DATE_PLAN_TOP_K,
+    exclude_ids: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """
     Filter restaurants within radius of BOTH users, open at meeting time,
     matching shared cuisine/dietary. Sort by highest rating among pulled set.
 
-    Order: local restaurant DB first; if empty, exactly one external
-    SerpAPI/Google Places search for the mutual cuisine at the meetup midpoint,
-    upsert into DB, then re-score.
+    Order: local restaurant DB first; if fewer than top_k after excludes,
+    one SerpAPI/Google Places search, upsert, then re-score.
     """
-    lat_a, lng_a = client_a.recent_latitude, client_a.recent_longitude
-    lat_b, lng_b = client_b.recent_latitude, client_b.recent_longitude
-
-    if None in (lat_a, lng_a, lat_b, lng_b):
-        logger.warning("Missing location for one or both clients")
+    excluded = {str(x) for x in (exclude_ids or set())}
+    ctx = _pair_search_context(client_a, client_b, radius_km=radius_km)
+    if not ctx:
         return []
 
-    # Midpoint search center (shared meetup area → geohash neighborhood)
-    mid_lat = (lat_a + lat_b) / 2
-    mid_lng = (lng_a + lng_b) / 2
     try:
         import pygeohash as gh
 
-        meetup_gh = gh.encode(mid_lat, mid_lng)[:5]
+        meetup_gh = gh.encode(ctx["mid_lat"], ctx["mid_lng"])[:5]
         logger.info(
             "Date-plan restaurant pull around meetup geohash=%s radius=%.1fkm",
             meetup_gh,
@@ -294,73 +446,102 @@ def retrieve_top_restaurants_for_pair(
     except Exception:
         pass
 
-    cuisine_a = list(client_a.cuisine or [])
-    cuisine_b = list(client_b.cuisine or [])
-    shared_cuisine = list(set(cuisine_a) & set(cuisine_b)) if cuisine_a and cuisine_b else []
-    # Prefer mutual cuisine for DB; fall back to union only when no overlap
-    search_cuisines = shared_cuisine or list(set(cuisine_a) | set(cuisine_b))
-
-    dietary_a = list(client_a.dietary or [])
-    dietary_b = list(client_b.dietary or [])
-    combined_dietary = list(set(dietary_a) | set(dietary_b))
-
-    pull_radius = max(
-        radius_km,
-        max(client_a.distance_limit or 5, client_b.distance_limit or 5),
-    )
-
-    score_kwargs = dict(
-        lat_a=lat_a,
-        lng_a=lng_a,
-        lat_b=lat_b,
-        lng_b=lng_b,
-        radius_km=radius_km,
+    scored = _score_local(
+        db,
+        ctx,
         on_date=on_date,
         meeting_time=meeting_time,
         window_end=window_end,
-        dietary_a=dietary_a,
-        dietary_b=dietary_b,
-        shared_cuisine=shared_cuisine,
-        client_a=client_a,
-        client_b=client_b,
     )
+    results = _filter_excluded(scored, excluded)
 
-    # 1) Local DB only
-    raw = _query_local_raw(
-        db,
-        search_cuisines=search_cuisines,
-        mid_lat=mid_lat,
-        mid_lng=mid_lng,
-        pull_radius=pull_radius,
-        combined_dietary=combined_dietary,
-    )
-    scored = _score_pair_candidates(raw, **score_kwargs)
-
-    # 2) If none found: exactly one external mutual-cuisine search + upsert, then re-score
-    if not scored and shared_cuisine:
+    # External fill when we still need more slots
+    if len(results) < top_k and (ctx["shared_cuisine"] or ctx["search_cuisines"]):
         upserted = _external_mutual_fill(
             db,
-            shared_cuisine=shared_cuisine,
-            mid_lat=mid_lat,
-            mid_lng=mid_lng,
-            pull_radius=pull_radius,
+            shared_cuisine=ctx["shared_cuisine"],
+            mid_lat=ctx["mid_lat"],
+            mid_lng=ctx["mid_lng"],
+            pull_radius=ctx["pull_radius"],
+            search_cuisines=ctx["search_cuisines"],
         )
         if upserted:
-            raw = _query_local_raw(
+            scored = _rescore_after_external(
                 db,
-                search_cuisines=shared_cuisine,
-                mid_lat=mid_lat,
-                mid_lng=mid_lng,
-                pull_radius=pull_radius,
-                combined_dietary=combined_dietary,
+                ctx,
+                on_date=on_date,
+                meeting_time=meeting_time,
+                window_end=window_end,
             )
-            scored = _score_pair_candidates(raw, **score_kwargs)
-            # External rows often lack dietary tags — relax dietary once (still no 2nd API call)
-            if not scored and (dietary_a or dietary_b):
-                scored = _score_pair_candidates(raw, **score_kwargs, enforce_dietary=False)
-    elif not scored and not shared_cuisine:
+            results = _filter_excluded(scored, excluded)
+    elif len(results) < top_k:
         logger.info(
-            "No local restaurants and no mutual cuisine — skipping external search"
+            "Fewer than top_k local restaurants and no cuisine — skipping external search"
         )
 
-    return [item for _, item in scored[:top_k]]
+    return results[:top_k]
+
+
+def fetch_more_restaurants_for_pair(
+    db: Session,
+    client_a: ClientModel,
+    client_b: ClientModel,
+    *,
+    on_date: datetime.date,
+    meeting_time: datetime.time,
+    window_end: datetime.time,
+    exclude_ids: set[str],
+    radius_km: float = DATE_PLAN_RADIUS_KM,
+    limit: int = DATE_PLAN_FETCH_MORE,
+) -> list[dict[str, Any]]:
+    """
+    Find additional restaurants not in exclude_ids.
+    Local DB first; if none new, one external Places/SerpAPI call then re-score.
+    """
+    if limit <= 0:
+        return []
+
+    excluded = {str(x) for x in exclude_ids}
+    ctx = _pair_search_context(client_a, client_b, radius_km=radius_km)
+    if not ctx:
+        return []
+
+    scored = _score_local(
+        db,
+        ctx,
+        on_date=on_date,
+        meeting_time=meeting_time,
+        window_end=window_end,
+    )
+    results = _filter_excluded(scored, excluded)
+
+    if results:
+        logger.info("Fetch-more: %d new restaurants from local DB", len(results[:limit]))
+        return results[:limit]
+
+    # No unused local matches — try external once
+    if not (ctx["shared_cuisine"] or ctx["search_cuisines"]):
+        logger.info("Fetch-more: no cuisine for external fill")
+        return []
+
+    upserted = _external_mutual_fill(
+        db,
+        shared_cuisine=ctx["shared_cuisine"],
+        mid_lat=ctx["mid_lat"],
+        mid_lng=ctx["mid_lng"],
+        pull_radius=ctx["pull_radius"],
+        search_cuisines=ctx["search_cuisines"],
+    )
+    if not upserted:
+        return []
+
+    scored = _rescore_after_external(
+        db,
+        ctx,
+        on_date=on_date,
+        meeting_time=meeting_time,
+        window_end=window_end,
+    )
+    results = _filter_excluded(scored, excluded)
+    logger.info("Fetch-more: %d new restaurants after external fill", len(results[:limit]))
+    return results[:limit]

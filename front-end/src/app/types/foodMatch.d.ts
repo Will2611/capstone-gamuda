@@ -138,6 +138,7 @@ export interface DatePlan {
   accepted_by: string[];
   candidate_index: number;
   candidate_count: number;
+  restaurants_exhausted?: boolean;
   version: number;
   message?: string | null;
 }

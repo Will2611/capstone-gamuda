@@ -170,6 +170,16 @@ def _serialize_plan(
         "cancelled": "Plan cancelled.",
     }
 
+    restaurants_exhausted = bool(
+        (plan.ranking_payload or {}).get("restaurants_exhausted")
+    )
+    message = messages.get(plan.status)
+    if restaurants_exhausted and plan.status == "restaurant_ready":
+        message = (
+            "No more restaurants nearby that work for both of you. "
+            "Try a different time or accept the current pick."
+        )
+
     return DatePlanResponse(
         id=plan.id,
         match_id=plan.match_id,
@@ -186,8 +196,9 @@ def _serialize_plan(
         accepted_by=list(plan.accepted_by or []),
         candidate_index=plan.candidate_index or 0,
         candidate_count=len(snapshot),
+        restaurants_exhausted=restaurants_exhausted,
         version=plan.version or 1,
-        message=messages.get(plan.status),
+        message=message,
     )
 
 

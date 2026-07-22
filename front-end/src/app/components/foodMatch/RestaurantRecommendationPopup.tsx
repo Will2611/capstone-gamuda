@@ -230,10 +230,19 @@ export function RestaurantRecommendationPopup({
                     className="w-full"
                     variant="secondary"
                     onClick={onChooseAnother}
-                    disabled={cycling || (plan.candidate_count ?? 0) < 2}
+                    disabled={cycling || Boolean(plan.restaurants_exhausted)}
                   >
-                    {cycling ? "Loading…" : "Choose Another Restaurant"}
+                    {cycling
+                      ? "Finding more…"
+                      : plan.restaurants_exhausted
+                        ? "No more restaurants nearby"
+                        : "Choose Another Restaurant"}
                   </Button>
+                  {plan.restaurants_exhausted && plan.message && (
+                    <p className="text-xs text-center text-bs-neutral-500 px-2">
+                      {plan.message}
+                    </p>
+                  )}
                   <button
                     type="button"
                     onClick={onClose}
