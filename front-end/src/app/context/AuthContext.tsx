@@ -89,7 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    return bitescoutApi.delete(`/user/logout`);
+    try {
+      await bitescoutApi.delete(`/user/logout`);
+      setUser(null)
+
+    } catch {
+
+    }
   }, []);
 
   const value = useMemo(

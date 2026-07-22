@@ -7,18 +7,34 @@ import { Menu, X } from "lucide-react";
 
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const { profile } = useUser()
 
   const navItems = [
     { label: "Home", path: "/" },
-    { label: "Find Restaurants", path: "/map" },
     // { label: "Food Buddy", path: "/food-match" },
-    { label: "User Profile", path: "/profile" },
+    // { label: "User Profile", path: "/profile" },
     // { label: "For Owners", path: "/dashboard" },
-    { label: "Dashboard", path: "/social-visibility" },
-    { label: "Privacy", path: "/privacy" },
+    // { label: "Dashboard", path: "/social-visibility" },
+    // { label: "Privacy", path: "/privacy" },
   ];
+  if (user?.role !== 'owner') {
+    navItems.push({ label: "Find Restaurants", path: "/map" })
+  }
+  if (isAuthenticated) {
+    if (user?.role === "client") {
+      navItems.push(
+        { label: "Profile", path: "/profile" }
+      )
+    }
+    if (user?.role === "owner") {
+      navItems.push(
+        { label: "Dashboard", path: "/social-visibility" },
+        { label: "Promotions", path: "/promotion" }
+      );
+    }
+  }
+  navItems.push({ label: "Privacy", path: "/privacy" });
 
   return (
     <nav className="bg-white border-b border-bs-neutral-200 sticky top-0 z-50">
