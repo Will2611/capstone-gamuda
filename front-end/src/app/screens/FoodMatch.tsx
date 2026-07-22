@@ -675,14 +675,19 @@ export default function FoodMatch() {
                 chatGroupName: activeChat.user.name,
                 avatarUrl: activeChat.user.avatarUrl,
                 expiresAt: activeChat.chatExpiresAt,
-                messages: (chatMessages[activeChat.id] ?? []).map((v) => ({
-                  id: v.id,
-                  userId: v.senderId,
-                  userName: activeChat.user.name,
-                  userType: "client" as const,
-                  timestamp: new Date(v.timestamp),
-                  message: v.text,
-                })),
+                messages: (chatMessages[activeChat.id] ?? []).map((v) => {
+                  const isSelf = v.senderId === (user?.id ?? "0");
+                  return {
+                    id: v.id,
+                    userId: v.senderId,
+                    userName: isSelf
+                      ? (user?.displayName ?? userProfile.displayName)
+                      : activeChat.user.name,
+                    userType: "client" as const,
+                    timestamp: new Date(v.timestamp),
+                    message: v.text,
+                  };
+                }),
                 participants: [
                   {
                     id: activeChat.user.id,

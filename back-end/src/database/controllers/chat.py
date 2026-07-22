@@ -45,24 +45,28 @@ class RoomConnectionManager:
         })
 
     def disconnect(self, websocket: WebSocket):
-        user_info = self.user_info.get(websocket)
+        user_info = self.user_info.pop(websocket, None)
         if not user_info:
-            # Empy stringis stil false
+            # Empty string is still false for room_id / username checks
             return '', ''
 
         room_id = user_info["room_id"]
         username = user_info["username"]
 
-        # Remove from connections
+        # Remove from connections (safe if already cleaned up as dead)
         if room_id in self.active_connections:
-            self.active_connections[room_id].remove(websocket)
+            try:
+                self.active_connections[room_id].remove(websocket)
+            except ValueError:
+                pass
+            if not self.active_connections[room_id]:
+                del self.active_connections[room_id]
 
         # Remove from room members
         if room_id in self.room_members:
             self.room_members[room_id].discard(username)
-
-        # Clean up user info
-        del self.user_info[websocket]
+            if not self.room_members[room_id]:
+                del self.room_members[room_id]
 
         return room_id, username
 
@@ -79,12 +83,18 @@ class RoomConnectionManager:
         for connection in self.active_connections[room_id]:
             try:
                 await connection.send_text(message_str)
-            except:
+            except Exception:
                 dead_connections.append(connection)
 
         # Clean up dead connections
         for dead_conn in dead_connections:
-            self.active_connections[room_id].remove(dead_conn)
+            try:
+                self.active_connections[room_id].remove(dead_conn)
+            except ValueError:
+                pass
+            self.user_info.pop(dead_conn, None)
+        if room_id in self.active_connections and not self.active_connections[room_id]:
+            del self.active_connections[room_id]
 
 room_manager = RoomConnectionManager()
 

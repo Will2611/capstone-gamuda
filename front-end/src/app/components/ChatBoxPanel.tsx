@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, SubmitEvent as ReactSubmitEvent } from "react";
 import type { ChatBox, ChatMessage, DummyChatBox } from "../types/chat";
 import { useUser } from "../context/UserContext";
+import { useAuth } from "../context/AuthContext";
 import { Send, Bot, User } from "lucide-react";
 import type {
   DummyUserProfile,
@@ -9,6 +10,26 @@ import type {
   SearchPreferences,
 } from "../types/user";
 import { sendChatMessage, type RestaurantResult } from "../services/chatbotApi";
+
+/** Backend chat WS chat_message frame */
+interface WsChatMessage {
+  type: "chat_message";
+  message?: string;
+  username?: string;
+  user_id?: string;
+  timestamp?: string;
+}
+
+function mapWsChatMessage(data: WsChatMessage): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    userId: data.user_id ?? "",
+    userName: data.username ?? "User",
+    userType: "client",
+    timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+    message: data.message ?? "",
+  };
+}
 
 const chatConnection = {
   CONNECTED: "connected",
@@ -105,42 +126,107 @@ export default function ChatBoxPanel({
   onLlmResponse?: (replyText: string, restaurants: RestaurantResult[]) => void;
 }) {
   const getUser = useUser();
+  const { user: authUser } = useAuth();
+  const selfUserId = authUser?.id ?? getUser.profile.id;
 
   const [_socketStatus, setSocketStatus] = useState<CHAT_CONNECTION>(
     chatConnection.DISCONNECTED,
   );
 
   const [initPayload, setInitPayload] = useState<ChatBox | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState<string[]>([]);
   const wsRef = useRef<WebSocket>(null);
-  // Setting up receiving message
+  const pendingWsSendsRef = useRef<string[]>([]);
+  const selfUserIdRef = useRef(selfUserId);
+  const onReceiveMessageRef = useRef(onReceiveMessage);
+  selfUserIdRef.current = selfUserId;
+  onReceiveMessageRef.current = onReceiveMessage;
+
+  // Setting up receiving / sending over WebSocket
   useEffect(() => {
     if (!socketUrl) {
+      wsRef.current = null;
+      pendingWsSendsRef.current = [];
+      setSocketStatus(chatConnection.DISCONNECTED);
       return;
     }
     const ws = new WebSocket(socketUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => setSocketStatus(chatConnection.CONNECTED);
-    ws.onclose = () => setSocketStatus(chatConnection.DISCONNECTED);
+    ws.onopen = () => {
+      setSocketStatus(chatConnection.CONNECTED);
+      const queued = pendingWsSendsRef.current.splice(0);
+      for (const text of queued) {
+        ws.send(
+          JSON.stringify({
+            type: "chat_message",
+            message: text,
+          }),
+        );
+      }
+    };
+    ws.onclose = () => {
+      if (wsRef.current === ws) wsRef.current = null;
+      setSocketStatus(chatConnection.DISCONNECTED);
+    };
     ws.onerror = () => setSocketStatus(chatConnection.ERROR);
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "init") {
+        const data = JSON.parse(event.data as string) as {
+          type?: string;
+          message?: string;
+          username?: string;
+          user_id?: string;
+          timestamp?: string;
+          is_typing?: boolean;
+          payload?: ChatBox;
+        };
+
+        if (data.type === "init" && data.payload) {
           setInitPayload(data.payload);
+          return;
         }
-        setMessages((prev) => [...prev, data]);
+
+        if (data.type === "typing") {
+          const name = data.username ?? "Someone";
+          if (data.is_typing) {
+            setIsTyping((prev) =>
+              prev.includes(name) ? prev : [...prev, name],
+            );
+          } else {
+            setIsTyping((prev) => prev.filter((n) => n !== name));
+          }
+          return;
+        }
+
+        if (data.type === "chat_message") {
+          const mapped = mapWsChatMessage(data as WsChatMessage);
+          // Skip echo of our own optimistic send
+          if (mapped.userId && mapped.userId === selfUserIdRef.current) {
+            return;
+          }
+          if (!mapped.message.trim()) return;
+          onReceiveMessageRef.current(mapped.message, mapped.userId);
+          setMessages((prev) => [...prev, mapped]);
+          setIsTyping([]);
+          return;
+        }
+
+        // Ignore system / date-plan events on this socket
       } catch {
-        setMessages((prev) => [...prev, event.data]);
+        /* ignore malformed frames */
       }
     };
 
-    // Cleanup on unmount
     return () => {
       ws.close();
+      if (wsRef.current === ws) wsRef.current = null;
     };
   }, [socketUrl]);
+
   const initChat: ChatBox | DummyChatBox | null = useMemo(() => {
     if (dummyChat) {
       return dummyChat;
@@ -150,10 +236,6 @@ export default function ChatBoxPanel({
     }
     return null;
   }, [dummyChat, initPayload]);
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState<string[]>([]);
   const [suggestionChips, setSuggestionChips] = useState<string[]>(() =>
     buildInitialSuggestionChips(getUser.profile.savedPreferences),
   );
@@ -280,7 +362,7 @@ export default function ChatBoxPanel({
   }, [dummyUser]);
 
   useEffect(() => {
-    if (useLlm) {
+    if (useLlm || socketUrl) {
       return;
     }
     const dummyMessaging = setTimeout(() => {
@@ -303,7 +385,7 @@ export default function ChatBoxPanel({
     return () => {
       clearTimeout(dummyMessaging);
     };
-  }, [messages, useLlm, dummyUser, dummyReply, onReceiveMessage]);
+  }, [messages, useLlm, socketUrl, dummyUser, dummyReply, onReceiveMessage]);
 
   const sendText = useCallback(
     async (rawText: string) => {
@@ -314,9 +396,9 @@ export default function ChatBoxPanel({
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
-        userName: getUser.profile.displayName,
-        userEmail: getUser.profile.email,
-        userId: getUser.profile.id,
+        userName: authUser?.displayName ?? getUser.profile.displayName,
+        userEmail: authUser?.email ?? getUser.profile.email,
+        userId: selfUserId,
         userType: "client",
         timestamp: new Date(),
         message: text,
@@ -391,14 +473,34 @@ export default function ChatBoxPanel({
         return;
       }
 
-      setIsTyping(["LLM"]);
+      // Live Food Match / peer chat: send over WebSocket
+      if (socketUrl) {
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: "chat_message",
+              message: text,
+            }),
+          );
+        } else {
+          pendingWsSendsRef.current.push(text);
+        }
+        return;
+      }
+
+      // Offline / mock match: show typing until dummy reply fires
+      setIsTyping(["peer"]);
     },
     [
       isTyping,
       messages,
       useLlm,
+      socketUrl,
       dummyUser,
       getUser.profile,
+      authUser,
+      selfUserId,
       onSendMessage,
       onReceiveMessage,
       onLlmResponse,
@@ -463,7 +565,7 @@ export default function ChatBoxPanel({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex gap-2 ${msg.userId === getUser.profile.id ? "flex-row-reverse" : ""}`}
+            className={`flex gap-2 ${msg.userId === selfUserId ? "flex-row-reverse" : ""}`}
           >
             <div
               className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
@@ -478,7 +580,7 @@ export default function ChatBoxPanel({
             </div>
             <div
               className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                msg.userId === getUser.profile.id
+                msg.userId === selfUserId
                   ? "bg-bs-gold text-bs-neutral-900 rounded-tr-sm"
                   : "bg-bs-neutral-100 text-bs-neutral-800 rounded-tl-sm"
               }`}
