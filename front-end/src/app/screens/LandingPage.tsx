@@ -1,3 +1,4 @@
+import { ImageSlideshow } from "../components/ImageSlideshow";
 import { useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { Button } from "../components/Button";
@@ -10,6 +11,13 @@ import { Clock4, MapPin, CalendarRange } from "lucide-react";
 // import { FoodEmojiRain } from "../components/landing/FoodEmojiRain";
 
 const HERO_IMAGES = [heroFoodBg1, heroFoodBg2, heroFoodBg3];
+
+const malaysianFoodImages = [
+  "/src/assets/images/malaysian-food-1.jpg",
+  "/src/assets/images/malaysian-food-2.jpg",
+  "/src/assets/images/malaysian-food-3.jpg",
+  "/src/assets/images/malaysian-food-4.jpg",
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -56,33 +64,18 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-bs-gold/20 via-bs-red/10 to-bs-blue/20 overflow-hidden">
-        {/* Background Food Photography Images (Looping Cross-fade) */}
-        <div className="absolute inset-0 z-0">
-          {HERO_IMAGES.map((imgSrc, idx) => (
-            <img
-              key={idx}
-              src={imgSrc}
-              alt={`Food spread background ${idx + 1}`}
-              className={`absolute inset-0 w-full h-full object-cover mix-blend-multiply filter brightness-95 transition-opacity duration-1000 ease-in-out ${
-                idx === currentBgIndex ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Soft Contrast Scrim Overlay for Readability */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/40 via-black/25 to-black/40 pointer-events-none" />
-
+        {/* Add the Slideshow here */}
+        <ImageSlideshow images={malaysianFoodImages} interval={4000} />
         {/* Map Background Pattern */}
-        <div className="absolute inset-0 opacity-0 z-0">
+        <div className="absolute inset-0 opacity-5">
           <MapBannerSVG />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 text-center">
-          <h1 className="mb-6 text-white font-extrabold drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] tracking-tight">
+        <div className="relative max-w-7xl mx-auto px-6 py-32 text-center">
+          <h1 className="mb-6 text-white drop-shadow-lg">
             Match tastes to tables fast
           </h1>
-          <p className="text-xl md:text-2xl text-white mb-8 max-w-2xl mx-auto font-semibold drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] leading-relaxed">
+          <p className="text-xl text-gray-100 mb-8 max-w-2xl mx-auto drop-shadow-md">
             Discover the perfect restaurant for your cravings with AI-powered
             recommendations
           </p>
