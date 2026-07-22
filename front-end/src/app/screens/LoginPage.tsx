@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Navigate } from "react-router";
+import { useNavigate } from "react-router";
 import { LoginForm } from "../components/LoginForm";
 import { useAuth } from "../context/AuthContext";
 import BiteSccoutIcon from "@/assets/icon.svg?react";

@@ -12,11 +12,11 @@ SECRET_KEY = os.getenv('COOKIE_SECRET')
 ALGORITHM = 'HS256'
 COOKIE_AGE = 60*15 #in seconds, 15 min
 LONGER_COOKIE_AGE = 30 *24*60*60  #in seconds, 30 days
+# Browsers reject Secure cookies on http://localhost — default off for local dev
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() in ("1", "true", "yes")
 
 if not SECRET_KEY:
     raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
-
-SECRET_KEY
 
 class SessionToken(BaseModel):
     sessionId: uuid.UUID
@@ -57,7 +57,7 @@ def setCookie(resp:Response, payload:SessionToken = default_session_generator())
         key=TOKEN_NAME,
         value=token,
         httponly=True,
-        secure=True,
+        secure=COOKIE_SECURE,
         samesite="lax",
         max_age=LONGER_COOKIE_AGE if payload.remember_me else COOKIE_AGE
     )

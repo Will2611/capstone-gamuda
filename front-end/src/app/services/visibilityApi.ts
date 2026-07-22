@@ -269,7 +269,8 @@ export async function getSocialVisibility(
 }
 
 export async function getSentiment(
-  restaurantId: number): Promise<Sentiment> {
+  restaurantId: string | number,
+): Promise<Sentiment> {
   const response = await fetch(
     `${API_BASE}/visibility/getSentiment?restaurantId=${restaurantId}`,
   );

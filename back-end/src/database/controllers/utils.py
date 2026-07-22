@@ -3,23 +3,19 @@ import inspect
 import datetime
 import jwt  # Make sure to run: pip install pyjwt[crypto]
 from typing import Annotated, Optional
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
 
 from src.database.connection import db_dependency
+from src.services.jwt import CookieCustom
 
-# --- Secret Configuration ---
+# --- Legacy Bearer JWT helpers (optional; Food Match / date-plan use cookie session) ---
 SECRET_KEY = os.getenv("SECRET_KEY", "your-very-secure-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440  # 24 Hours
 
-_bearer = HTTPBearer(auto_error=False)
 
-# --- Authentication Security Functions ---
 def create_access_token(data: dict, expires_delta: Optional[datetime.timedelta] = None) -> str:
-    """Generates a secure JSON Web Token for user sessions."""
+    """Generates a Bearer JWT (legacy / optional). Prefer cookie session for app auth."""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.datetime.utcnow() + expires_delta
@@ -46,35 +42,18 @@ def decode_access_token(token: str) -> dict:
 
 def get_current_user(
     db: db_dependency,
-    credentials: Annotated[Optional[HTTPAuthorizationCredentials], Depends(_bearer)] = None,
+    cookie: CookieCustom,
 ):
-    """Resolve the authenticated UserModel from a Bearer JWT."""
+    """Resolve the authenticated UserModel from the HttpOnly session cookie."""
     from src.database.models.user import UserModel
 
-    if credentials is None or not credentials.credentials:
+    if cookie.userId is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_access_token(credentials.credentials)
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-        )
-
-    try:
-        uid = UUID(str(user_id))
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user id in token",
-        ) from exc
-
-    user = db.query(UserModel).filter(UserModel.id == uid).first()
+    user = db.query(UserModel).filter(UserModel.id == cookie.userId).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

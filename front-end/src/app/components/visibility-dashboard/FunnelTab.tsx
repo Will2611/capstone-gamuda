@@ -1,13 +1,12 @@
-import { AlertCircle } from "lucide-react";
 import { FunnelChart } from "./FunnelChart";
 import { type FunnelStage } from "../../services/visibilityApi";
 
 interface FunnelTabProps {
   funnel: FunnelStage[];
-  dropOffStage: FunnelStage | undefined;
+  dropOffStage?: FunnelStage;
 }
 
-export function FunnelTab({ funnel, dropOffStage }: FunnelTabProps) {
+export function FunnelTab({ funnel }: FunnelTabProps) {
   return (
     <section aria-labelledby="traffic-funnel">
       <h2 id="traffic-funnel" className="mb-4">

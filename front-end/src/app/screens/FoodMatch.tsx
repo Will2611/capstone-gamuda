@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence } from "motion/react";
 import {
   Users,
@@ -81,7 +81,7 @@ export default function FoodMatch() {
   } = useFoodMatch();
 
   const { profile: userProfile } = useUser();
-  const { token, isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("discover");
   const [newMatch, setNewMatch] = useState<FoodMatchType | null>(null);
   const [activeChat, setActiveChat] = useState<FoodMatchType | null>(null);
@@ -103,7 +103,7 @@ export default function FoodMatch() {
   const currentUser = discoverUsers[0] ?? null;
 
   const refreshNearby = useCallback(async () => {
-    if (!token || !isAuthenticated) {
+    if (!isAuthenticated) {
       setUseNearbyDiscover(false);
       return;
     }
@@ -112,18 +112,17 @@ export default function FoodMatch() {
       const pos = await readGeolocation();
       if (pos) {
         await updateFoodMatchLocation(
-          token,
           pos.coords.latitude,
           pos.coords.longitude,
         );
       }
-      const discovered = await discoverNearby(token);
+      const discovered = await discoverNearby();
       setNearbyUsers(
         discovered.users.map(toMatchUser),
         discovered.message ?? null,
       );
 
-      const remoteMatches = await listFoodMatches(token);
+      const remoteMatches = await listFoodMatches();
       syncMatchesFromBackend(
         remoteMatches.map((m) => ({
           user: toMatchUser(m.participant),
@@ -142,7 +141,6 @@ export default function FoodMatch() {
       setDiscoverBusy(false);
     }
   }, [
-    token,
     isAuthenticated,
     setNearbyUsers,
     setUseNearbyDiscover,
@@ -164,15 +162,15 @@ export default function FoodMatch() {
     }
     setClearBusy(true);
     try {
-      if (token) {
-        await clearFoodMatches(token);
+      if (isAuthenticated) {
+        await clearFoodMatches();
       }
       clearAllMatches();
       setActiveChat(null);
       setPlannerMatch(null);
       setPlannerOpen(false);
       setNewMatch(null);
-      if (isAuthenticated && token) {
+      if (isAuthenticated) {
         await refreshNearby();
       }
     } catch (err) {
@@ -181,14 +179,14 @@ export default function FoodMatch() {
     } finally {
       setClearBusy(false);
     }
-  }, [token, clearAllMatches, isAuthenticated, refreshNearby]);
+  }, [clearAllMatches, isAuthenticated, refreshNearby]);
 
   const activePlan = activeChat ? datePlans[activeChat.id] : null;
   const plannerPlan = plannerMatch ? datePlans[plannerMatch.id] : null;
 
   const resolveBackendMatch = useCallback(
     async (match: FoodMatchType) => {
-      if (!token) {
+      if (!isAuthenticated) {
         throw new Error("Please log in to plan a food date.");
       }
       if (match.backendMatchId && match.chatRoomId) {
@@ -201,7 +199,6 @@ export default function FoodMatch() {
       const lat = await readGeolocation();
 
       const ensured = await ensureMatch(
-        token,
         match.user,
         lat?.coords.latitude,
         lat?.coords.longitude,
@@ -217,13 +214,13 @@ export default function FoodMatch() {
         participantId: ensured.participant_id,
       };
     },
-    [token, attachBackendMatch],
+    [isAuthenticated, attachBackendMatch],
   );
 
   const openPlanner = async (match: FoodMatchType) => {
     setPlanError(null);
     setPlannerMatch(match);
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       setPlanError("Please log in to plan a food date with real match IDs.");
       setPlannerOpen(true);
       return;
@@ -231,7 +228,7 @@ export default function FoodMatch() {
     setPlanBusy(true);
     try {
       const backend = await resolveBackendMatch(match);
-      const plan = await createDatePlan(token, backend.matchId);
+      const plan = await createDatePlan(backend.matchId);
       setDatePlan(match.id, plan);
       setPlannerOpen(true);
     } catch (err: unknown) {
@@ -252,7 +249,7 @@ export default function FoodMatch() {
     start_time: string;
     end_time: string;
   }) => {
-    if (!plannerMatch || !token) {
+    if (!plannerMatch || !isAuthenticated) {
       setPlanError("Please log in to submit availability.");
       return;
     }
@@ -262,10 +259,10 @@ export default function FoodMatch() {
       let plan = datePlans[plannerMatch.id];
       if (!plan) {
         const backend = await resolveBackendMatch(plannerMatch);
-        plan = await createDatePlan(token, backend.matchId);
+        plan = await createDatePlan(backend.matchId);
         setDatePlan(plannerMatch.id, plan);
       }
-      const updated = await submitAvailability(token, plan.id, payload);
+      const updated = await submitAvailability(plan.id, payload);
       setDatePlan(plannerMatch.id, updated);
       setPlannerOpen(false);
       setActiveChat(plannerMatch);
@@ -291,14 +288,14 @@ export default function FoodMatch() {
   };
 
   const pollRecommendation = async (localMatchId: string, planId: string) => {
-    if (!token) return;
+    if (!isAuthenticated) return;
     for (let i = 0; i < 15; i++) {
       await new Promise((r) => setTimeout(r, 1500));
       try {
-        let plan = await getDatePlan(token, planId);
+        let plan = await getDatePlan(planId);
         if (plan.status === "overlap_found") {
           // Trigger recommend if background didn't finish
-          plan = await recommendRestaurants(token, planId);
+          plan = await recommendRestaurants(planId);
         }
         setDatePlan(localMatchId, plan);
         if (plan.status === "restaurant_ready") {
@@ -315,10 +312,10 @@ export default function FoodMatch() {
   };
 
   const handleAcceptSuggestion = async () => {
-    if (!activeChat || !token || !activePlan) return;
+    if (!activeChat || !isAuthenticated || !activePlan) return;
     setAcceptingSuggestion(true);
     try {
-      const updated = await acceptSuggestion(token, activePlan.id);
+      const updated = await acceptSuggestion(activePlan.id);
       setDatePlan(activeChat.id, updated);
       void pollRecommendation(activeChat.id, updated.id);
     } catch (err: unknown) {
@@ -329,10 +326,10 @@ export default function FoodMatch() {
   };
 
   const handleAcceptPlan = async () => {
-    if (!activeChat || !token || !activePlan) return;
+    if (!activeChat || !isAuthenticated || !activePlan) return;
     setAccepting(true);
     try {
-      const updated = await acceptDatePlan(token, activePlan.id);
+      const updated = await acceptDatePlan(activePlan.id);
       setDatePlan(activeChat.id, updated);
     } finally {
       setAccepting(false);
@@ -340,11 +337,10 @@ export default function FoodMatch() {
   };
 
   const handleChooseAnother = async () => {
-    if (!activeChat || !token || !activePlan) return;
+    if (!activeChat || !isAuthenticated || !activePlan) return;
     setCycling(true);
     try {
       const updated = await nextRestaurant(
-        token,
         activePlan.id,
         activePlan.version,
       );
@@ -365,8 +361,8 @@ export default function FoodMatch() {
 
   // Live date-plan events on the match chat room
   useEffect(() => {
-    if (!activeChat?.chatRoomId || !token) return;
-    const url = buildChatSocketUrl(activeChat.chatRoomId, token);
+    if (!activeChat?.chatRoomId || !isAuthenticated) return;
+    const url = buildChatSocketUrl(activeChat.chatRoomId);
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
       try {
@@ -387,8 +383,8 @@ export default function FoodMatch() {
         if (payload?.id && payload?.status) {
           setDatePlan(activeChat.id, payload);
           if (payload.status === "restaurant_ready") setPopupOpen(true);
-        } else if (payload?.plan_id && token) {
-          void getDatePlan(token, payload.plan_id).then((plan) => {
+        } else if (payload?.plan_id && isAuthenticated) {
+          void getDatePlan(payload.plan_id).then((plan) => {
             setDatePlan(activeChat.id, plan);
             if (plan.status === "restaurant_ready") setPopupOpen(true);
           });
@@ -398,7 +394,7 @@ export default function FoodMatch() {
       }
     };
     return () => ws.close();
-  }, [activeChat?.id, activeChat?.chatRoomId, token, setDatePlan]);
+  }, [activeChat?.id, activeChat?.chatRoomId, isAuthenticated, setDatePlan]);
 
   const handlePass = () => {
     if (!currentUser || likeBusy) return;
@@ -413,8 +409,8 @@ export default function FoodMatch() {
     void (async () => {
       setLikeBusy(true);
       try {
-        if (isAuthenticated && token && useNearbyDiscover) {
-          const result = await likeNearbyUser(token, currentUser.id);
+        if (isAuthenticated && useNearbyDiscover) {
+          const result = await likeNearbyUser(currentUser.id);
           passUser(currentUser.id);
           if (result.matched && result.match_id && result.chat_room_id) {
             const partner = result.participant
@@ -474,9 +470,44 @@ export default function FoodMatch() {
   }
 
   const socketUrl =
-    activeChat?.chatRoomId && token
-      ? buildChatSocketUrl(activeChat.chatRoomId, token)
+    activeChat?.chatRoomId && isAuthenticated
+      ? buildChatSocketUrl(activeChat.chatRoomId)
       : null;
+
+  const activeDummyChat = useMemo(() => {
+    if (!activeChat) return undefined;
+    return {
+      chatGroupName: activeChat.user.name,
+      avatarUrl: activeChat.user.avatarUrl,
+      expiresAt: activeChat.chatExpiresAt,
+      messages: (chatMessages[activeChat.id] ?? []).map((v) => {
+        const isSelf = v.senderId === (user?.id ?? "0");
+        return {
+          id: v.id,
+          userId: v.senderId,
+          userName: isSelf ? userProfile.displayName : activeChat.user.name,
+          userType: "client" as const,
+          timestamp: new Date(v.timestamp),
+          message: v.text,
+        };
+      }),
+      participants: [
+        {
+          id: activeChat.user.id,
+          displayName: activeChat.user.name,
+          avatarUrl: activeChat.user.avatarUrl,
+          type: "client" as const,
+          dummyResponses: socketUrl
+            ? []
+            : [
+                "Can't wait to try somewhere new!",
+                "That time works for me — let's lock it in.",
+                "I'm free this weekend for a food date!",
+              ],
+        },
+      ],
+    };
+  }, [activeChat, chatMessages, user?.id, userProfile.displayName, socketUrl]);
 
   const displayPlan = activePlan ?? plannerPlan;
 
@@ -671,40 +702,7 @@ export default function FoodMatch() {
           <div className="flex-1 min-h-0">
             <ChatBoxPanel
               socketUrl={socketUrl}
-              dummyChat={{
-                chatGroupName: activeChat.user.name,
-                avatarUrl: activeChat.user.avatarUrl,
-                expiresAt: activeChat.chatExpiresAt,
-                messages: (chatMessages[activeChat.id] ?? []).map((v) => {
-                  const isSelf = v.senderId === (user?.id ?? "0");
-                  return {
-                    id: v.id,
-                    userId: v.senderId,
-                    userName: isSelf
-                      ? (user?.displayName ?? userProfile.displayName)
-                      : activeChat.user.name,
-                    userType: "client" as const,
-                    timestamp: new Date(v.timestamp),
-                    message: v.text,
-                  };
-                }),
-                participants: [
-                  {
-                    id: activeChat.user.id,
-                    displayName: activeChat.user.name,
-                    avatarUrl: activeChat.user.avatarUrl,
-                    type: "client" as const,
-                    // Suppress scripted replies when live socket is connected
-                    dummyResponses: socketUrl
-                      ? []
-                      : [
-                          "Can't wait to try somewhere new!",
-                          "That time works for me — let's lock it in.",
-                          "I'm free this weekend for a food date!",
-                        ],
-                  },
-                ],
-              }}
+              dummyChat={activeDummyChat}
               onSendMessage={(text) => {
                 addChatMessage(activeChat.id, text, user?.id ?? "0");
               }}

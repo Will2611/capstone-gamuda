@@ -74,19 +74,6 @@ export default function SocialVisibilityDashboard() {
     useState<ActionSuggestionsResponse | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const handleViewSuggestions = async () => {
-    if (!selectedRestaurantId) return;
-    setShowSuggestions(true);
-    if (!actionSuggestions) {
-      try {
-        const data = await getActionSuggestions(selectedRestaurantId);
-        setActionSuggestions(data);
-      } catch {
-        setActionSuggestions(null);
-      }
-    }
-  };
-
   const handleThemeClick = async (theme: string) => {
     if (!selectedRestaurantId) return;
     setSelectedTheme(theme);

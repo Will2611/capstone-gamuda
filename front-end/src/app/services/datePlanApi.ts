@@ -1,12 +1,5 @@
-import axios from "axios";
+import { bitescoutApi } from "./baseApi";
 import type { DatePlan, MatchUser } from "../types/foodMatch";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
-
-function authHeaders(token: string | null | undefined) {
-  if (!token) return {};
-  return { Authorization: `Bearer ${token}` };
-}
 
 export interface EnsureMatchResponse {
   match_id: string;
@@ -15,14 +8,14 @@ export interface EnsureMatchResponse {
   is_new: boolean;
 }
 
+/** Cookie session auth — credentials sent via bitescoutApi (withCredentials). */
 export async function ensureMatch(
-  token: string,
   participant: MatchUser,
   latitude?: number,
   longitude?: number,
 ): Promise<EnsureMatchResponse> {
-  const { data } = await axios.post<EnsureMatchResponse>(
-    `${API_BASE}/food-match/ensure-match`,
+  const { data } = await bitescoutApi.post<EnsureMatchResponse>(
+    `/food-match/ensure-match`,
     {
       participant: {
         id: participant.id,
@@ -37,21 +30,18 @@ export async function ensureMatch(
       latitude,
       longitude,
     },
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
 export async function updateFoodMatchLocation(
-  token: string,
   latitude: number,
   longitude: number,
 ) {
-  const { data } = await axios.post(
-    `${API_BASE}/food-match/location`,
-    { latitude, longitude },
-    { headers: authHeaders(token) },
-  );
+  const { data } = await bitescoutApi.post(`/food-match/location`, {
+    latitude,
+    longitude,
+  });
   return data;
 }
 
@@ -76,13 +66,11 @@ export interface DiscoverResponse {
 }
 
 export async function discoverNearby(
-  token: string,
   radiusKm?: number,
 ): Promise<DiscoverResponse> {
-  const { data } = await axios.get<DiscoverResponse>(
-    `${API_BASE}/food-match/discover`,
+  const { data } = await bitescoutApi.get<DiscoverResponse>(
+    `/food-match/discover`,
     {
-      headers: authHeaders(token),
       params: radiusKm != null ? { radius_km: radiusKm } : undefined,
     },
   );
@@ -98,24 +86,17 @@ export interface LikeResponse {
   message: string;
 }
 
-export async function likeNearbyUser(
-  token: string,
-  userId: string,
-): Promise<LikeResponse> {
-  const { data } = await axios.post<LikeResponse>(
-    `${API_BASE}/food-match/like`,
-    { user_id: userId },
-    { headers: authHeaders(token) },
-  );
+export async function likeNearbyUser(userId: string): Promise<LikeResponse> {
+  const { data } = await bitescoutApi.post<LikeResponse>(`/food-match/like`, {
+    user_id: userId,
+  });
   return data;
 }
 
-export async function passNearbyUser(token: string, userId: string) {
-  const { data } = await axios.post(
-    `${API_BASE}/food-match/pass`,
-    { user_id: userId },
-    { headers: authHeaders(token) },
-  );
+export async function passNearbyUser(userId: string) {
+  const { data } = await bitescoutApi.post(`/food-match/pass`, {
+    user_id: userId,
+  });
   return data;
 }
 
@@ -127,20 +108,19 @@ export interface FoodMatchListItemDto {
   is_connected: boolean;
 }
 
-export async function listFoodMatches(token: string) {
-  const { data } = await axios.get<{ matches: FoodMatchListItemDto[] }>(
-    `${API_BASE}/food-match/matches`,
-    { headers: authHeaders(token) },
+export async function listFoodMatches() {
+  const { data } = await bitescoutApi.get<{ matches: FoodMatchListItemDto[] }>(
+    `/food-match/matches`,
   );
   return data.matches;
 }
 
-export async function clearFoodMatches(token: string) {
-  const { data } = await axios.delete<{
+export async function clearFoodMatches() {
+  const { data } = await bitescoutApi.delete<{
     status: string;
     cleared_matches: number;
     cleared_likes: number;
-  }>(`${API_BASE}/food-match/matches`, { headers: authHeaders(token) });
+  }>(`/food-match/matches`);
   return data;
 }
 
@@ -158,42 +138,26 @@ export function toMatchUser(dto: DiscoverMatchUserDto): MatchUser {
   };
 }
 
-export async function createDatePlan(
-  token: string,
-  matchId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan`,
-    { match_id: matchId },
-    { headers: authHeaders(token) },
-  );
+export async function createDatePlan(matchId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.post<DatePlan>(`/date-plan`, {
+    match_id: matchId,
+  });
   return data;
 }
 
-export async function getDatePlan(
-  token: string,
-  planId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.get<DatePlan>(
-    `${API_BASE}/date-plan/${planId}`,
-    { headers: authHeaders(token) },
-  );
+export async function getDatePlan(planId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.get<DatePlan>(`/date-plan/${planId}`);
   return data;
 }
 
-export async function getDatePlanByMatch(
-  token: string,
-  matchId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.get<DatePlan>(
-    `${API_BASE}/date-plan/by-match/${matchId}`,
-    { headers: authHeaders(token) },
+export async function getDatePlanByMatch(matchId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.get<DatePlan>(
+    `/date-plan/by-match/${matchId}`,
   );
   return data;
 }
 
 export async function submitAvailability(
-  token: string,
   planId: string,
   body: {
     available_date: string;
@@ -202,83 +166,63 @@ export async function submitAvailability(
     timezone?: string;
   },
 ): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/availability`,
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/availability`,
     {
       timezone: "Asia/Kuala_Lumpur",
       ...body,
     },
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
-export async function acceptSuggestion(
-  token: string,
-  planId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/accept-suggestion`,
+export async function acceptSuggestion(planId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/accept-suggestion`,
     { accept: true },
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
-export async function recommendRestaurants(
-  token: string,
-  planId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/recommend`,
+export async function recommendRestaurants(planId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/recommend`,
     {},
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
 export async function nextRestaurant(
-  token: string,
   planId: string,
   version?: number,
 ): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/next-restaurant`,
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/next-restaurant`,
     { version },
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
-export async function acceptDatePlan(
-  token: string,
-  planId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/accept`,
+export async function acceptDatePlan(planId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/accept`,
     {},
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
-export async function cancelDatePlan(
-  token: string,
-  planId: string,
-): Promise<DatePlan> {
-  const { data } = await axios.post<DatePlan>(
-    `${API_BASE}/date-plan/${planId}/cancel`,
+export async function cancelDatePlan(planId: string): Promise<DatePlan> {
+  const { data } = await bitescoutApi.post<DatePlan>(
+    `/date-plan/${planId}/cancel`,
     {},
-    { headers: authHeaders(token) },
   );
   return data;
 }
 
-export function buildChatSocketUrl(
-  chatRoomId: string,
-  token?: string | null,
-): string {
-  const base = API_BASE.replace(/^http/, "ws");
-  const qs = token ? `?token=${encodeURIComponent(token)}` : "";
-  return `${base}/chat/ws/${chatRoomId}${qs}`;
+/** Browser sends the session cookie automatically on same-site WS connect. */
+export function buildChatSocketUrl(chatRoomId: string): string {
+  const apiBase =
+    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+  const base = apiBase.replace(/^http/, "ws");
+  return `${base}/chat/ws/${chatRoomId}`;
 }

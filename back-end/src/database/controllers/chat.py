@@ -1,11 +1,10 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List, Dict, Set, Optional
 from datetime import datetime
 import json
-import uuid
-from src.database.connection import SessionLocal, db_dependency
+from src.database.connection import SessionLocal
 from fastapi.responses import HTMLResponse
-from src.database.controllers.utils import decode_access_token
+from src.services.jwt import TOKEN_NAME, decode_payload
 
 router = APIRouter(prefix="/chat", tags=['chat'])
 
@@ -99,31 +98,153 @@ class RoomConnectionManager:
 room_manager = RoomConnectionManager()
 
 
+def _session_from_websocket(wSocket: WebSocket):
+    """Authenticate WS from the HttpOnly session cookie (Option B)."""
+    raw = wSocket.cookies.get(TOKEN_NAME)
+    if not raw:
+        return None
+    try:
+        return decode_payload(raw)
+    except Exception:
+        return None
+
+
+def _build_init_payload(room_id: str, viewer_id: str) -> Optional[dict]:
+    """History + room metadata for ChatBoxPanel `type: init`."""
+    from src.database.models.chat import ChatRoomModel, ChatMessageModel
+    from src.database.models.user import UserModel
+    from uuid import UUID as _UUID
+
+    db = SessionLocal()
+    try:
+        try:
+            rid = _UUID(room_id)
+        except ValueError:
+            return None
+
+        room = db.query(ChatRoomModel).filter(ChatRoomModel.id == rid).first()
+        if not room:
+            return None
+
+        participant_ids = list(room.participants_id or [])
+        if room.creator_id and room.creator_id not in participant_ids:
+            participant_ids = [room.creator_id, *participant_ids]
+
+        # Require membership when room has known participants
+        try:
+            viewer_uuid = _UUID(viewer_id)
+        except ValueError:
+            return None
+        if participant_ids and viewer_uuid not in participant_ids:
+            return None
+
+        users = (
+            db.query(UserModel).filter(UserModel.id.in_(participant_ids)).all()
+            if participant_ids
+            else []
+        )
+        user_by_id = {u.id: u for u in users}
+        participants = [
+            {
+                "id": str(u.id),
+                "displayName": u.full_name,
+                "avatarUrl": u.avatar_url,
+                "type": u.user_type,
+            }
+            for u in users
+        ]
+
+        # Peer avatar / name for the header (the other person)
+        peer = next((u for u in users if str(u.id) != viewer_id), None)
+
+        msgs = (
+            db.query(ChatMessageModel)
+            .filter(ChatMessageModel.room_id == rid)
+            .order_by(ChatMessageModel.created_at.asc())
+            .limit(100)
+            .all()
+        )
+        messages = []
+        for m in msgs:
+            author = user_by_id.get(m.user_id) if m.user_id else None
+            messages.append(
+                {
+                    "id": str(m.id),
+                    "userId": str(m.user_id) if m.user_id else "",
+                    "userName": author.full_name if author else "User",
+                    "userType": author.user_type if author else "client",
+                    "timestamp": m.created_at.isoformat() if m.created_at else datetime.now().isoformat(),
+                    "message": m.message,
+                }
+            )
+
+        return {
+            "chatGroupName": room.chat_name or (peer.full_name if peer else "Chat"),
+            "chatCaption": room.chat_caption,
+            "avatarUrl": peer.avatar_url if peer else None,
+            "expiresAt": None,
+            "messages": messages,
+            "participants": participants,
+        }
+    finally:
+        db.close()
+
+
 @router.websocket("/ws/{room_id}")
 async def websocket_endpoint(
     wSocket: WebSocket,
     room_id: str,
     username: str = "default_user",
     userid: Optional[str] = None,
-    token: Optional[str] = Query(default=None),
 ):
     """
-    Chat WebSocket. Prefer ?token=JWT for authenticated connections.
-    Falls back to query username/userid for local testing.
+    Chat WebSocket authenticated via the bitescout_token session cookie.
     """
-    resolved_user_id = userid or str(uuid.uuid4())
+    session = _session_from_websocket(wSocket)
+    if session is None or session.userId is None:
+        await wSocket.close(code=4401)
+        return
+
+    resolved_user_id = str(session.userId)
     resolved_username = username
 
-    if token:
+    # Prefer display name from DB when available
+    db = SessionLocal()
+    try:
+        from src.database.models.user import UserModel
+        from src.database.models.chat import ChatRoomModel
+        from uuid import UUID as _UUID
+
+        user = db.query(UserModel).filter(UserModel.id == session.userId).first()
+        if user:
+            resolved_username = user.full_name or user.email or resolved_username
+
+        # Membership check when room exists
         try:
-            payload = decode_access_token(token)
-            resolved_user_id = str(payload.get("sub") or resolved_user_id)
-            resolved_username = str(payload.get("email") or username)
-        except Exception:
-            await wSocket.close(code=4401)
+            rid = _UUID(room_id)
+            room = db.query(ChatRoomModel).filter(ChatRoomModel.id == rid).first()
+            if room:
+                members = list(room.participants_id or [])
+                if room.creator_id and room.creator_id not in members:
+                    members.append(room.creator_id)
+                if members and session.userId not in members:
+                    await wSocket.close(code=4403)
+                    return
+        except ValueError:
+            await wSocket.close(code=4400)
             return
+    finally:
+        db.close()
 
     await room_manager.connect(wSocket, room_id, resolved_user_id, resolved_username)
+
+    init_payload = _build_init_payload(room_id, resolved_user_id)
+    if init_payload:
+        await room_manager.send_personal_message(
+            json.dumps({"type": "init", "payload": init_payload}),
+            wSocket,
+        )
+
     try:
         while True:
             data = await wSocket.receive_text()

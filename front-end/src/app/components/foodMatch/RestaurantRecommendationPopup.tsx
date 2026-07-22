@@ -39,8 +39,9 @@ export function RestaurantRecommendationPopup({
   const [ideasOpen, setIdeasOpen] = useState(true);
   const restaurant = plan?.recommendation;
   const ideas = plan?.date_ideas;
-  const alreadyAccepted =
-    currentUserId && plan?.accepted_by?.includes(currentUserId);
+  const alreadyAccepted = Boolean(
+    currentUserId && plan?.accepted_by?.includes(currentUserId),
+  );
 
   if (!plan || !restaurant) return null;
 

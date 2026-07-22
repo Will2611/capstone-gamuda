@@ -396,8 +396,8 @@ export default function ChatBoxPanel({
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
-        userName: authUser?.displayName ?? getUser.profile.displayName,
-        userEmail: authUser?.email ?? getUser.profile.email,
+        userName: getUser.profile.displayName,
+        userEmail: getUser.profile.email,
         userId: selfUserId,
         userType: "client",
         timestamp: new Date(),
@@ -406,9 +406,6 @@ export default function ChatBoxPanel({
 
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
-      if (wsRef.current) {
-        wsRef.current.send(JSON.stringify(userMsg));
-      }
       setInput("");
 
       if (useLlm) {
@@ -502,7 +499,6 @@ export default function ChatBoxPanel({
       socketUrl,
       dummyUser,
       getUser.profile,
-      authUser,
       selfUserId,
       onSendMessage,
       onReceiveMessage,
@@ -531,7 +527,8 @@ export default function ChatBoxPanel({
 
   return (
     <div
-      className={`flex-grow flex flex-col bg-white rounded-xl border border-bs-neutral-200 shadow-lg h-full overflow-hidden md:h-${height}`}
+      className="flex-grow flex flex-col bg-white rounded-xl border border-bs-neutral-200 shadow-lg h-full overflow-hidden"
+      style={height ? { height } : undefined}
     >
       <div className="px-4 py-3 border-b border-bs-neutral-200 bg-gradient-to-r from-bs-gold/15 to-bs-blue/10">
         <div className="flex items-center gap-2">

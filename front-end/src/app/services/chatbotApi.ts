@@ -28,14 +28,11 @@ export async function sendChatMessage(
   longitude?: number,
   excludeRestaurantIds: string[] = [],
 ): Promise<ChatResponse> {
-  const { data } = await axios.post<ChatResponse>(
-    `${API_BASE}/llm/chat`,
-    {
-      messages,
-      latitude,
-      longitude,
-      exclude_restaurant_ids: excludeRestaurantIds,
-    },
-  );
+  const { data } = await bitescoutApi.post<ChatResponse>("/llm/chat", {
+    messages,
+    latitude,
+    longitude,
+    exclude_restaurant_ids: excludeRestaurantIds,
+  });
   return data;
 }

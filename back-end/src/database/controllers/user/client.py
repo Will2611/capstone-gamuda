@@ -33,6 +33,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 # Database dependencies & models
 from src.database.connection import db_dependency
 from src.database.models.user import ClientModel, UserModel
+from src.database.controllers.utils import CurrentUser
 
 # Schemas (Pydantic models)
 from src.database.schemas.user import ClientRegisterRequest, ClientResponse
@@ -123,10 +124,8 @@ async def register_client(db: db_dependency, payload: ClientRegisterRequest):
         language=payload.language,
         avatar_url=payload.profile_image,
         food_personality=payload.personalities,
-        cuisine=payload.preferences.cuisine,
-        dietary=payload.preferences.dietary,
-        preferred_vibes=payload.preferences.ambience, # Maps to ARRAY(String)
-        price_limit=payload.preferences.priceRange,   # Maps to ARRAY(String)
+        preferred_vibes=payload.preferences.ambience,  # Maps to ARRAY(String)
+        price_limit=payload.preferences.priceRange,  # Maps to ARRAY(String)
         distance_limit=distance_limit,
         preferred_time=payload.preferences.time,
         cuisine=payload.preferences.cuisine or [],
@@ -166,7 +165,15 @@ class updateRequest(BaseModel):
     personalities: list[str] = []
 
 @router.put("/{uuid}")
-async def update_profile(db: db_dependency, uuid: UUID, update_request: updateRequest):
+async def update_profile(
+    db: db_dependency,
+    uuid: UUID,
+    update_request: updateRequest,
+    current_user: CurrentUser,
+):
+     if current_user.id != uuid:
+          raise HTTPException(status_code=403, detail="Cannot update another user's profile")
+
      update_result = db.query(ClientModel).filter(ClientModel.id == uuid).first()
 
      if update_result is None: 
