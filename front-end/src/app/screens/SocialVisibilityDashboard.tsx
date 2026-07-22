@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+// import { ExternalLink } from "lucide-react";
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
 import {
   fetchRestaurants,

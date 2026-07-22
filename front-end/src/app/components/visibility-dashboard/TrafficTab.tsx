@@ -14,7 +14,7 @@ import { type FootTrafficResponse } from "../../services/visibilityApi";
 import {
   buildStackedChartData,
   formatChartWeekRange,
-  insightCardStyle,
+  // insightCardStyle,
   TRAFFIC_SEGMENTS,
   type TrafficSegmentKey,
 } from "../../utils/trafficAnalytics";
@@ -46,25 +46,25 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
     () => buildStackedChartData(footTraffic.chartDays ?? []),
     [footTraffic.chartDays],
   );
-  const insights = footTraffic.insights ?? [];
+  // const insights = footTraffic.insights ?? [];
   const chartTitle = useMemo(
     () => formatChartWeekRange(footTraffic.chartDays ?? []),
     [footTraffic.chartDays],
   );
 
-  const selectFromInsight = (
-    dayIndex: number | null | undefined,
-    segment?: string | null,
-  ) => {
-    if (dayIndex == null || Number.isNaN(dayIndex)) {
-      setSelection(null);
-      return;
-    }
-    setSelection({
-      dayIndex,
-      segment: (segment as TrafficSegmentKey | undefined) ?? undefined,
-    });
-  };
+  // const selectFromInsight = (
+  //   dayIndex: number | null | undefined,
+  //   segment?: string | null,
+  // ) => {
+  //   if (dayIndex == null || Number.isNaN(dayIndex)) {
+  //     setSelection(null);
+  //     return;
+  //   }
+  //   setSelection({
+  //     dayIndex,
+  //     segment: (segment as TrafficSegmentKey | undefined) ?? undefined,
+  //   });
+  // };
 
   const selectFromChart = (dayIndex: number, segment?: TrafficSegmentKey) => {
     setSelection((prev) => {

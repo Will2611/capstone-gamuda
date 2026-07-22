@@ -256,8 +256,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isFavorite = useCallback(
-    (restaurantId: string) =>
-      profile.favoriteRestaurants.some((r) => r.id === restaurantId),
+    (restaurantId: string) => {
+      const favouriteRestaurants = profile.favoriteRestaurants || [];
+      return favouriteRestaurants.some((r) => r.id === restaurantId);
+    },
     [profile.favoriteRestaurants],
   );
 
