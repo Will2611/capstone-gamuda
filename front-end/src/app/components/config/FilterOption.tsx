@@ -68,6 +68,34 @@ export const DAY_OPTIONS = [
   { value: "7", label: "Sunday" },
 ];
 
+export const GENDER_OPTIONS = [
+  { label: "Male", value: "male" },
+  { label: "Female", value: "female" },
+];
+
+export const RELIGION_OPTIONS = [
+  { value: "Islam", label: "Islam" },
+  { value: "Christianity", label: "Christianity" },
+  { value: "Buddhism", label: "Buddhism" },
+  { value: "Hinduism", label: "Hinduism" },
+  { value: "Others", label: "Others" },
+];
+
+export const LANG_OPTIONS = [
+  { value: "en", label: "English" },
+  { value: "ms", label: "Bahasa Melayu" },
+];
+
+export const PERSONALITY_TAG_OPTIONS = [
+  "Adventurous eater",
+  "Cafe hopper",
+  "Fine dining lover",
+  "Street food hunter",
+  "Late night foodie",
+  "Healthy eater",
+  "Dessert addict",
+];
+
 /**
  * Helper utility to construct dropdown lists with dynamic default labels
  * (e.g., "Select Cuisine" for forms vs "Cuisine" for short filter bars)

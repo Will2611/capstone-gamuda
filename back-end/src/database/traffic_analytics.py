@@ -1,25 +1,13 @@
-"""Rule-based foot traffic analytics — chart, insights, and staffing forecast from hourly data."""
+"""Rule-based foot traffic analytics — chart and insights from per-date hourly counts."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date, timedelta
+from collections import defaultdict
+from datetime import date
 
-from src.database.schemas.visibility import (
-    HourlyTrafficItem,
-    StaffingShiftItem,
-    TrafficInsightItem,
-)
+from src.database.schemas.visibility import ChartDayTrafficItem, TrafficInsightItem
 
-DAYS = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
+CHART_DAY_COUNT = 7
 
 SEGMENT_HOURS: dict[str, list[int]] = {
     "morning": [8, 9, 10, 11],
@@ -37,75 +25,53 @@ SEGMENT_LABELS: dict[str, str] = {
     "lateNight": "Late Night (9–11 PM)",
 }
 
-VISITORS_PER_STAFF = 18
-
-# Chart week is Jun 1–7; recommended shifts forecast the following week.
-FORECAST_WEEK_START = date(2026, 6, 8)
+HourlyRow = tuple[date, str, str, int, int]
 
 
-def forecast_date_for_day(day_index: int) -> str:
-    """Schedule date for day_index 0–6 → Jun 8–14, 2026."""
-    return (FORECAST_WEEK_START + timedelta(days=day_index)).strftime("%d %b %Y")
+def _segment_totals(hour_visitors: dict[int, int]) -> tuple[int, int, int, int, int]:
+    morning = sum(hour_visitors.get(h, 0) for h in SEGMENT_HOURS["morning"])
+    lunch = sum(hour_visitors.get(h, 0) for h in SEGMENT_HOURS["lunch"])
+    afternoon = sum(hour_visitors.get(h, 0) for h in SEGMENT_HOURS["afternoon"])
+    dinner = sum(hour_visitors.get(h, 0) for h in SEGMENT_HOURS["dinner"])
+    late_night = sum(hour_visitors.get(h, 0) for h in SEGMENT_HOURS["lateNight"])
+    return morning, lunch, afternoon, dinner, late_night
 
 
-@dataclass
-class DayStackRow:
-    day_index: int
-    day: str
-    is_weekend: bool
-    morning: int
-    lunch: int
-    afternoon: int
-    dinner: int
-    late_night: int
+def build_chart_days(rows: list[HourlyRow]) -> list[ChartDayTrafficItem]:
+    """Sum visitors per traffic_date into chart segments (no averaging)."""
+    by_date: dict[date, dict] = {}
 
-    @property
-    def total(self) -> int:
-        return self.morning + self.lunch + self.afternoon + self.dinner + self.late_night
+    for traffic_date, day_name, day_type, hour, visitors in rows:
+        if traffic_date not in by_date:
+            by_date[traffic_date] = {
+                "day_name": day_name,
+                "day_type": day_type,
+                "hours": {},
+            }
+        by_date[traffic_date]["hours"][hour] = (
+            by_date[traffic_date]["hours"].get(hour, 0) + int(visitors)
+        )
 
-    def segment_value(self, segment: str) -> int:
-        return {
-            "morning": self.morning,
-            "lunch": self.lunch,
-            "afternoon": self.afternoon,
-            "dinner": self.dinner,
-            "lateNight": self.late_night,
-        }.get(segment, 0)
-
-
-def _hour_avg(hourly: list[HourlyTrafficItem], hour: int, is_weekend: bool) -> float:
-    row = next((h for h in hourly if h.hour == hour), None)
-    if row is None:
-        return 0.0
-    return row.weekendAvg if is_weekend else row.weekdayAvg
-
-
-def _sum_hours(hourly: list[HourlyTrafficItem], hours: list[int], is_weekend: bool) -> int:
-    return max(0, sum(round(_hour_avg(hourly, h, is_weekend)) for h in hours))
-
-
-def build_day_rows(hourly: list[HourlyTrafficItem]) -> list[DayStackRow]:
-    if not hourly:
-        return [
-            DayStackRow(i, day, i >= 5, 0, 0, 0, 0, 0) for i, day in enumerate(DAYS)
-        ]
-
-    rows: list[DayStackRow] = []
-    for i, day in enumerate(DAYS):
-        is_weekend = i >= 5
-        rows.append(
-            DayStackRow(
-                day_index=i,
-                day=day,
-                is_weekend=is_weekend,
-                morning=_sum_hours(hourly, SEGMENT_HOURS["morning"], is_weekend),
-                lunch=_sum_hours(hourly, SEGMENT_HOURS["lunch"], is_weekend),
-                afternoon=_sum_hours(hourly, SEGMENT_HOURS["afternoon"], is_weekend),
-                dinner=_sum_hours(hourly, SEGMENT_HOURS["dinner"], is_weekend),
-                late_night=_sum_hours(hourly, SEGMENT_HOURS["lateNight"], is_weekend),
+    chart_days: list[ChartDayTrafficItem] = []
+    for day_index, traffic_date in enumerate(sorted(by_date.keys())):
+        info = by_date[traffic_date]
+        morning, lunch, afternoon, dinner, late_night = _segment_totals(info["hours"])
+        total = morning + lunch + afternoon + dinner + late_night
+        chart_days.append(
+            ChartDayTrafficItem(
+                trafficDate=traffic_date.isoformat(),
+                dayName=info["day_name"],
+                dayType=info["day_type"],
+                dayIndex=day_index,
+                morning=morning,
+                lunch=lunch,
+                afternoon=afternoon,
+                dinner=dinner,
+                lateNight=late_night,
+                total=total,
             )
         )
-    return rows
+    return chart_days
 
 
 def _format_hour(hour: int) -> str:
@@ -114,81 +80,97 @@ def _format_hour(hour: int) -> str:
     return f"{h12} {suffix}"
 
 
-def _peak_hour_in_hours(hourly: list[HourlyTrafficItem], hours: list[int], is_weekend: bool) -> tuple[int, int]:
+def _peak_hour_in_rows(
+    rows: list[HourlyRow],
+    hours: list[int],
+    day_type: str | None = None,
+) -> tuple[int, int]:
     best_hour = hours[0]
     best_val = 0
-    for hour in hours:
-        val = round(_hour_avg(hourly, hour, is_weekend))
+    for _traffic_date, _day_name, dt, hour, visitors in rows:
+        if hour not in hours:
+            continue
+        if day_type is not None and dt != day_type:
+            continue
+        val = int(visitors)
         if val >= best_val:
             best_val = val
             best_hour = hour
     return best_hour, best_val
 
 
+def _format_chart_range(chart_days: list[ChartDayTrafficItem]) -> str:
+    if not chart_days:
+        return ""
+    if len(chart_days) == 1:
+        return chart_days[0].trafficDate
+    return f"{chart_days[0].trafficDate} – {chart_days[-1].trafficDate}"
+
+
 def build_traffic_insights(
-    hourly: list[HourlyTrafficItem],
-    weekday_avg: float,
-    weekend_avg: float,
+    chart_days: list[ChartDayTrafficItem],
+    raw_rows: list[HourlyRow],
 ) -> list[TrafficInsightItem]:
-    rows = build_day_rows(hourly)
-    if not hourly or all(r.total == 0 for r in rows):
+    if not chart_days or all(d.total == 0 for d in chart_days):
         return [
             TrafficInsightItem(
                 id="empty",
                 type="tip",
                 title="No traffic data yet",
-                body="Seed foot traffic hourly data to see insights linked to the chart.",
+                body="Seed foot traffic hourly data to see insights for the chart week.",
             )
         ]
 
-    lunch_peak_h, lunch_peak_v = _peak_hour_in_hours(
-        hourly, SEGMENT_HOURS["lunch"], is_weekend=False
+    weekday_days = [d for d in chart_days if d.dayType == "Weekday"]
+    weekend_days = [d for d in chart_days if d.dayType == "Weekend"]
+    weekday_total = sum(d.total for d in weekday_days)
+    weekend_total = sum(d.total for d in weekend_days)
+
+    lunch_peak_h, lunch_peak_v = _peak_hour_in_rows(
+        raw_rows, SEGMENT_HOURS["lunch"], day_type="Weekday"
     )
-    dinner_peak_h, dinner_peak_v = _peak_hour_in_hours(
-        hourly, SEGMENT_HOURS["dinner"], is_weekend=True
+    dinner_peak_h, dinner_peak_v = _peak_hour_in_rows(
+        raw_rows, SEGMENT_HOURS["dinner"], day_type="Weekend"
     )
 
-    busiest = max(rows, key=lambda r: r.total)
-    friday = rows[4]
-    saturday = rows[5]
-    friday_dinner = friday.dinner
-    saturday_dinner = saturday.dinner
+    busiest = max(chart_days, key=lambda d: d.total)
+    friday = next((d for d in chart_days if d.dayName == "Friday"), None)
+    saturday = next((d for d in chart_days if d.dayName == "Saturday"), None)
+    friday_dinner = friday.dinner if friday else 0
+    saturday_dinner = saturday.dinner if saturday else 0
+    date_range = _format_chart_range(chart_days)
 
     insights: list[TrafficInsightItem] = [
         TrafficInsightItem(
             id="weekday-summary",
             type="weekday",
-            title=f"Weekdays (Mon–Fri) — avg {weekday_avg} visitors/day",
+            title=f"Weekdays — {weekday_total} total visitors ({len(weekday_days)} days)",
             body=(
-                f"Lunch peak around {_format_hour(lunch_peak_h)} "
-                f"({lunch_peak_v} visitors/hr). Staff lunch service "
-                f"{SEGMENT_LABELS['lunch']} on weekdays."
+                f"Lunch peak at {_format_hour(lunch_peak_h)} "
+                f"({lunch_peak_v} visitors that hour). "
+                f"Chart week: {date_range}."
             ),
-            linkedDayIndex=2,
-            linkedSegment="lunch",
         ),
         TrafficInsightItem(
             id="weekend-summary",
             type="weekend",
-            title=f"Weekends (Sat–Sun) — avg {weekend_avg} visitors/day",
+            title=f"Weekends — {weekend_total} total visitors ({len(weekend_days)} days)",
             body=(
-                f"Dinner peak around {_format_hour(dinner_peak_h)} "
-                f"({dinner_peak_v} visitors/hr). Scale kitchen and floor staff "
-                f"for {SEGMENT_LABELS['dinner']} on weekends."
+                f"Dinner peak at {_format_hour(dinner_peak_h)} "
+                f"({dinner_peak_v} visitors that hour). "
+                f"Chart week: {date_range}."
             ),
-            linkedDayIndex=6 if dinner_peak_v else 5,
-            linkedSegment="dinner",
         ),
         TrafficInsightItem(
             id="busiest-day",
             type="peak",
-            title=f"Busiest day: {busiest.day} ({busiest.total} visits)",
+            title=f"Busiest day: {busiest.dayName} ({busiest.total} visits)",
             body=(
-                f"Highest total traffic is on {busiest.day}. "
-                f"Dinner segment contributes {busiest.dinner} visits — "
-                f"prioritise that window in next week's roster."
+                f"{busiest.trafficDate} had the highest traffic. "
+                f"Dinner contributed {busiest.dinner} visits — "
+                f"prioritise that window in staffing."
             ),
-            linkedDayIndex=busiest.day_index,
+            linkedDayIndex=busiest.dayIndex,
             linkedSegment="dinner" if busiest.dinner >= busiest.lunch else "lunch",
         ),
         TrafficInsightItem(
@@ -204,67 +186,10 @@ def build_traffic_insights(
                     else "Saturday remains the priority surge shift."
                 )
             ),
-            linkedDayIndex=4 if friday_dinner >= saturday_dinner * 0.85 else 5,
+            linkedDayIndex=friday.dayIndex if friday and friday_dinner >= saturday_dinner * 0.85 else (
+                saturday.dayIndex if saturday else None
+            ),
             linkedSegment="dinner",
         ),
     ]
     return insights
-
-
-def build_next_week_schedule(hourly: list[HourlyTrafficItem]) -> list[StaffingShiftItem]:
-    rows = build_day_rows(hourly)
-    if not hourly:
-        return []
-
-    shift_defs = [
-        ("lunch", "11:00–14:00", 11, 14, ["lunch"]),
-        ("dinner", "18:00–21:00", 18, 21, ["dinner", "lateNight"]),
-    ]
-
-    expected_values: list[int] = []
-    draft: list[tuple[DayStackRow, str, str, int, int, list[str], int]] = []
-
-    for row in rows:
-        for segment_key, shift_label, start_h, end_h, segment_keys in shift_defs:
-            expected = sum(row.segment_value(k) for k in segment_keys)
-            expected_values.append(expected)
-            draft.append((row, segment_key, shift_label, start_h, end_h, segment_keys, expected))
-
-    if not expected_values:
-        return []
-
-    sorted_vals = sorted(expected_values)
-    p75_idx = max(0, int(len(sorted_vals) * 0.75) - 1)
-    threshold_high = sorted_vals[p75_idx] if sorted_vals else 0
-    threshold_med = sorted_vals[max(0, len(sorted_vals) // 2 - 1)] if sorted_vals else 0
-
-    schedule: list[StaffingShiftItem] = []
-    for row, segment_key, shift_label, start_h, end_h, _keys, expected in draft:
-        if expected <= 0:
-            continue
-        staff = max(2, (expected + VISITORS_PER_STAFF - 1) // VISITORS_PER_STAFF)
-        if expected >= threshold_high:
-            priority = "high"
-        elif expected >= threshold_med:
-            priority = "medium"
-        else:
-            priority = "low"
-
-        schedule.append(
-            StaffingShiftItem(
-                day=row.day,
-                dayIndex=row.day_index,
-                date=forecast_date_for_day(row.day_index),
-                shift=shift_label,
-                segment=segment_key,
-                shiftStart=start_h,
-                shiftEnd=end_h,
-                expectedVisitors=expected,
-                staffSuggested=staff,
-                priority=priority,
-            )
-        )
-
-    priority_order = {"high": 0, "medium": 1, "low": 2}
-    schedule.sort(key=lambda s: (priority_order.get(s.priority, 9), -s.expectedVisitors))
-    return schedule[:14]

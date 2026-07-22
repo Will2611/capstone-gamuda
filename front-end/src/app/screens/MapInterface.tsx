@@ -10,6 +10,7 @@ import { MAP_DEFAULT_CENTER, MOCK_RESTAURANTS } from "../data/mockRestaurants";
 import { useUser } from "../context/UserContext";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
+import { getSentiment, type Sentiment } from "../services/visibilityApi";
 import type { Restaurant, SearchPreferences } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
@@ -27,39 +28,39 @@ const emptyForm: SearchPreferences = {
 type ViewMode = "map" | "suggestions";
 
 export default function MapInterface() {
-  // 1. 修正解构：从 useUser 拿到 profile 而不是不存在的 preferences
   const { toggleFavorite, isFavorite, profile } = useUser();
 
-  // 2. 健壮性初始化：将 profile.savedPreferences 中的字符串或数组安全转换为 MapInterface 期望的过滤格式
-  const [filters, setFilters] = useState<SearchPreferences>(() => {
-    const saved = profile?.savedPreferences;
-    if (!saved) return emptyForm;
+  const [filters, setFilters] = useState<SearchPreferences>(emptyForm);
 
-    return {
-      cuisine: Array.isArray(saved.cuisine)
-        ? saved.cuisine
-        : saved.cuisine
-          ? [saved.cuisine]
-          : [],
-      priceRange: Array.isArray(saved.priceRange)
-        ? saved.priceRange
-        : saved.priceRange
-          ? [saved.priceRange]
-          : [],
-      dietary: Array.isArray(saved.dietary)
-        ? saved.dietary
-        : saved.dietary
-          ? [saved.dietary]
-          : [],
-      distance: typeof saved.distance === "string" ? saved.distance : "",
-      ambience: Array.isArray(saved.ambience)
-        ? saved.ambience
-        : saved.ambience
-          ? [saved.ambience]
-          : [],
-      time: typeof saved.time === "string" ? saved.time : "",
-    };
-  });
+  useEffect(() => {
+    if (profile?.savedPreferences) {
+      const saved = profile.savedPreferences;
+      setFilters({
+        cuisine: Array.isArray(saved.cuisine)
+          ? saved.cuisine
+          : saved.cuisine
+            ? [saved.cuisine]
+            : [],
+        priceRange: Array.isArray(saved.priceRange)
+          ? saved.priceRange
+          : saved.priceRange
+            ? [saved.priceRange]
+            : [],
+        dietary: Array.isArray(saved.dietary)
+          ? saved.dietary
+          : saved.dietary
+            ? [saved.dietary]
+            : [],
+        distance: typeof saved.distance === "string" ? saved.distance : "",
+        ambience: Array.isArray(saved.ambience)
+          ? saved.ambience
+          : saved.ambience
+            ? [saved.ambience]
+            : [],
+        time: typeof saved.time === "string" ? saved.time : "",
+      });
+    }
+  }, [profile]);
 
   const [selectedPin, setSelectedPin] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
@@ -137,7 +138,6 @@ export default function MapInterface() {
 
   const filteredRestaurants = useMemo(() => {
     return displayedRestaurants.filter((restaurant) => {
-      // 菜系过滤 (多选)
       if (filters.cuisine && filters.cuisine.length > 0) {
         const rCuisine = restaurant.cuisine?.toLowerCase() || "";
         const hasCuisine = filters.cuisine.some((c) =>
@@ -146,7 +146,6 @@ export default function MapInterface() {
         if (!hasCuisine) return false;
       }
 
-      // 价格区间过滤 (多选)
       if (filters.priceRange && filters.priceRange.length > 0) {
         if (
           (restaurant as any).priceRange &&
@@ -156,7 +155,6 @@ export default function MapInterface() {
         }
       }
 
-      // 宗教/饮食习惯过滤 (多选)
       if (
         filters.dietary &&
         filters.dietary.length > 0 &&
@@ -169,7 +167,6 @@ export default function MapInterface() {
         if (!hasDietary) return false;
       }
 
-      // 氛围过滤 (多选)
       if (filters.ambience && filters.ambience.length > 0) {
         const rAmbience = (restaurant as any).ambience?.toLowerCase() || "";
         const hasAmbience = filters.ambience.some((a) =>
@@ -178,7 +175,6 @@ export default function MapInterface() {
         if (!hasAmbience) return false;
       }
 
-      // 距离过滤 (单选)
       if (filters.distance) {
         const maxDistance = parseFloat(filters.distance);
         const currentDistance = parseFloat(restaurant.distance || "0");
@@ -191,7 +187,6 @@ export default function MapInterface() {
         }
       }
 
-      // 营业时间/时段过滤 (单选)
       if (filters.time) {
         const rTime = (restaurant as any).time?.toLowerCase() || "";
         if (rTime && !rTime.includes(filters.time.toLowerCase())) {
@@ -203,7 +198,6 @@ export default function MapInterface() {
     });
   }, [displayedRestaurants, filters]);
 
-  // 3. 修正变量使用：使地图和渲染逻辑真正使用过滤后的数据，消除未读取报错
   const restaurants = filteredRestaurants;
 
   const suggestions = useMemo<SuggestedRestaurant[]>(
@@ -218,6 +212,9 @@ export default function MapInterface() {
   const [suggestionResults, setSuggestionResults] = useState<
     SuggestedRestaurant[]
   >(() => getRandomRestaurants(suggestions, 3));
+  const [sentiment, setSentiment] = useState<Sentiment | null>(null);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
+  const [sentimentError, setSentimentError] = useState<string | null>(null);
 
   useEffect(() => {
     setSuggestionResults(getRandomRestaurants(suggestions, 3));
@@ -250,6 +247,34 @@ export default function MapInterface() {
     setViewMode("map");
   }, []);
 
+  useEffect(() => {
+    if (!selectedRestaurant) {
+      setSentiment(null);
+      setSentimentLoading(false);
+      setSentimentError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setSentimentLoading(true);
+    setSentimentError(null);
+
+    getSentiment(selectedRestaurant.id)
+      .then((data) => {
+        if (!cancelled) setSentiment(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSentimentError("Failed to load sentiment data");
+      })
+      .finally(() => {
+        if (!cancelled) setSentimentLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRestaurant]);
+
   const {
     userCenter,
     locate,
@@ -266,7 +291,7 @@ export default function MapInterface() {
   });
   // Dual mode
   return (
-    <div className="flex flex-col md:h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 md:gap-4 md:p-4">
+    <div className="flex flex-col h-[calc(100vh-73px)] bg-bs-neutral-100 gap-0 md:gap-4 md:p-4">
       <div className="px-4 pt-4 md:px-0 md:pt-0 flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-bs-neutral-900">
@@ -282,8 +307,8 @@ export default function MapInterface() {
             type="button"
             onClick={() => setViewMode("map")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "map"
-                ? "bg-bs-gold text-bs-neutral-900"
-                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+              ? "bg-bs-gold text-bs-neutral-900"
+              : "text-bs-neutral-600 hover:text-bs-neutral-900"
               }`}
           >
             Map Mode
@@ -292,8 +317,8 @@ export default function MapInterface() {
             type="button"
             onClick={() => setViewMode("suggestions")}
             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "suggestions"
-                ? "bg-bs-gold text-bs-neutral-900"
-                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+              ? "bg-bs-gold text-bs-neutral-900"
+              : "text-bs-neutral-600 hover:text-bs-neutral-900"
               }`}
           >
             Suggestion Mode
@@ -301,7 +326,7 @@ export default function MapInterface() {
         </div>
       </div>
       <div className="flex-1 flex flex-col md:flex-row min-h-0 gap-0 md:gap-4">
-        <div className="flex-1 relative min-h-[45vh] md:min-h-0 rounded-none md:rounded-xl overflow-hidden border-0 md:border border-bs-neutral-200 shadow-md md:shadow-lg bg-white">
+        <div className="flex-1 relative h-full min-h-[45vh] md:min-h-0 rounded-none md:rounded-xl overflow-hidden border-0 md:border border-bs-neutral-200 shadow-md md:shadow-lg bg-white">
           {viewMode === "map" ? (
             <>
               <FilterBar filters={filters} onFilterChange={setFilters} />
@@ -331,10 +356,11 @@ export default function MapInterface() {
                 </div>
 
                 {!selectedRestaurant && (
-                  <div className="absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+                  <div className="hidden md:flex absolute mt-16 top-4 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-2">
                     <div className="bg-white/95 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm text-bs-neutral-600 border border-bs-neutral-200">
                       Tap a pin to view restaurant details
                     </div>
+
                     {geoError && (
                       <div className="bg-red-50 text-red-700 px-3 py-1.5 rounded-full text-xs border border-red-200">
                         {geoError}
@@ -342,6 +368,8 @@ export default function MapInterface() {
                     )}
                   </div>
                 )}
+
+
 
                 <button
                   type="button"
@@ -360,6 +388,9 @@ export default function MapInterface() {
                     <RestaurantPopupCard
                       restaurant={selectedRestaurant}
                       isFavorite={isFavorite(selectedRestaurant.id)}
+                      sentiment={sentiment}
+                      sentimentLoading={sentimentLoading}
+                      sentimentError={sentimentError}
                       onClose={() => setSelectedPin(null)}
                       onToggleFavorite={() =>
                         toggleFavorite(selectedRestaurant)
@@ -473,7 +504,7 @@ export default function MapInterface() {
           </button>
         </div>
 
-        <div className="w-full md:w-80 xl:w-96 shrink-0 flex flex-col p-4 md:pb-4 min-h-[320px] max-h-[50vh] md:min-h-0 md:max-h-full overflow-y-hidden">
+        <div className="w-full md:w-80 xl:w-96 shrink-0 flex flex-col p-4 md:pb-4 min-h-[320px] max-h-[55vh] md:min-h-0 md:max-h-[80vh] overflow-y-hidden">
           <ChatBoxPanel
             socketUrl={null}
             useLlm

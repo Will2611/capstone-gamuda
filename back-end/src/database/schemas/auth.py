@@ -20,10 +20,7 @@ class AuthUserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
     id: UUID
-    email: str
-    display_name: str
     role: str
-    avatar_url: str | None = None
 
 
 class TokenResponse(BaseModel):

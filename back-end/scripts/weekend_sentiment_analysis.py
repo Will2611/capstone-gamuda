@@ -1,9 +1,10 @@
 """
-Weekend job — VADER text sentiment analysis on pending reviews.
+Weekend job — hybrid VADER + LLM sentiment analysis on pending reviews.
 
 1. VADER compound score → Positive / Negative / Neutral
 2. Keyword rules → Wait Time / Taste / Service theme
-3. Recompute pie chart % and complaint theme bar counts
+3. LLM resolves rating vs text conflicts (set LLM_PROVIDER=gemini in .env)
+4. Recompute pie chart % and complaint theme bar counts
 
 Run from back-end/:  python scripts/weekend_sentiment_analysis.py
 """
@@ -18,9 +19,11 @@ from sqlalchemy import desc
 
 from src.database.connection import SessionLocal, engine
 from src.database.migrate_visibility import ensure_visibility_schema
-from src.database.models.visibility import RestaurantVisbilityModel, SentimentDataModel
+from src.database.models.restaurants import RestaurantModel
+from src.database.models.visibility import SentimentDataModel
 from src.database.sentiment_helpers import (
     load_reviews_by_restaurant,
+    load_reviews_from_db,
     compute_sentiment_pcts,
     replace_complaint_themes,
 )
@@ -38,10 +41,12 @@ async def run_analysis():
         "vader": 0,
         "rating_only": 0,
         "conflicts": 0,
+        "llm": 0,
+        "llm_errors": 0,
     }
 
     try:
-        restaurants = db.query(RestaurantVisbilityModel).all()
+        restaurants = db.query(RestaurantModel).order_by(RestaurantModel.name).all()
 
         for rest in restaurants:
             sentiment = (
@@ -58,6 +63,8 @@ async def run_analysis():
                 ]
             else:
                 pending = reviews_by_restaurant.get(rest.name, [])
+                if not pending:
+                    pending = load_reviews_from_db(db, rest.id)
 
             if not pending:
                 continue
@@ -70,7 +77,6 @@ async def run_analysis():
                 sentiment = SentimentDataModel(
                     restaurant_id=rest.id,
                     recorded_at=today,
-                    restaurant_name=rest.name,
                     positive_pct=0.0,
                     negative_pct=0.0,
                     neutral_pct=0.0,
@@ -88,7 +94,7 @@ async def run_analysis():
 
             total_stats["restaurants"] += 1
             total_stats["reviews"] += stats["total"]
-            for key in ("vader", "rating_only", "conflicts"):
+            for key in ("vader", "rating_only", "conflicts", "llm", "llm_errors"):
                 total_stats[key] += stats.get(key, 0)
 
         db.commit()
@@ -98,6 +104,9 @@ async def run_analysis():
         print(f"  VADER:        {total_stats['vader']}")
         print(f"  Rating-only:  {total_stats['rating_only']}")
         print(f"  Conflicts:    {total_stats['conflicts']}")
+        print(f"  LLM resolved: {total_stats['llm']}")
+        if total_stats["llm_errors"]:
+            print(f"  LLM errors:   {total_stats['llm_errors']}")
 
     except Exception as exc:
         db.rollback()

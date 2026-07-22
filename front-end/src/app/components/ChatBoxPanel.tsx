@@ -406,6 +406,9 @@ export default function ChatBoxPanel({
 
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
+      if (wsRef.current) {
+        wsRef.current.send(JSON.stringify(userMsg));
+      }
       setInput("");
 
       if (useLlm) {

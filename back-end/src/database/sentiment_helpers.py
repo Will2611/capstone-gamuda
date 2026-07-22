@@ -24,6 +24,18 @@ def load_reviews_by_restaurant(csv_path: Path | None = None) -> dict[str, list[d
     return grouped
 
 
+def load_reviews_from_db(db, restaurant_id) -> list[dict]:
+    """Load seeded reviews from the reviews table for hybrid analysis."""
+    from src.database.models.reviews import ReviewModel
+
+    rows = (
+        db.query(ReviewModel)
+        .filter(ReviewModel.restaurant_id == restaurant_id)
+        .all()
+    )
+    return [{"text": row.content, "rating": row.stars} for row in rows]
+
+
 def build_rating_only_reviews(reviews: list[dict]) -> list[dict]:
     """Weekday snapshot: ratings stored, text analysis pending."""
     return [

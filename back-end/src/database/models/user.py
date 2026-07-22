@@ -14,15 +14,16 @@ import hashlib
 import hmac
 import os
 from sqlalchemy.dialects.postgresql import ARRAY, TIME
+from src.database.schemas.user import USER_ROLE_TYPE
 
 class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ = 'users'
 
-    user_type: Mapped[Literal["client", "owner"]] = mapped_column(String, nullable=False)
+    user_type: Mapped[USER_ROLE_TYPE] = mapped_column(String, nullable=False)
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[EmailStr] = mapped_column(String, unique=True, index=True)
     hashedPassword: Mapped[str] = mapped_column(String(255), nullable=False)
-    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
     # Add property aliases so Pydantic can automatically pull display_name and role
     @property
@@ -69,10 +70,10 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
 class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     __tablename__ ='clients'
     # change to enum or whatever later, dependant on what is needed, is also considered subjective
-    religion:Mapped[str] = mapped_column(String)
-    language:Mapped[str] = mapped_column(String)
-    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True)
-    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True)
+    religion:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
+    language:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
+    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True) # pyright: ignore[reportGeneralTypeIssues]
+    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True) # pyright: ignore[reportGeneralTypeIssues]
     preferred_time: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
     preferred_vibes:Mapped[list[str]]= mapped_column(ARRAY(String), default_factory=list)
     price_limit:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)
@@ -122,7 +123,7 @@ class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     # Don't matter on overwrite, is just a quicker way of creating foreign key relation and taking advantage of ORM to load all other UserModel Data
     __table_args__=((
         Index(
-            "ix_geohash_not_null",
+            "ix_user_geohash_not_null",
             "recent_geohash",
             postgresql_where=text("recent_geohash IS NOT NULL")
         ),
