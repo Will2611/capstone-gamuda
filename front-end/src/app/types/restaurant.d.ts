@@ -1,7 +1,7 @@
 import type { Promotion } from "./promotion";
 
 export interface Restaurant {
-  id: number;
+  id: string;
   name: string;
   rating: number;
   distance: string;

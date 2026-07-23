@@ -6,7 +6,7 @@ export const mockPromotions: Promotion[] = [
   {
     promoId: "promo1",
 
-    id: 1,
+    id: "1",
 
     title: "50% Buffet Discount",
 
@@ -30,7 +30,7 @@ export const mockPromotions: Promotion[] = [
   {
     promoId: "promo2",
 
-    id: 1,
+    id: "1",
 
     title: "Free Dessert",
 
@@ -55,7 +55,7 @@ export const mockPromotions: Promotion[] = [
   {
     promoId: "promo3",
 
-    id: 1,
+    id: "1",
 
     title: "National Day Special",
 
@@ -78,7 +78,7 @@ export const mockPromotions: Promotion[] = [
   {
     promoId: "promo4",
 
-    id: 2,
+    id: "2",
 
     title: "June Feast Festival",
 

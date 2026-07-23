@@ -33,10 +33,12 @@ def get_llm():
         return ChatGoogleGenerativeAI(
             model=config.GEMINI_MODEL,
             google_api_key=config.GEMINI_API_KEY,
+            temperature=0
         )
     return ChatOllama(
         model=config.OLLAMA_MODEL,
         base_url=config.OLLAMA_BASE_URL,
+        temperature=0
     )
 
 

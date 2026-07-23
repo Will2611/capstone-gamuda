@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+// import { ExternalLink } from "lucide-react";
 import { ActionModal } from "../components/visibility-dashboard/ActionModal";
 import {
   fetchRestaurants,
@@ -42,8 +43,7 @@ export default function SocialVisibilityDashboard() {
   const tabs = [
     { id: "metrics", label: "Top Metrics" },
     { id: "funnel", label: "Traffic & Conversion" },
-    { id: "reviews", label: "Google Reviews" },
-    { id: "sentiment", label: "Sentiment" },
+    { id: "reviews-sentiment", label: "Google Reviews & Sentiment" },
     { id: "traffic", label: "Foot Traffic" },
     { id: "promotions", label: "Promotions" },
   ];
@@ -73,6 +73,19 @@ export default function SocialVisibilityDashboard() {
   const [actionSuggestions, setActionSuggestions] =
     useState<ActionSuggestionsResponse | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // const handleViewSuggestions = async () => {
+  //   if (!selectedRestaurantId) return;
+  //   setShowSuggestions(true);
+  //   if (!actionSuggestions) {
+  //     try {
+  //       const data = await getActionSuggestions(selectedRestaurantId);
+  //       setActionSuggestions(data);
+  //     } catch {
+  //       setActionSuggestions(null);
+  //     }
+  //   }
+  // };
 
   const handleThemeClick = async (theme: string) => {
     if (!selectedRestaurantId) return;
@@ -186,11 +199,11 @@ export default function SocialVisibilityDashboard() {
     }
   }, [selectedRestaurantId, loadDashboard]);
 
-  const dropOffStage = funnel.find((s) => s.isDropOff);
+  // const dropOffStage = funnel.find((s) => s.isDropOff);
 
-  const handleQuickFix = (action: string) => {
-    setSelectedModal(action);
-  };
+  // const handleQuickFix = (action: string) => {
+  //   setSelectedModal(action);
+  // };
 
   const modals = {
     "reply-reviews": {
@@ -303,36 +316,37 @@ export default function SocialVisibilityDashboard() {
           {activeTab === "metrics" && <MetricsTab summary={summary} />}
 
           {activeTab === "funnel" && (
-            <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
+            <FunnelTab funnel={funnel} />
+            // <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
           )}
 
-          {activeTab === "reviews" && <ReviewsTab social={social} />}
-
-          {activeTab === "sentiment" && (
-            <SentimentTab
-              sentiment={sentiment}
-              handleThemeClick={handleThemeClick}
-            />
+          {activeTab === "reviews-sentiment" && (
+            <div className="space-y-10">
+              <SentimentTab
+                sentiment={sentiment}
+                handleThemeClick={handleThemeClick}
+              />
+              <ReviewsTab social={social} />
+            </div>
           )}
 
-          {activeTab === "traffic" && (
-            <TrafficTab footTraffic={footTraffic} />
-          )}
+          {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}
 
           {activeTab === "promotions" && (
-            <PromotionsTab handleQuickFix={handleQuickFix} />
+            <PromotionsTab />
+            // <PromotionsTab handleQuickFix={handleQuickFix} />
           )}
         </div>
       )}
 
-      {/* Sticky CTA Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-bs-neutral-200 shadow-lg z-20">
+      {/* Sticky CTA Bar REMOVE TILL FURTHER NOTICE*/}
+      {/* <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-bs-neutral-200 shadow-lg z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-90 py-4 flex flex-col sm:flex-row gap-3">
           <button className="flex-1 px-4 py-3 bg-bs-neutral-900 text-white rounded-lg hover:bg-bs-neutral-800 transition-colors font-bold">
             Download Report
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Theme Reviews Modal */}
       {themeReviewsData !== null && (
@@ -408,9 +422,9 @@ export default function SocialVisibilityDashboard() {
                 </>
               )}
             </div>
-            <div className="p-4 border-t border-bs-neutral-200">
+            {/* REMOVE <div className="p-4 border-t border-bs-neutral-200">
               <a
-                href="https://www.google.com/maps"
+                href="https://www.google.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 text-sm text-bs-blue hover:underline"
@@ -418,7 +432,7 @@ export default function SocialVisibilityDashboard() {
                 <ExternalLink size={14} />
                 Open full Google Reviews
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       )}

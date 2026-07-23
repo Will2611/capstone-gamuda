@@ -57,7 +57,7 @@ async def register_owner(payload: OwnerRegisterRequest, db: db_dependency):
             about=f"Welcome to {rest_data.name}!",
             contact_no=rest_data.contact_number or "",
             address=address_list,
-            timezone=ZoneInfo("Asia/Kuala_Lumpur"),
+            timezone="Asia/Kuala_Lumpur",
             timezone_offset=480,
             opening_hours_struct={},
             source="owner_registration",

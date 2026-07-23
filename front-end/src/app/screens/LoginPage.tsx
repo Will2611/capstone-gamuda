@@ -3,27 +3,34 @@ import { useNavigate } from "react-router";
 import { LoginForm } from "../components/LoginForm";
 import { useAuth } from "../context/AuthContext";
 import BiteSccoutIcon from "@/assets/icon.svg?react";
+import { useLoading } from "../context/LoadingContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-
-
+  const { isLoading, setLoading } = useLoading();
 
   const handleLogin = async (email: string, password: string) => {
-    setIsLoading(true);
+    setLoading(true);
     const result = await login(email, password);
-    setIsLoading(false);
 
     if (result.success) {
       // 💡 Check the role returned from your Auth Context / Backend payload
       if (result.role === "owner") {
-        navigate("/social-visibility", { replace: true }); // Send owners to management
+        // navigate("/social-visibility", { replace: true }); // Send owners to management
+        setTimeout(() => {
+          navigate("/social-visibility", { replace: true }); // Send owners to management
+        });
+        setLoading(false);
       } else {
-        navigate("/map", { replace: true }); // Send clients to the food map
+        // navigate("/map", { replace: true });
+        navigate("/map", { replace: true });
+        setTimeout(() => {
+          setLoading(false);
+        }); // Send clients to the food map
       }
     }
+
     return result;
   };
 

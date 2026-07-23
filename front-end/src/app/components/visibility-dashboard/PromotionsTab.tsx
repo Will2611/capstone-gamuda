@@ -1,11 +1,7 @@
 import { Megaphone } from "lucide-react";
 import { useNavigate } from "react-router";
 
-interface PromotionsTabProps {
-  handleQuickFix?: (action: string) => void;
-}
-
-export function PromotionsTab(_props: PromotionsTabProps) {
+export function PromotionsTab() {
   const navigate = useNavigate();
 
   return (

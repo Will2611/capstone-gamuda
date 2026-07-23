@@ -12,6 +12,7 @@ import type { Restaurant, SearchHistoryEntry } from "../types/restaurant";
 import type { FullUserProfileData, SearchPreferences } from "../types/user";
 import { useAuth } from "./AuthContext";
 import { bitescoutApi } from "../services/baseApi";
+import { useLoading } from "./LoadingContext";
 
 const USER_STORAGE_KEY = "bitescouts_user_profile";
 
@@ -56,18 +57,23 @@ interface UserContextValue {
   profile: FullUserProfileData;
   profileLoading: boolean;
   profileError: string | null;
-  updateUserProfile: (updateData: Partial<FullUserProfileData>) => Promise<void>;
+  updateUserProfile: (
+    updateData: Partial<FullUserProfileData>,
+  ) => Promise<void>;
   updatePreferences: (prefs: SearchPreferences) => void;
   addSearchHistory: (entry: Omit<SearchHistoryEntry, "id">) => void;
   toggleFavorite: (restaurant: Restaurant) => void;
-  isFavorite: (restaurantId: number) => boolean;
+  isFavorite: (restaurantId: string) => boolean;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<FullUserProfileData>({} as FullUserProfileData);
+  const { withLoading } = useLoading();
+  const [profile, setProfile] = useState<FullUserProfileData>(
+    {} as FullUserProfileData,
+  );
   const [profileLoading, setProfileLoading] = useState<boolean>(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
@@ -92,7 +98,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
       // const token = localStorage.getItem("bitescouts_token");
 
       try {
-        const { data } = await bitescoutApi.get(`/user/client/personal_profile`);
+        const { data } = await bitescoutApi.get(
+          `/user/client/personal_profile`,
+        );
         // const response = await fetch(
         //   `http://localhost:8000/user/client/personal_profile`,
         //   {
@@ -121,10 +129,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
           birthday: data.birthday ?? undefined,
           religion: data.religion ?? undefined,
           language: data.language ?? undefined,
-          personalities: data.personalities ?? [],   //
+          personalities: data.personalities ?? [], //
           savedPreferences: data.savedPreferences ?? prev.savedPreferences,
           searchHistory: data.searchHistory ?? prev.searchHistory,
-          favoriteRestaurants: data.favoriteRestaurants ?? prev.favoriteRestaurants,
+          favoriteRestaurants:
+            data.favoriteRestaurants ?? prev.favoriteRestaurants,
         }));
       } catch (err: any) {
         setProfileError(err.message || "An unexpected error occurred.");
@@ -133,7 +142,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    fetchUserProfile();
+    withLoading(fetchUserProfile)();
   }, [user]);
 
   useEffect(() => {
@@ -172,7 +181,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         savedPreferences: payload.savedPreferences ?? prev.savedPreferences,
       }));
     },
-    [user]
+    [user],
   );
 
   //       username: fullName,
@@ -215,7 +224,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   //     setIsLoading(false);
   //   }
 
-
   const updatePreferences = useCallback((prefs: SearchPreferences) => {
     setProfile((prev) => ({ ...prev, savedPreferences: prefs }));
   }, []);
@@ -248,8 +256,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isFavorite = useCallback(
-    (restaurantId: number) =>
-      profile.favoriteRestaurants.some((r) => r.id === restaurantId),
+    (restaurantId: string) => {
+      const favouriteRestaurants = profile.favoriteRestaurants || [];
+      return favouriteRestaurants.some((r) => r.id === restaurantId);
+    },
     [profile.favoriteRestaurants],
   );
 
@@ -258,7 +268,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       profile,
       profileLoading,
       profileError,
-      updateUserProfile,
+      updateUserProfile: withLoading(updateUserProfile),
       updatePreferences,
       addSearchHistory,
       toggleFavorite,
@@ -273,7 +283,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       addSearchHistory,
       toggleFavorite,
       isFavorite,
-    ]
+    ],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

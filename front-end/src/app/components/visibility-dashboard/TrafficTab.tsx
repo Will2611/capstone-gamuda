@@ -14,7 +14,7 @@ import { type FootTrafficResponse } from "../../services/visibilityApi";
 import {
   buildStackedChartData,
   formatChartWeekRange,
-  insightCardStyle,
+  // insightCardStyle,
   TRAFFIC_SEGMENTS,
   type TrafficSegmentKey,
 } from "../../utils/trafficAnalytics";
@@ -46,25 +46,25 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
     () => buildStackedChartData(footTraffic.chartDays ?? []),
     [footTraffic.chartDays],
   );
-  const insights = footTraffic.insights ?? [];
+  // const insights = footTraffic.insights ?? [];
   const chartTitle = useMemo(
     () => formatChartWeekRange(footTraffic.chartDays ?? []),
     [footTraffic.chartDays],
   );
 
-  const selectFromInsight = (
-    dayIndex: number | null | undefined,
-    segment?: string | null,
-  ) => {
-    if (dayIndex == null || Number.isNaN(dayIndex)) {
-      setSelection(null);
-      return;
-    }
-    setSelection({
-      dayIndex,
-      segment: (segment as TrafficSegmentKey | undefined) ?? undefined,
-    });
-  };
+  // const selectFromInsight = (
+  //   dayIndex: number | null | undefined,
+  //   segment?: string | null,
+  // ) => {
+  //   if (dayIndex == null || Number.isNaN(dayIndex)) {
+  //     setSelection(null);
+  //     return;
+  //   }
+  //   setSelection({
+  //     dayIndex,
+  //     segment: (segment as TrafficSegmentKey | undefined) ?? undefined,
+  //   });
+  // };
 
   const selectFromChart = (dayIndex: number, segment?: TrafficSegmentKey) => {
     setSelection((prev) => {
@@ -262,7 +262,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
+      {/* REMOVE <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
         <h3 className="font-bold text-bs-neutral-900 mb-4">Traffic Insight</h3>
         <div className="space-y-3">
           {insights.length === 0 ? (
@@ -303,7 +303,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
             })
           )}
         </div>
-      </div>
+      </div> */}
     </section>
   );
 }

@@ -24,6 +24,7 @@ export function ReviewsTab({ social }: ReviewsTabProps) {
               ctaLabel={`Open ${p.platform}`}
               url={p.url}
               color="text-bs-gold"
+              hideOpenButton={true}
             />
           ))}
       </div>

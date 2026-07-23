@@ -62,7 +62,7 @@ export default function MapInterface() {
     }
   }, [profile]);
 
-  const [selectedPin, setSelectedPin] = useState<number | null>(null);
+  const [selectedPin, setSelectedPin] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
 
   const [displayedRestaurants, setDisplayedRestaurants] = useState<
@@ -98,18 +98,23 @@ export default function MapInterface() {
         };
 
         const mapped = searchResults.map((r, index) => {
-          const numericId = typeof r.id === "string" ? stringToHash(r.id) : (r.id || 0);
+          const numericId =
+            typeof r.id === "string" ? stringToHash(r.id) : r.id || 0;
           const rating = r.rating || 4.0;
           const mockMatch = MOCK_RESTAURANTS.find(
             (m) =>
-              m.id === numericId || m.name.toLowerCase() === r.name.toLowerCase(),
+              m.id === numericId ||
+              m.name.toLowerCase() === r.name.toLowerCase(),
           );
           return {
             id: numericId,
             name: r.name,
             rating,
             cuisine: r.cuisine || "Any",
-            distance: r.distance !== undefined ? `${r.distance.toFixed(1)} km` : (mockMatch?.distance || "1.2 km"),
+            distance:
+              r.distance !== undefined
+                ? `${r.distance.toFixed(1)} km`
+                : mockMatch?.distance || "1.2 km",
             dietary: mockMatch?.dietary || "Halal",
             isOpen: mockMatch?.isOpen !== undefined ? mockMatch.isOpen : true,
             type: index === topIndex ? ("gold" as const) : ("red" as const),
@@ -118,7 +123,9 @@ export default function MapInterface() {
                 ? [r.longitude, r.latitude]
                 : mockMatch?.coordinates || [101.71, 3.15],
             image: mockMatch?.image,
-            promotions: mockPromotions.filter((promo) => promo.id === numericId),
+            promotions: mockPromotions.filter(
+              (promo) => promo.id === numericId,
+            ),
           } as Restaurant;
         });
         setDisplayedRestaurants(mapped);
@@ -226,7 +233,7 @@ export default function MapInterface() {
 
   const selectedRestaurant = restaurants.find((r) => r.id === selectedPin);
 
-  const handlePinClick = useCallback((id: number) => {
+  const handlePinClick = useCallback((id: string) => {
     setSelectedPin((current) => (current === id ? null : id));
   }, []);
 
@@ -306,20 +313,22 @@ export default function MapInterface() {
           <button
             type="button"
             onClick={() => setViewMode("map")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "map"
-              ? "bg-bs-gold text-bs-neutral-900"
-              : "text-bs-neutral-600 hover:text-bs-neutral-900"
-              }`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              viewMode === "map"
+                ? "bg-bs-gold text-bs-neutral-900"
+                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+            }`}
           >
             Map Mode
           </button>
           <button
             type="button"
             onClick={() => setViewMode("suggestions")}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${viewMode === "suggestions"
-              ? "bg-bs-gold text-bs-neutral-900"
-              : "text-bs-neutral-600 hover:text-bs-neutral-900"
-              }`}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              viewMode === "suggestions"
+                ? "bg-bs-gold text-bs-neutral-900"
+                : "text-bs-neutral-600 hover:text-bs-neutral-900"
+            }`}
           >
             Suggestion Mode
           </button>
@@ -368,8 +377,6 @@ export default function MapInterface() {
                     )}
                   </div>
                 )}
-
-
 
                 <button
                   type="button"

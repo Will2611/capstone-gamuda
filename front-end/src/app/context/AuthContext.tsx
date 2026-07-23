@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { bitescoutApi } from "../services/baseApi";
+import { useLoading } from "./LoadingContext";
 
 export type Role = "client" | "owner";
 
@@ -31,38 +32,34 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-
+  const { withLoading } = useLoading();
+  // Load user from storage on initial application mount
   useEffect(() => {
     const setter = async () => {
       try {
-        const { data } = await bitescoutApi.get<{
-          id?: string | null;
-          role?: Role | null;
-        }>("/user/ping");
-        if (data?.id) {
-          setUser({ id: String(data.id), role: (data.role as Role) ?? "client" });
-        } else {
-          setUser(null);
-        }
+        const { data } = await bitescoutApi.get<AuthUser>("/user/ping");
+        setUser(data);
       } catch {
         setUser(null);
       }
+      // Store both token string and user object locally
     };
-    void setter();
+    withLoading(setter)();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      const { data } = await bitescoutApi.post<{
-        id: string;
-        role: Role;
-      }>(`/user/login`, {
-        email,
-        password,
-      });
+      const { data: authUser } = await bitescoutApi.post<AuthUser>(
+        `/user/login`,
+        {
+          email,
+          password,
+        },
+      );
 
-      setUser({ id: String(data.id), role: data.role });
-      return { success: true, role: data.role };
+      setUser(authUser);
+
+      return { success: true, role: authUser.role };
     } catch (errorRaw) {
       const error = errorRaw as AxiosError<{ detail: string }>;
       console.error("Authentication backend error:", JSON.stringify(error));
@@ -93,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isAuthenticated: !!user,
       login,
-      logout,
+      logout: withLoading(logout),
     }),
     [user, login, logout],
   );

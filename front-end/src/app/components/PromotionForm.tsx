@@ -112,7 +112,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
     const promotion: Promotion = {
       promoId: initialData?.promoId ?? crypto.randomUUID(),
-      id: initialData?.id ?? 1,
+      id: initialData?.id ?? "1",
       title: title.trim(),
       description: description.trim(),
       imageUrl: imageUrl.trim(),
@@ -141,7 +141,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
   const currentPromoState: Promotion = {
     promoId: initialData?.promoId ?? "preview-id",
-    id: initialData?.id ?? 1,
+    id: initialData?.id ?? "1",
     title: title || "Your Promotion Title",
     description:
       description ||

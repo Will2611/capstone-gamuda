@@ -11,11 +11,13 @@ user_router = APIRouter(tags=['users'])
 
 @user_router.get('/ping',response_model=AuthUserResponse)
 async def get_users_base(cookie_payload:CookieCustom, resp:Response):
-    auth_user = AuthUserResponse(
-        id=cookie_payload.userId,
-        role=cookie_payload.role,
-    )
-    return auth_user
+    if cookie_payload.userId and cookie_payload.role:
+        auth_user = AuthUserResponse(
+            id=cookie_payload.userId,
+            role=cookie_payload.role,
+            )
+        return auth_user
+    raise HTTPException(status_code=401,detail='Missing auth cookie')
 
 # @user_router.post('/validate-user-test')
 # async def post_users_base(db: db_dependency):

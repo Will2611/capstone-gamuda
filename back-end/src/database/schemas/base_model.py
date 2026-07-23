@@ -24,3 +24,17 @@ class DBBaseModelMixIn(object):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), init=False)
     updated_at:Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=datetime.now(), init=False)
     
+from pydantic import BeforeValidator
+from typing import Annotated
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+def testZoneInfoType(input:str)->str|None:
+    if not input:
+        return None
+    try:
+        ZoneInfo(input)
+        return input
+    except ZoneInfoNotFoundError:
+        raise ValueError ('Not a valid timezone')
+
+
+OptionalCleansedTZStr = Annotated[str|None, BeforeValidator(testZoneInfoType)]
