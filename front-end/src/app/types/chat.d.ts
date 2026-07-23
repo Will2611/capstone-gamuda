@@ -1,4 +1,4 @@
-import type { DummyUserProfile, PublicUserProfileData, UserType } from "./user";
+import type { DummyUserProfile, PublicUserProfileData, USERTYPE } from "./user";
 
 export const WSEvTypeObject = {
   TYPING: "typing",
@@ -6,7 +6,7 @@ export const WSEvTypeObject = {
   INIT: "init",
 } as const;
 
-export type WSEvType = (typeof WSEvType)[keyof typeof WSEvType];
+export type WSEvType = (typeof WSEvTypeObject)[keyof typeof WSEvTypeObject];
 
 interface WSOngoingPayload {
   // Dummy must have
@@ -14,7 +14,7 @@ interface WSOngoingPayload {
   userName: string;
   userEmail?: string;
   userAvatarUrl?: string;
-  userType: UserType;
+  userType: USERTYPE;
 }
 export interface userIsTyping extends WSOngoingPayload {
   isTyping: boolean;

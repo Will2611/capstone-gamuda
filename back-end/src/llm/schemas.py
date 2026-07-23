@@ -10,6 +10,10 @@ class ChatRequest(BaseModel):
     messages: list[ChatTurn]
     latitude: float | None = None
     longitude: float | None = None
+    exclude_restaurant_ids: list[uuid.UUID] = Field(
+        default_factory=list,
+        description="Restaurant IDs already shown in this chat; used when asking for more alternatives.",
+    )
 
 
 class RestaurantResult(BaseModel):
@@ -29,3 +33,4 @@ class RestaurantResult(BaseModel):
 class ChatResponse(BaseModel):
     message: str
     restaurants: list[RestaurantResult] = []
+    suggestions: list[str] = []

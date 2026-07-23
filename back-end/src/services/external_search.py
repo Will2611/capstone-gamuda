@@ -1,12 +1,34 @@
 import os
 import requests
 import pygeohash as gh
+import time
 from typing import List, Dict, Any
+from fastapi import HTTPException
 
 from dotenv import load_dotenv
 
 # Ensure environment variables are loaded
 load_dotenv()
+
+# Global rate limiting for external API calls to avoid API key exhaustion
+# Limit: at most 5 external search calls per 60 seconds
+EXTERNAL_API_LIMIT = 5
+EXTERNAL_API_WINDOW = 60.0
+
+_external_api_calls: List[float] = []
+
+class ExternalRateLimitException(HTTPException):
+    def __init__(self, detail: str = "External search rate limit exceeded. Please try again in a few moments."):
+        super().__init__(status_code=429, detail=detail)
+
+def enforce_external_rate_limit() -> None:
+    global _external_api_calls
+    now = time.time()
+    # Filter out calls older than the window
+    _external_api_calls = [t for t in _external_api_calls if now - t < EXTERNAL_API_WINDOW]
+    if len(_external_api_calls) >= EXTERNAL_API_LIMIT:
+        raise ExternalRateLimitException()
+    _external_api_calls.append(now)
 
 def get_env_var(name: str, default: str = None) -> str:
     return os.getenv(name, default)
@@ -16,6 +38,8 @@ def search_external_restaurants(cuisine: str, latitude: float, longitude: float,
     Searches for restaurants of a specific cuisine within a given radius using Google Places or SerpAPI.
     Returns normalized dictionaries ready to be inserted into the database.
     """
+    enforce_external_rate_limit()
+
     provider = get_env_var("PLACES_PROVIDER", "serpapi")
     google_key = get_env_var("GOOGLE_PLACES_API_KEY")
     serpapi_key = get_env_var("SERPAPI_API_KEY")

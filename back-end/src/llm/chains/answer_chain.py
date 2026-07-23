@@ -12,6 +12,7 @@ Rules:
 - Mention key details like cuisine, rating, distance, or standout features where helpful.
 - Keep the reply concise (2-4 sentences total).
 - Never invent/hallucinate restaurant names or information not in the context.
+- If the user asked for more/other suggestions, acknowledge these are alternative options (e.g. "Here are a few more…") rather than repeating the previous set.
 """,
     ),
     (

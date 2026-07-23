@@ -2,9 +2,34 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, SubmitEvent as ReactSubmitEvent } from "react";
 import type { ChatBox, ChatMessage, DummyChatBox } from "../types/chat";
 import { useUser } from "../context/UserContext";
+import { useAuth } from "../context/AuthContext";
 import { Send, Bot, User } from "lucide-react";
-import type { DummyUserProfile, PublicUserProfileData } from "../types/user";
+import type {
+  DummyUserProfile,
+  PublicUserProfileData,
+  SearchPreferences,
+} from "../types/user";
 import { sendChatMessage, type RestaurantResult } from "../services/chatbotApi";
+
+/** Backend chat WS chat_message frame */
+interface WsChatMessage {
+  type: "chat_message";
+  message?: string;
+  username?: string;
+  user_id?: string;
+  timestamp?: string;
+}
+
+function mapWsChatMessage(data: WsChatMessage): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    userId: data.user_id ?? "",
+    userName: data.username ?? "User",
+    userType: "client",
+    timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+    message: data.message ?? "",
+  };
+}
 
 const chatConnection = {
   CONNECTED: "connected",
@@ -14,6 +39,51 @@ const chatConnection = {
 
 export type CHAT_CONNECTION =
   (typeof chatConnection)[keyof typeof chatConnection];
+
+const RANDOMIZER_CHIP = "Surprise me!";
+
+function titleCase(value: string): string {
+  return value
+    .replace(/[-_]/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function buildInitialSuggestionChips(
+  prefs: Partial<SearchPreferences> | null | undefined,
+): string[] {
+  const chips: string[] = [];
+  const cuisine = (prefs?.cuisine ?? []).filter(Boolean);
+  const dietary = (prefs?.dietary ?? []).filter(
+    (d) => d && d.toLowerCase() !== "none",
+  );
+  const ambience = (prefs?.ambience ?? []).filter(Boolean);
+
+  for (const c of cuisine) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(c)} nearby`);
+  }
+  for (const d of dietary) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(d)} options`);
+  }
+  for (const a of ambience) {
+    if (chips.length >= 2) break;
+    chips.push(`${titleCase(a)} vibe`);
+  }
+
+  while (chips.length < 2) {
+    const fallbacks = ["Restaurants near me", "What's good for dinner?"];
+    const next = fallbacks[chips.length];
+    if (!chips.includes(next)) chips.push(next);
+    else break;
+  }
+
+  chips.push(RANDOMIZER_CHIP);
+  return chips;
+}
 
 function getAvatar(isBot = true, avatarUrl?: string, displayName?: string) {
   if (isBot) {
@@ -56,42 +126,107 @@ export default function ChatBoxPanel({
   onLlmResponse?: (replyText: string, restaurants: RestaurantResult[]) => void;
 }) {
   const getUser = useUser();
+  const { user: authUser } = useAuth();
+  const selfUserId = authUser?.id ?? getUser.profile.id;
 
   const [_socketStatus, setSocketStatus] = useState<CHAT_CONNECTION>(
     chatConnection.DISCONNECTED,
   );
 
   const [initPayload, setInitPayload] = useState<ChatBox | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState<string[]>([]);
   const wsRef = useRef<WebSocket>(null);
-  // Setting up receiving message
+  const pendingWsSendsRef = useRef<string[]>([]);
+  const selfUserIdRef = useRef(selfUserId);
+  const onReceiveMessageRef = useRef(onReceiveMessage);
+  selfUserIdRef.current = selfUserId;
+  onReceiveMessageRef.current = onReceiveMessage;
+
+  // Setting up receiving / sending over WebSocket
   useEffect(() => {
     if (!socketUrl) {
+      wsRef.current = null;
+      pendingWsSendsRef.current = [];
+      setSocketStatus(chatConnection.DISCONNECTED);
       return;
     }
     const ws = new WebSocket(socketUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => setSocketStatus(chatConnection.CONNECTED);
-    ws.onclose = () => setSocketStatus(chatConnection.DISCONNECTED);
+    ws.onopen = () => {
+      setSocketStatus(chatConnection.CONNECTED);
+      const queued = pendingWsSendsRef.current.splice(0);
+      for (const text of queued) {
+        ws.send(
+          JSON.stringify({
+            type: "chat_message",
+            message: text,
+          }),
+        );
+      }
+    };
+    ws.onclose = () => {
+      if (wsRef.current === ws) wsRef.current = null;
+      setSocketStatus(chatConnection.DISCONNECTED);
+    };
     ws.onerror = () => setSocketStatus(chatConnection.ERROR);
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "init") {
+        const data = JSON.parse(event.data as string) as {
+          type?: string;
+          message?: string;
+          username?: string;
+          user_id?: string;
+          timestamp?: string;
+          is_typing?: boolean;
+          payload?: ChatBox;
+        };
+
+        if (data.type === "init" && data.payload) {
           setInitPayload(data.payload);
+          return;
         }
-        setMessages((prev) => [...prev, data]);
+
+        if (data.type === "typing") {
+          const name = data.username ?? "Someone";
+          if (data.is_typing) {
+            setIsTyping((prev) =>
+              prev.includes(name) ? prev : [...prev, name],
+            );
+          } else {
+            setIsTyping((prev) => prev.filter((n) => n !== name));
+          }
+          return;
+        }
+
+        if (data.type === "chat_message") {
+          const mapped = mapWsChatMessage(data as WsChatMessage);
+          // Skip echo of our own optimistic send
+          if (mapped.userId && mapped.userId === selfUserIdRef.current) {
+            return;
+          }
+          if (!mapped.message.trim()) return;
+          onReceiveMessageRef.current(mapped.message, mapped.userId);
+          setMessages((prev) => [...prev, mapped]);
+          setIsTyping([]);
+          return;
+        }
+
+        // Ignore system / date-plan events on this socket
       } catch {
-        setMessages((prev) => [...prev, event.data]);
+        /* ignore malformed frames */
       }
     };
 
-    // Cleanup on unmount
     return () => {
       ws.close();
+      if (wsRef.current === ws) wsRef.current = null;
     };
   }, [socketUrl]);
+
   const initChat: ChatBox | DummyChatBox | null = useMemo(() => {
     if (dummyChat) {
       return dummyChat;
@@ -101,11 +236,19 @@ export default function ChatBoxPanel({
     }
     return null;
   }, [dummyChat, initPayload]);
-
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState<string[]>([]);
+  const [suggestionChips, setSuggestionChips] = useState<string[]>(() =>
+    buildInitialSuggestionChips(getUser.profile.savedPreferences),
+  );
+  const hasInteractedRef = useRef(false);
+  const shownRestaurantIdsRef = useRef<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasInteractedRef.current) return;
+    setSuggestionChips(
+      buildInitialSuggestionChips(getUser.profile.savedPreferences),
+    );
+  }, [getUser.profile.savedPreferences]);
   const [expirationCaption, setExpirationCaption] =
     useState<string>("missing caption");
   const [participants, setParticipants] = useState<PublicUserProfileData[]>([]);
@@ -124,6 +267,7 @@ export default function ChatBoxPanel({
     }
     setMessages(initChat.messages);
     setParticipants((initChat as ChatBox).participants);
+    shownRestaurantIdsRef.current = [];
 
     if (initChat.expiresAt) {
       const update = () => {
@@ -182,7 +326,7 @@ export default function ChatBoxPanel({
     if (el) {
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, suggestionChips]);
 
   // Only if there's a dummy user
   useEffect(() => {
@@ -218,7 +362,7 @@ export default function ChatBoxPanel({
   }, [dummyUser]);
 
   useEffect(() => {
-    if (useLlm) {
+    if (useLlm || socketUrl) {
       return;
     }
     const dummyMessaging = setTimeout(() => {
@@ -241,20 +385,20 @@ export default function ChatBoxPanel({
     return () => {
       clearTimeout(dummyMessaging);
     };
-  }, [messages, useLlm, dummyUser, dummyReply, onReceiveMessage]);
+  }, [messages, useLlm, socketUrl, dummyUser, dummyReply, onReceiveMessage]);
 
-  const handleSend = useCallback(
-    async (e: ReactSubmitEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const text = input.trim();
+  const sendText = useCallback(
+    async (rawText: string) => {
+      const text = rawText.trim();
       if (!text || isTyping.length > 0) return;
+      hasInteractedRef.current = true;
       onSendMessage(text);
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
-        userName: getUser.profile?.displayName || "Guest",
-        userEmail: getUser.profile?.email || "None",
-        userId: getUser.profile?.id,
+        userName: getUser.profile.displayName,
+        userEmail: getUser.profile.email,
+        userId: selfUserId,
         userType: "client",
         timestamp: new Date(),
         message: text,
@@ -262,9 +406,6 @@ export default function ChatBoxPanel({
 
       const updatedMessages = [...messages, userMsg];
       setMessages(updatedMessages);
-      if (wsRef.current) {
-        wsRef.current.send(JSON.stringify(userMsg));
-      }
       setInput("");
 
       if (useLlm) {
@@ -279,9 +420,24 @@ export default function ChatBoxPanel({
                 : ("user" as const),
             content: m.message,
           }));
-          const response = await sendChatMessage(history, latitude, longitude);
+          const response = await sendChatMessage(
+            history,
+            latitude,
+            longitude,
+            shownRestaurantIdsRef.current,
+          );
           const replyText = response.message;
           const restaurants = response.restaurants || [];
+          // Accumulate IDs so "Other suggestions" can page to the next top 3
+          for (const r of restaurants) {
+            if (r.id && !shownRestaurantIdsRef.current.includes(r.id)) {
+              shownRestaurantIdsRef.current.push(r.id);
+            }
+          }
+          const nextSuggestions = response.suggestions?.length
+            ? response.suggestions
+            : [RANDOMIZER_CHIP];
+          setSuggestionChips(nextSuggestions);
           const botMsg: ChatMessage = {
             id: crypto.randomUUID(),
             userName: botName,
@@ -305,6 +461,11 @@ export default function ChatBoxPanel({
             message:
               "Sorry, I'm having trouble responding right now. Please try again.",
           };
+          setSuggestionChips([
+            "Restaurants near me",
+            "What's good for dinner?",
+            RANDOMIZER_CHIP,
+          ]);
           setMessages((prev) => [...prev, errMsg]);
         } finally {
           setIsTyping([]);
@@ -312,24 +473,62 @@ export default function ChatBoxPanel({
         return;
       }
 
-      setIsTyping(["LLM"]);
+      // Live Food Match / peer chat: send over WebSocket
+      if (socketUrl) {
+        const ws = wsRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              type: "chat_message",
+              message: text,
+            }),
+          );
+        } else {
+          pendingWsSendsRef.current.push(text);
+        }
+        return;
+      }
+
+      // Offline / mock match: show typing until dummy reply fires
+      setIsTyping(["peer"]);
     },
     [
-      input,
       isTyping,
       messages,
       useLlm,
+      socketUrl,
       dummyUser,
       getUser.profile,
+      selfUserId,
       onSendMessage,
       onReceiveMessage,
+      onLlmResponse,
       latitude,
       longitude,
     ],
   );
+
+  const handleSend = useCallback(
+    async (e: ReactSubmitEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      await sendText(input);
+    },
+    [input, sendText],
+  );
+
+  const handleChipClick = useCallback(
+    (chip: string) => {
+      void sendText(chip);
+    },
+    [sendText],
+  );
+
+  const showSuggestionChips = useLlm && suggestionChips.length > 0;
+
   return (
     <div
-      className={`flex-grow flex flex-col bg-white rounded-xl border border-bs-neutral-200 shadow-lg h-full overflow-hidden md:h-${height}`}
+      className="flex-grow flex flex-col bg-white rounded-xl border border-bs-neutral-200 shadow-lg h-full overflow-hidden"
+      style={height ? { height } : undefined}
     >
       <div className="px-4 py-3 border-b border-bs-neutral-200 bg-gradient-to-r from-bs-gold/15 to-bs-blue/10">
         <div className="flex items-center gap-2">
@@ -366,7 +565,7 @@ export default function ChatBoxPanel({
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex gap-2 ${!getUser.profile?.id || msg.userId === getUser.profile.id ? "flex-row-reverse" : ""}`}
+            className={`flex gap-2 ${msg.userId === selfUserId ? "flex-row-reverse" : ""}`}
           >
             <div
               className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
@@ -381,7 +580,7 @@ export default function ChatBoxPanel({
             </div>
             <div
               className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                !getUser.profile?.id || msg.userId === getUser.profile.id
+                msg.userId === selfUserId
                   ? "bg-bs-gold text-bs-neutral-900 rounded-tr-sm"
                   : "bg-bs-neutral-100 text-bs-neutral-800 rounded-tl-sm"
               }`}
@@ -407,6 +606,26 @@ export default function ChatBoxPanel({
           </div>
         )}
       </div>
+
+      {showSuggestionChips && (
+        <div className="px-3 pb-2 flex flex-wrap gap-2 border-t border-bs-neutral-100 pt-2">
+          {suggestionChips.map((chip) => (
+            <button
+              key={chip}
+              type="button"
+              disabled={isTyping.length > 0}
+              onClick={() => handleChipClick(chip)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                chip === RANDOMIZER_CHIP
+                  ? "bg-bs-gold/20 border-bs-gold text-bs-neutral-900 hover:bg-bs-gold/35"
+                  : "bg-white border-bs-neutral-200 text-bs-neutral-700 hover:border-bs-gold/50 hover:bg-bs-gold/10"
+              }`}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
 
       <form
         onSubmit={handleSend}

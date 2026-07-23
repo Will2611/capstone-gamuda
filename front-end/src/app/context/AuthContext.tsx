@@ -13,7 +13,6 @@ import { useLoading } from "./LoadingContext";
 
 export type Role = "client" | "owner";
 
-// 💡 Updated to include role and id from your backend schema
 interface AuthUser {
   id: string;
   role: Role;
@@ -22,7 +21,6 @@ interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
-  // 💡 Updated to return role string on success
   login: (
     email: string,
     password: string,
@@ -49,7 +47,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     withLoading(setter)();
   }, []);
 
-  // 💡 Rewritten to call your FastAPI Python backend instead of mocks
   const login = useCallback(async (email: string, password: string) => {
     try {
       const { data: authUser } = await bitescoutApi.post<AuthUser>(
@@ -83,13 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await bitescoutApi.delete(`/user/logout`);
       setUser(null);
-    } catch {}
+    } catch {
+      setUser(null);
+    }
   }, []);
 
   const value = useMemo(
     () => ({
       user,
-
       isAuthenticated: !!user,
       login,
       logout: withLoading(logout),

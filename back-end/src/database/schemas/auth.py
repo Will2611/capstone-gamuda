@@ -18,9 +18,10 @@ class LoginRequest(BaseModel):
 
 class AuthUserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
-    id: UUID
-    role: str
+
+    # None when guest / anonymous session cookie
+    id: Optional[UUID] = None
+    role: Optional[str] = None
 
 
 class TokenResponse(BaseModel):

@@ -1,5 +1,5 @@
 from src.database.connection import Base
-from sqlalchemy import String,Uuid, Boolean, DateTime,ARRAY, Integer
+from sqlalchemy import String,Uuid, Boolean, DateTime,ARRAY, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import ForeignKey, text, CheckConstraint
 import uuid_utils.compat as uuid
@@ -8,6 +8,23 @@ from sqlalchemy.sql import expression
 from typing import Literal,  List
 from datetime import datetime
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
+
+
+class FoodLikeModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
+    """One-way like between clients; mutual likes create a FoodMatch."""
+
+    __tablename__ = "food_likes"
+
+    liker_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    liked_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("liker_id", "liked_id", name="uq_food_like_pair"),
+    )
 
 class BaseConnectionModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ ='personal_connections'

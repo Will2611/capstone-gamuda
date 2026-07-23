@@ -19,17 +19,20 @@ export interface RestaurantResult {
 export interface ChatResponse {
   message: string;
   restaurants: RestaurantResult[];
+  suggestions?: string[];
 }
 
 export async function sendChatMessage(
   messages: ChatTurn[],
   latitude?: number,
   longitude?: number,
+  excludeRestaurantIds: string[] = [],
 ): Promise<ChatResponse> {
-  const { data } = await bitescoutApi.post<ChatResponse>(`/llm/chat`, {
+  const { data } = await bitescoutApi.post<ChatResponse>("/llm/chat", {
     messages,
     latitude,
     longitude,
+    exclude_restaurant_ids: excludeRestaurantIds,
   });
   return data;
 }

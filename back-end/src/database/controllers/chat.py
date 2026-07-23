@@ -1,10 +1,10 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Optional
 from datetime import datetime
 import json
-import uuid
-from src.database.connection import db_dependency
+from src.database.connection import SessionLocal
 from fastapi.responses import HTMLResponse
+from src.services.jwt import TOKEN_NAME, decode_payload
 
 router = APIRouter(prefix="/chat", tags=['chat'])
 
@@ -44,24 +44,28 @@ class RoomConnectionManager:
         })
 
     def disconnect(self, websocket: WebSocket):
-        user_info = self.user_info.get(websocket)
+        user_info = self.user_info.pop(websocket, None)
         if not user_info:
-            # Empy stringis stil false
+            # Empty string is still false for room_id / username checks
             return '', ''
 
         room_id = user_info["room_id"]
         username = user_info["username"]
 
-        # Remove from connections
+        # Remove from connections (safe if already cleaned up as dead)
         if room_id in self.active_connections:
-            self.active_connections[room_id].remove(websocket)
+            try:
+                self.active_connections[room_id].remove(websocket)
+            except ValueError:
+                pass
+            if not self.active_connections[room_id]:
+                del self.active_connections[room_id]
 
         # Remove from room members
         if room_id in self.room_members:
             self.room_members[room_id].discard(username)
-
-        # Clean up user info
-        del self.user_info[websocket]
+            if not self.room_members[room_id]:
+                del self.room_members[room_id]
 
         return room_id, username
 
@@ -78,63 +82,240 @@ class RoomConnectionManager:
         for connection in self.active_connections[room_id]:
             try:
                 await connection.send_text(message_str)
-            except:
+            except Exception:
                 dead_connections.append(connection)
 
         # Clean up dead connections
         for dead_conn in dead_connections:
-            self.active_connections[room_id].remove(dead_conn)
+            try:
+                self.active_connections[room_id].remove(dead_conn)
+            except ValueError:
+                pass
+            self.user_info.pop(dead_conn, None)
+        if room_id in self.active_connections and not self.active_connections[room_id]:
+            del self.active_connections[room_id]
 
 room_manager = RoomConnectionManager()
 
 
+def _session_from_websocket(wSocket: WebSocket):
+    """Authenticate WS from the HttpOnly session cookie (Option B)."""
+    raw = wSocket.cookies.get(TOKEN_NAME)
+    if not raw:
+        return None
+    try:
+        return decode_payload(raw)
+    except Exception:
+        return None
+
+
+def _build_init_payload(room_id: str, viewer_id: str) -> Optional[dict]:
+    """History + room metadata for ChatBoxPanel `type: init`."""
+    from src.database.models.chat import ChatRoomModel, ChatMessageModel
+    from src.database.models.user import UserModel
+    from uuid import UUID as _UUID
+
+    db = SessionLocal()
+    try:
+        try:
+            rid = _UUID(room_id)
+        except ValueError:
+            return None
+
+        room = db.query(ChatRoomModel).filter(ChatRoomModel.id == rid).first()
+        if not room:
+            return None
+
+        participant_ids = list(room.participants_id or [])
+        if room.creator_id and room.creator_id not in participant_ids:
+            participant_ids = [room.creator_id, *participant_ids]
+
+        # Require membership when room has known participants
+        try:
+            viewer_uuid = _UUID(viewer_id)
+        except ValueError:
+            return None
+        if participant_ids and viewer_uuid not in participant_ids:
+            return None
+
+        users = (
+            db.query(UserModel).filter(UserModel.id.in_(participant_ids)).all()
+            if participant_ids
+            else []
+        )
+        user_by_id = {u.id: u for u in users}
+        participants = [
+            {
+                "id": str(u.id),
+                "displayName": u.full_name,
+                "avatarUrl": u.avatar_url,
+                "type": u.user_type,
+            }
+            for u in users
+        ]
+
+        # Peer avatar / name for the header (the other person)
+        peer = next((u for u in users if str(u.id) != viewer_id), None)
+
+        msgs = (
+            db.query(ChatMessageModel)
+            .filter(ChatMessageModel.room_id == rid)
+            .order_by(ChatMessageModel.created_at.asc())
+            .limit(100)
+            .all()
+        )
+        messages = []
+        for m in msgs:
+            author = user_by_id.get(m.user_id) if m.user_id else None
+            messages.append(
+                {
+                    "id": str(m.id),
+                    "userId": str(m.user_id) if m.user_id else "",
+                    "userName": author.full_name if author else "User",
+                    "userType": author.user_type if author else "client",
+                    "timestamp": m.created_at.isoformat() if m.created_at else datetime.now().isoformat(),
+                    "message": m.message,
+                }
+            )
+
+        return {
+            "chatGroupName": room.chat_name or (peer.full_name if peer else "Chat"),
+            "chatCaption": room.chat_caption,
+            "avatarUrl": peer.avatar_url if peer else None,
+            "expiresAt": None,
+            "messages": messages,
+            "participants": participants,
+        }
+    finally:
+        db.close()
+
+
 @router.websocket("/ws/{room_id}")
-async def websocket_endpoint(wSocket: WebSocket, room_id: str,username:str='deafult_user', userid=str(uuid.uuid4())):
-    await room_manager.connect(wSocket, room_id,userid,username)
+async def websocket_endpoint(
+    wSocket: WebSocket,
+    room_id: str,
+    username: str = "default_user",
+    userid: Optional[str] = None,
+):
+    """
+    Chat WebSocket authenticated via the bitescout_token session cookie.
+    """
+    session = _session_from_websocket(wSocket)
+    if session is None or session.userId is None:
+        await wSocket.close(code=4401)
+        return
+
+    resolved_user_id = str(session.userId)
+    resolved_username = username
+
+    # Prefer display name from DB when available
+    db = SessionLocal()
+    try:
+        from src.database.models.user import UserModel
+        from src.database.models.chat import ChatRoomModel
+        from uuid import UUID as _UUID
+
+        user = db.query(UserModel).filter(UserModel.id == session.userId).first()
+        if user:
+            resolved_username = user.full_name or user.email or resolved_username
+
+        # Membership check when room exists
+        try:
+            rid = _UUID(room_id)
+            room = db.query(ChatRoomModel).filter(ChatRoomModel.id == rid).first()
+            if room:
+                members = list(room.participants_id or [])
+                if room.creator_id and room.creator_id not in members:
+                    members.append(room.creator_id)
+                if members and session.userId not in members:
+                    await wSocket.close(code=4403)
+                    return
+        except ValueError:
+            await wSocket.close(code=4400)
+            return
+    finally:
+        db.close()
+
+    await room_manager.connect(wSocket, room_id, resolved_user_id, resolved_username)
+
+    init_payload = _build_init_payload(room_id, resolved_user_id)
+    if init_payload:
+        await room_manager.send_personal_message(
+            json.dumps({"type": "init", "payload": init_payload}),
+            wSocket,
+        )
+
     try:
         while True:
-            # Receive message from client
             data = await wSocket.receive_text()
             message_data = json.loads(data)
 
-            # Handle different message types
             if message_data.get("type") == "chat_message":
-                # Broadcast chat message to room
-                await room_manager.broadcast_to_room(room_id, {
-                    "type": "chat_message",
-                    "username": username,
-                    "user_id": userid,
-                    "message": message_data.get("message", ""),
-                    "timestamp": datetime.now().isoformat(),
-                    "room_id": room_id
-                })
+                text = message_data.get("message", "")
+                # Persist when possible
+                try:
+                    from src.database.models.chat import ChatMessageModel
+                    from uuid import UUID as _UUID
+
+                    db = SessionLocal()
+                    try:
+                        uid = None
+                        try:
+                            uid = _UUID(resolved_user_id)
+                        except ValueError:
+                            uid = None
+                        db.add(
+                            ChatMessageModel(
+                                message=text,
+                                room_id=_UUID(room_id),
+                                user_id=uid,
+                                payloads_stringified=None,
+                            )
+                        )
+                        db.commit()
+                    finally:
+                        db.close()
+                except Exception:
+                    pass
+
+                await room_manager.broadcast_to_room(
+                    room_id,
+                    {
+                        "type": "chat_message",
+                        "username": resolved_username,
+                        "user_id": resolved_user_id,
+                        "message": text,
+                        "timestamp": datetime.now().isoformat(),
+                        "room_id": room_id,
+                    },
+                )
 
             elif message_data.get("type") == "typing":
-                # Broadcast typing indicator (exclude sender)
                 typing_message = {
                     "type": "typing",
-                    "username": username,
-                    "is_typing": message_data.get("is_typing", False)
+                    "username": resolved_username,
+                    "is_typing": message_data.get("is_typing", False),
                 }
-
                 for connection in room_manager.active_connections.get(room_id, []):
-                    if connection != wSocket:  # Don't send to sender
+                    if connection != wSocket:
                         try:
                             await connection.send_text(json.dumps(typing_message))
-                        except:
+                        except Exception:
                             pass
 
     except WebSocketDisconnect:
         room_id, username = room_manager.disconnect(wSocket)
         if room_id and username:
-            # Notify room about user leaving
-            await room_manager.broadcast_to_room(room_id, {
-                "type": "user_left",
-                "username": username,
-                "message": f"{username} left the room",
-                "timestamp": datetime.now().isoformat(),
-                "room_members": list(room_manager.room_members.get(room_id, []))
-            })
+            await room_manager.broadcast_to_room(
+                room_id,
+                {
+                    "type": "user_left",
+                    "username": username,
+                    "message": f"{username} left the room",
+                    "timestamp": datetime.now().isoformat(),
+                    "room_members": list(room_manager.room_members.get(room_id, [])),
+                },
+            )
 
 html ="""
 <!DOCTYPE html>
