@@ -32,11 +32,23 @@ async def cookie_middleware(request, call_next):
     Replaces the old global Depends(ensure_default_cookie).
     Starlette only fires @app.middleware("http") for HTTP requests,
     so WebSocket connections are never affected.
+
+    IMPORTANT: If the endpoint already set a cookie (e.g. login/logout),
+    we must NOT overwrite it with the stale request cookie.
     """
+    from src.services.jwt import TOKEN_NAME
     response = await call_next(request)
     try:
-        parsed = getCookiePayload(request) or default_session_generator()
-        setCookie(response, parsed)
+        # Check if the endpoint already set our session cookie
+        token_name_bytes = TOKEN_NAME.encode()
+        already_set = any(
+            token_name_bytes in header_value
+            for header_key, header_value in response.raw_headers
+            if header_key == b"set-cookie"
+        )
+        if not already_set:
+            parsed = getCookiePayload(request) or default_session_generator()
+            setCookie(response, parsed)
     except Exception:
         pass
     return response
