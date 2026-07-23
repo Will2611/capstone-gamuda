@@ -23,7 +23,7 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[EmailStr] = mapped_column(String, unique=True, index=True)
     hashedPassword: Mapped[str] = mapped_column(String(255), nullable=False)
-    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
 
     # Add property aliases so Pydantic can automatically pull display_name and role
     @property
@@ -70,10 +70,10 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
 class ClientModel(UserModel, RestaurantDetailsTableMixin, GeohashHelper):
     __tablename__ ='clients'
     # change to enum or whatever later, dependant on what is needed, is also considered subjective
-    religion:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
-    language:Mapped[str] = mapped_column(String) # pyright: ignore[reportGeneralTypeIssues]
-    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True) # pyright: ignore[reportGeneralTypeIssues]
-    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True) # pyright: ignore[reportGeneralTypeIssues]
+    religion:Mapped[str] = mapped_column(String, default="unspecified") # pyright: ignore[reportGeneralTypeIssues]
+    language:Mapped[str] = mapped_column(String, default="en") # pyright: ignore[reportGeneralTypeIssues]
+    gender:Mapped[Optional[str]]= mapped_column(String, nullable=True, default="unspecified") # pyright: ignore[reportGeneralTypeIssues]
+    birth_date:Mapped[Optional[datetime.date]]= mapped_column(Date,nullable=True, default=None) # pyright: ignore[reportGeneralTypeIssues]
     preferred_time: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
     preferred_vibes:Mapped[list[str]]= mapped_column(ARRAY(String), default_factory=list)
     price_limit:Mapped[List[str]] = mapped_column(ARRAY(String), default_factory=list)

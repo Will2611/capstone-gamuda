@@ -6,12 +6,12 @@ from src.database.connection import create_tables, drop_tables, engine
 from src.database.migrate_visibility import ensure_visibility_schema
 from src.database.controllers import routers
 from src.llm.router import router as llm_router
-from src.services.jwt import ensure_default_cookie, CookieCustom, setCookie
+from src.services.jwt import ensure_default_cookie, CookieCustom, setCookie, getCookiePayload, default_session_generator
 from src.database.controllers.utils import CurrentUser
 import os
 
     
-app = FastAPI(dependencies=[Depends(ensure_default_cookie)])
+app = FastAPI()
 ensure_visibility_schema(engine)
 create_tables()
 
@@ -24,6 +24,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+
+@app.middleware("http")
+async def cookie_middleware(request, call_next):
+    """
+    Replaces the old global Depends(ensure_default_cookie).
+    Starlette only fires @app.middleware("http") for HTTP requests,
+    so WebSocket connections are never affected.
+    """
+    response = await call_next(request)
+    try:
+        parsed = getCookiePayload(request) or default_session_generator()
+        setCookie(response, parsed)
+    except Exception:
+        pass
+    return response
 
 
 @app.get('/')
@@ -53,3 +69,4 @@ app.include_router(llm_router)
 
 for router_file in routers:
     app.include_router(router_file)
+

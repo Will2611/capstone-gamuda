@@ -457,18 +457,6 @@ export default function FoodMatch() {
     }
   };
 
-  if (!profile.profileComplete) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10 py-12 px-4">
-        <FoodPreferenceForm
-          profile={profile}
-          onUpdate={updateProfile}
-          onComplete={completeProfile}
-        />
-      </div>
-    );
-  }
-
   const socketUrl =
     activeChat?.chatRoomId && isAuthenticated
       ? buildChatSocketUrl(activeChat.chatRoomId)
@@ -500,14 +488,26 @@ export default function FoodMatch() {
           dummyResponses: socketUrl
             ? []
             : [
-                "Can't wait to try somewhere new!",
-                "That time works for me — let's lock it in.",
-                "I'm free this weekend for a food date!",
-              ],
+              "Can't wait to try somewhere new!",
+              "That time works for me — let's lock it in.",
+              "I'm free this weekend for a food date!",
+            ],
         },
       ],
     };
   }, [activeChat, chatMessages, user?.id, userProfile.displayName, socketUrl]);
+
+  if (!profile.profileComplete) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10 py-12 px-4">
+        <FoodPreferenceForm
+          profile={profile}
+          onUpdate={updateProfile}
+          onComplete={completeProfile}
+        />
+      </div>
+    );
+  }
 
   const displayPlan = activePlan ?? plannerPlan;
 
@@ -550,11 +550,10 @@ export default function FoodMatch() {
           <button
             type="button"
             onClick={() => setActiveTab("discover")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === "discover"
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${activeTab === "discover"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "bg-white/70 text-bs-neutral-600"
-            }`}
+              }`}
           >
             <Users className="w-4 h-4 inline mr-1.5" />
             Discover
@@ -562,11 +561,10 @@ export default function FoodMatch() {
           <button
             type="button"
             onClick={() => setActiveTab("matches")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-              activeTab === "matches"
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${activeTab === "matches"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "bg-white/70 text-bs-neutral-600"
-            }`}
+              }`}
           >
             <Heart className="w-4 h-4 inline mr-1.5" />
             Matches ({matches.length})

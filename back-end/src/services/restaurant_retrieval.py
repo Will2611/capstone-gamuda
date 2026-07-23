@@ -18,13 +18,14 @@ from src.llm.service import (
     query_restaurants_by_proximity_and_cuisine,
     upsert_external_results,
 )
+from fastapi import HTTPException
 from src.services.external_search import search_external_restaurants
 
 logger = logging.getLogger(__name__)
 
 DATE_PLAN_RADIUS_KM = float(os.getenv("DATE_PLAN_RADIUS_KM", "10"))
 DATE_PLAN_TOP_K = int(os.getenv("DATE_PLAN_TOP_K", "5"))
-DATE_PLAN_FETCH_MORE = int(os.getenv("DATE_PLAN_FETCH_MORE", "3"))
+DATE_PLAN_FETCH_MORE = int(os.getenv("DATE_PLAN_FETCH_MORE", "5"))
 DATE_PLAN_SNAPSHOT_MAX = int(os.getenv("DATE_PLAN_SNAPSHOT_MAX", "15"))
 AVG_SPEED_KMH = 25.0  # urban heuristic for travel time
 
@@ -233,6 +234,7 @@ def _external_mutual_fill(
     mid_lng: float,
     pull_radius: float,
     search_cuisines: list[str] | None = None,
+    needed: int = 5,
 ) -> int:
     """
     Exactly one SerpAPI/Google Places call at the meetup midpoint.
@@ -255,6 +257,9 @@ def _external_mutual_fill(
     )
     try:
         external = search_external_restaurants(cuisine, mid_lat, mid_lng, radius_m)
+    except HTTPException:
+        # Re-raise HTTPExceptions (like rate limiting) to bubble up
+        raise
     except Exception as exc:
         logger.exception("External restaurant search failed: %s", exc)
         return 0
@@ -263,7 +268,41 @@ def _external_mutual_fill(
         logger.info("External search returned no restaurants")
         return 0
 
-    return _upsert_deduped(db, external)
+    # Query DB to filter out existing restaurants before upserting, to enforce 'at max 5'
+    p_ids = [r.get("google_place_id") for r in external if r.get("google_place_id")]
+    names = [r.get("name").strip() for r in external if r.get("name")]
+    
+    existing_pids = set()
+    if p_ids:
+        existing_pids = {
+            row[0] for row in db.query(RestaurantModel.google_place_id)
+            .filter(RestaurantModel.google_place_id.in_(p_ids))
+            .all()
+        }
+    
+    existing_names = set()
+    if names:
+        existing_names = {
+            row[0].lower().strip() for row in db.query(RestaurantModel.name)
+            .filter(RestaurantModel.name.in_(names))
+            .all()
+        }
+
+    fresh = []
+    for r in external:
+        p_id = r.get("google_place_id")
+        name = (r.get("name") or "").lower().strip()
+        if p_id in existing_pids or name in existing_names:
+            continue
+        fresh.append(r)
+        if len(fresh) >= needed:
+            break
+
+    if not fresh:
+        logger.info("No fresh external restaurants to insert")
+        return 0
+
+    return _upsert_deduped(db, fresh)
 
 
 def _pair_search_context(
@@ -474,8 +513,8 @@ def retrieve_top_restaurants_for_pair(
         )
     results = _filter_excluded(scored, excluded)
 
-    # External fill when we still need more slots
-    if len(results) < top_k and (ctx["shared_cuisine"] or ctx["search_cuisines"]):
+    # External fill only when we have absolutely no results in the DB
+    if not results and (ctx["shared_cuisine"] or ctx["search_cuisines"]):
         upserted = _external_mutual_fill(
             db,
             shared_cuisine=ctx["shared_cuisine"],
@@ -483,6 +522,7 @@ def retrieve_top_restaurants_for_pair(
             mid_lng=ctx["mid_lng"],
             pull_radius=ctx["pull_radius"],
             search_cuisines=ctx["search_cuisines"],
+            needed=top_k,
         )
         if upserted:
             scored = _rescore_after_external(
@@ -493,10 +533,6 @@ def retrieve_top_restaurants_for_pair(
                 window_end=window_end,
             )
             results = _filter_excluded(scored, excluded)
-    elif len(results) < top_k:
-        logger.info(
-            "Fewer than top_k local restaurants and no cuisine — skipping external search"
-        )
 
     return results[:top_k]
 
@@ -550,6 +586,7 @@ def fetch_more_restaurants_for_pair(
         mid_lng=ctx["mid_lng"],
         pull_radius=ctx["pull_radius"],
         search_cuisines=ctx["search_cuisines"],
+        needed=limit,
     )
     if not upserted:
         return []
