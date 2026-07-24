@@ -71,6 +71,64 @@ export interface Sentiment {
   positiveThemes: ComplaintThemeItem[];
 }
 
+export interface DemographicGroupResponse {
+  label: string;
+  count: number;
+}
+
+export interface DemographicsResponse {
+  restaurantId: string;
+  totalVisitors: number;
+  ageGroups: DemographicGroupResponse[];
+  genderBreakdown: DemographicGroupResponse[];
+}
+
+export interface AgeGroup {
+  ageRange: string;
+  count: number;
+  color: string;
+}
+
+export interface GenderGroup {
+  gender: string;
+  count: number;
+  color: string;
+}
+
+export interface CustomerDemographics {
+  totalVisitors: number;
+  ageGroups: AgeGroup[];
+  genderBreakdown: GenderGroup[];
+}
+
+export const EMPTY_DEMOGRAPHICS: CustomerDemographics = {
+  totalVisitors: 0,
+  ageGroups: [
+    { ageRange: "18-24", count: 0, color: "#60A5FA" },
+    { ageRange: "25-34", count: 0, color: "#FBBF24" },
+    { ageRange: "35-44", count: 0, color: "#34D399" },
+    { ageRange: "45-54", count: 0, color: "#F472B6" },
+    { ageRange: "55+", count: 0, color: "#A78BFA" },
+  ],
+  genderBreakdown: [
+    { gender: "Female", count: 0, color: "#3B82F6" },
+    { gender: "Male", count: 0, color: "#F97316" },
+    { gender: "Other", count: 0, color: "#8B5CF6" },
+  ],
+};
+
+/*
+ * Visibility Dashboard API Service
+ *
+ * Backend endpoints:
+ * - GET /visibility/getSummaryMetrics?restaurantId={id}
+ * - GET /visibility/getFunnelMetrics?restaurantId={id}
+ * - GET /visibility/getSocialVisibility?restaurantId={id}
+ * - GET /visibility/getSentiment?restaurantId={id}
+ * - GET /visibility/getFootTraffic?restaurantId={id}
+ * - GET /visibility/getDemographics?restaurantId={id}
+ */
+
 /** Coerce unknown values to a finite number; never returns NaN. */
 export function safeNumber(value: unknown, fallback = 0): number {
   if (value === null || value === undefined || value === "") return fallback;
@@ -220,6 +278,42 @@ export function normalizeSocialPlatforms(
   }));
 }
 
+export function normalizeDemographics(
+  raw: Partial<DemographicsResponse> | null | undefined,
+): CustomerDemographics {
+  const ageColors = ["#60A5FA", "#FBBF24", "#34D399", "#F472B6", "#A78BFA"];
+  const genderColors = ["#3B82F6", "#F97316", "#8B5CF6"];
+
+  const ageLabels = ["18-24", "25-34", "35-44", "45-54", "55+"];
+  const genderLabels = ["Female", "Male", "Other"];
+
+  const ageGroups: AgeGroup[] = ageLabels.map((label, index) => {
+    const source = raw?.ageGroups?.find((group) => group?.label === label);
+    return {
+      ageRange: label,
+      count: safeNumber(source?.count),
+      color: ageColors[index],
+    };
+  });
+
+  const genderBreakdown: GenderGroup[] = genderLabels.map((label, index) => {
+    const source = raw?.genderBreakdown?.find(
+      (group) => group?.label === label,
+    );
+    return {
+      gender: label,
+      count: safeNumber(source?.count),
+      color: genderColors[index],
+    };
+  });
+
+  return {
+    totalVisitors: safeNumber(raw?.totalVisitors),
+    ageGroups,
+    genderBreakdown,
+  };
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface RestaurantItem {
@@ -283,6 +377,20 @@ export async function getSentiment(restaurantId: string): Promise<Sentiment> {
 
   if (!response.ok) {
     throw new Error("Failed to fetch sentiment data");
+  }
+
+  return response.json();
+}
+
+export async function getDemographics(
+  restaurantId: string,
+): Promise<DemographicsResponse> {
+  const response = await fetch(
+    `${API_BASE}/visibility/getDemographics?restaurantId=${restaurantId}`,
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch demographics data");
   }
 
   return response.json();

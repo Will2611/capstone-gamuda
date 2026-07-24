@@ -14,6 +14,9 @@ from src.database.models.visibility import (
 from src.database.models.reviews import (
     ReviewModel
 )
+from src.database.models.user import (
+    ClientModel,
+)
 from src.database.models.restaurants import (
     RestaurantModel
 )
@@ -33,6 +36,7 @@ from src.database.schemas.visibility import (
     RestaurantListItemResponse,
     ReviewsByThemeResponse,
     ReviewItemResponse,
+    DemographicsResponse,
     FootTrafficResponse,
     ActionSuggestion,
     ActionSuggestionsResponse,
@@ -319,6 +323,74 @@ async def get_sentiment(db: db_dependency, restaurantId: uuid.UUID = Query(...))
         positiveThemes=[
             ComplaintThemeEntry(theme=c.theme, count=c.count)
             for c in positive_rows
+        ],
+    )
+
+
+def _age_bucket(age: int) -> str:
+    if age < 25:
+        return "18-24"
+    if age < 35:
+        return "25-34"
+    if age < 45:
+        return "35-44"
+    if age < 55:
+        return "45-54"
+    return "55+"
+
+
+@router.get("/getDemographics", response_model=DemographicsResponse)
+async def get_demographics(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
+    rows = (
+        db.query(ClientModel.gender, ClientModel.birth_date)
+        .join(ReviewModel, ReviewModel.reviewer_id == ClientModel.id)
+        .filter(
+            ReviewModel.restaurant_id == restaurantId,
+            ReviewModel.reviewer_id != None,
+        )
+        .group_by(ClientModel.id, ClientModel.gender, ClientModel.birth_date)
+        .all()
+    )
+
+    age_groups = {
+        "18-24": 0,
+        "25-34": 0,
+        "35-44": 0,
+        "45-54": 0,
+        "55+": 0,
+    }
+    gender_counts: dict[str, int] = {"Female": 0, "Male": 0, "Other": 0}
+
+    for gender, birth_date in rows:
+        normalized_gender = (gender or "").strip().lower()
+        if normalized_gender in {"female", "f"}:
+            gender_label = "Female"
+        elif normalized_gender in {"male", "m"}:
+            gender_label = "Male"
+        else:
+            gender_label = "Other"
+
+        gender_counts[gender_label] += 1
+
+        if birth_date:
+            years = date.today().year - birth_date.year
+            if (date.today().month, date.today().day) < (
+                birth_date.month,
+                birth_date.day,
+            ):
+                years -= 1
+            age_groups[_age_bucket(years)] += 1
+
+    return DemographicsResponse(
+        restaurantId=restaurantId,
+        totalVisitors=len(rows),
+        ageGroups=[
+            DemographicGroupEntry(label=label, count=count)
+            for label, count in age_groups.items()
+        ],
+        genderBreakdown=[
+            DemographicGroupEntry(label=label, count=count)
+            for label, count in gender_counts.items()
         ],
     )
 

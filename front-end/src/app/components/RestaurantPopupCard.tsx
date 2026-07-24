@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import type { Restaurant } from "../types/restaurant";
 import type { Sentiment } from "../services/visibilityApi";
 import { Button } from "./Button";
@@ -126,6 +127,36 @@ export function RestaurantPopupCard({
       previousIndex === galleryImages.length - 1 ? 0 : previousIndex + 1,
     );
   };
+
+  const sentimentPieData = useMemo(
+    () => [
+      {
+        name: "Positive",
+        value: sentiment?.positivePct ?? 0,
+        color: "#27AE60",
+      },
+      {
+        name: "Negative",
+        value: sentiment?.negativePct ?? 0,
+        color: "#FF4C4C",
+      },
+      {
+        name: "Neutral",
+        value: sentiment?.neutralPct ?? 0,
+        color: "#F59E0B",
+      },
+    ],
+    [sentiment],
+  );
+
+  const complaintThemeData = useMemo(
+    () =>
+      sentiment?.complaintThemes.map((c) => ({
+        theme: c.theme,
+        count: c.count ?? 0,
+      })) ?? [],
+    [sentiment],
+  );
 
   return (
     <>
@@ -397,18 +428,56 @@ export function RestaurantPopupCard({
                   </div>
                 ) : sentiment ? (
                   <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-bs-neutral-200 bg-bs-green/5 p-4">
-                        <p className="text-sm text-bs-neutral-500">Positive</p>
-                        <p className="mt-2 text-3xl font-semibold text-bs-green">
-                          {sentiment.positivePct}%
-                        </p>
+                    <div className="bg-white rounded-2xl border border-bs-neutral-200 p-4">
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              key="sentiment"
+                              data={sentimentPieData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={50}
+                              outerRadius={70}
+                              paddingAngle={5}
+                              dataKey="value"
+                            >
+                              {sentimentPieData.map((entry, index) => (
+                                <Cell
+                                  key={`sentiment-cell-${index}`}
+                                  fill={entry.color}
+                                />
+                              ))}
+                            </Pie>
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div className="rounded-2xl border border-bs-neutral-200 bg-bs-red/5 p-4">
-                        <p className="text-sm text-bs-neutral-500">Negative</p>
-                        <p className="mt-2 text-3xl font-semibold text-bs-red">
-                          {sentiment.negativePct}%
-                        </p>
+
+                      <div className="grid grid-cols-3 gap-3 mt-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-bs-green">
+                            {sentiment.positivePct ?? 0}%
+                          </div>
+                          <div className="text-sm text-bs-neutral-600">
+                            Positive
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-bs-red">
+                            {sentiment.negativePct ?? 0}%
+                          </div>
+                          <div className="text-sm text-bs-neutral-600">
+                            Negative
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-[#F59E0B]">
+                            {sentiment.neutralPct ?? 0}%
+                          </div>
+                          <div className="text-sm text-bs-neutral-600">
+                            Neutral
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -417,7 +486,7 @@ export function RestaurantPopupCard({
                         Complaint themes show the most frequent sentiment
                         signals from recent reviews.
                       </div>
-                      {sentiment.complaintThemes.map((theme) => (
+                      {complaintThemeData.map((theme) => (
                         <div
                           key={theme.theme}
                           className="rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 p-3"

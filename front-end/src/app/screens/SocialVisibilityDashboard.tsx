@@ -10,16 +10,19 @@ import {
   getSentiment,
   getReviewsByTheme,
   getFootTraffic,
+  getDemographics,
   getActionSuggestions,
   EMPTY_SUMMARY,
   EMPTY_SENTIMENT,
   EMPTY_FUNNEL_STAGES,
   EMPTY_FOOT_TRAFFIC,
+  EMPTY_DEMOGRAPHICS,
   normalizeSummary,
   normalizeFunnelStages,
   normalizeSentiment,
   normalizeFootTraffic,
   normalizeSocialPlatforms,
+  normalizeDemographics,
   type SummaryMetrics,
   type FunnelStage,
   type SocialPlatformCard,
@@ -27,6 +30,7 @@ import {
   type RestaurantItem,
   type ReviewsByTheme,
   type FootTrafficResponse,
+  type CustomerDemographics,
   type ActionSuggestionsResponse,
   type ThemeSentimentType,
 } from "../services/visibilityApi";
@@ -34,6 +38,7 @@ import { MetricsTab } from "../components/visibility-dashboard/MetricsTab";
 import { FunnelTab } from "../components/visibility-dashboard/FunnelTab";
 // import { ReviewsTab } from "../components/visibility-dashboard/ReviewsTab" disabled for now, as it is not used in the current code;
 import { SentimentTab } from "../components/visibility-dashboard/SentimentTab";
+import { DemographicsTab } from "../components/visibility-dashboard/DemographicsTab";
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 import { PromotionsTab } from "../components/visibility-dashboard/PromotionsTab";
 
@@ -44,7 +49,8 @@ export default function SocialVisibilityDashboard() {
   const tabs = [
     { id: "metrics", label: "Top Metrics" },
     { id: "funnel", label: "Traffic & Conversion" },
-    { id: "reviews-sentiment", label: "Sentiment" },
+    { id: "reviews-sentiment", label: "Google Reviews & Sentiment" },
+    { id: "demographics", label: "Customer Demographics" },
     { id: "traffic", label: "Foot Traffic" },
     // { id: "promotions", label: "Promotions" },
   ];
@@ -58,6 +64,8 @@ export default function SocialVisibilityDashboard() {
   const [funnel, setFunnel] = useState<FunnelStage[]>(EMPTY_FUNNEL_STAGES);
   const [social, setSocial] = useState<SocialPlatformCard[]>([]);
   const [sentiment, setSentiment] = useState<Sentiment>(EMPTY_SENTIMENT);
+  const [demographics, setDemographics] =
+    useState<CustomerDemographics>(EMPTY_DEMOGRAPHICS);
   const [footTraffic, setFootTraffic] =
     useState<FootTrafficResponse>(EMPTY_FOOT_TRAFFIC);
   const [loading, setLoading] = useState(false);
@@ -141,6 +149,7 @@ export default function SocialVisibilityDashboard() {
         getSocialVisibility(id),
         getSentiment(id),
         getFootTraffic(id),
+        getDemographics(id),
       ]);
 
       const labels = [
@@ -149,13 +158,20 @@ export default function SocialVisibilityDashboard() {
         "social visibility",
         "sentiment",
         "foot traffic",
+        "demographics",
       ];
       const failed = results
         .map((r, i) => (r.status === "rejected" ? labels[i] : null))
         .filter(Boolean);
 
-      const [summaryRes, funnelRes, socialRes, sentimentRes, trafficRes] =
-        results;
+      const [
+        summaryRes,
+        funnelRes,
+        socialRes,
+        sentimentRes,
+        trafficRes,
+        demographicsRes,
+      ] = results;
 
       setSummary(
         summaryRes.status === "fulfilled"
@@ -181,6 +197,11 @@ export default function SocialVisibilityDashboard() {
         trafficRes.status === "fulfilled"
           ? normalizeFootTraffic(trafficRes.value, id)
           : { ...EMPTY_FOOT_TRAFFIC, restaurantId: id },
+      );
+      setDemographics(
+        demographicsRes.status === "fulfilled"
+          ? normalizeDemographics(demographicsRes.value)
+          : EMPTY_DEMOGRAPHICS,
       );
 
       if (failed.length > 0) {
@@ -347,6 +368,10 @@ export default function SocialVisibilityDashboard() {
               {/* Google Reviews centered below the two theme charts REMOVE*/}
               {/* <ReviewsTab social={social} /> */}
             </div>
+          )}
+
+          {activeTab === "demographics" && (
+            <DemographicsTab demographics={demographics} />
           )}
 
           {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}

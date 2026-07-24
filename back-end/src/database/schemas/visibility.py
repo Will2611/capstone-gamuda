@@ -130,6 +130,22 @@ class ReviewsByThemeResponse(BaseModel):
     reviews: list[ReviewItemResponse]
 
 
+class DemographicGroupEntry(BaseModel):
+    label: str
+    count: int
+
+    model_config = {"from_attributes": True}
+
+
+class DemographicsResponse(BaseModel):
+    restaurantId: uuid.UUID
+    totalVisitors: int = 0
+    ageGroups: list[DemographicGroupEntry] = []
+    genderBreakdown: list[DemographicGroupEntry] = []
+
+    model_config = {"from_attributes": True}
+
+
 # ---- Foot Traffic ----
 
 # ---- Pydantic Response Schemas ----
