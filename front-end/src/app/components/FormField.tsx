@@ -136,10 +136,7 @@ export function SelectField({
           {icon && <span className="text-bs-neutral-500 shrink-0">{icon}</span>}
           <span className="truncate">{getDisplayLabel()}</span>
         </div>
-        <ChevronDown
-          size={16}
-          className={`text-bs-neutral-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
+        <ChevronDown size={16} className={`text-bs-neutral-400`} />
       </div>
 
       {isOpen && !disabled && (
