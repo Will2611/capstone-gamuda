@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime
+from typing import Iterable
+import uuid_utils.compat as uuid
 
 from src.database.schemas.visibility import ChartDayTrafficItem, TrafficInsightItem
 
 CHART_DAY_COUNT = 7
+
+WEEKDAY_NAMES = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
 
 SEGMENT_HOURS: dict[str, list[int]] = {
     "morning": [8, 9, 10, 11],
@@ -16,6 +28,34 @@ SEGMENT_HOURS: dict[str, list[int]] = {
     "dinner": [18, 19, 20],
     "lateNight": [21, 22, 23],
 }
+
+# Hours the Foot Traffic bar chart segments use (inclusive).
+CHART_HOURS = frozenset(h for hours in SEGMENT_HOURS.values() for h in hours)
+
+
+def day_name_and_type(traffic_date: date) -> tuple[str, str]:
+    day_name = WEEKDAY_NAMES[traffic_date.isoweekday() - 1]
+    day_type = "Weekend" if traffic_date.isoweekday() > 5 else "Weekday"
+    return day_name, day_type
+
+
+def aggregate_visits_by_hour(
+    visit_times: Iterable[tuple[uuid.UUID, datetime]],
+) -> dict[tuple[uuid.UUID, date, int], int]:
+    """
+    Count Visit tracker events into (restaurant_id, traffic_date, hour) buckets.
+    Only hours used by the dashboard chart (8–23) are kept.
+    """
+    counts: dict[tuple[uuid.UUID, date, int], int] = defaultdict(int)
+    for restaurant_id, created_at in visit_times:
+        if created_at is None:
+            continue
+        traffic_date = created_at.date()
+        hour = created_at.hour
+        if hour not in CHART_HOURS:
+            continue
+        counts[(restaurant_id, traffic_date, hour)] += 1
+    return dict(counts)
 
 SEGMENT_LABELS: dict[str, str] = {
     "morning": "Morning (8–11 AM)",

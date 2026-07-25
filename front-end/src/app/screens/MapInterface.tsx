@@ -11,6 +11,7 @@ import { useUser } from "../context/UserContext";
 import { useGeolocation } from "../hooks/useGeolocation";
 import { useRestaurantMap } from "../hooks/useRestaurantMap";
 import { getSentiment, type Sentiment } from "../services/visibilityApi";
+import { trackVisit } from "../services/trackersApi";
 import type { Restaurant, SearchPreferences } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
@@ -83,31 +84,27 @@ export default function MapInterface() {
   const handleLlmResponse = useCallback(
     (_replyText: string, searchResults: any[]) => {
       if (searchResults && searchResults.length > 0) {
-        const topIndex = searchResults.reduce((bestIdx, r, i, arr) => {
+        const withIds = searchResults.filter(
+          (r) => r?.id != null && String(r.id).trim() !== "",
+        );
+        if (withIds.length === 0) return;
+
+        const topIndex = withIds.reduce((bestIdx, r, i, arr) => {
           const rating = r.rating ?? 4.0;
           const bestRating = arr[bestIdx].rating ?? 4.0;
           return rating > bestRating ? i : bestIdx;
         }, 0);
 
-        const stringToHash = (str: string): number => {
-          let hash = 0;
-          for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          return Math.abs(hash);
-        };
-
-        const mapped = searchResults.map((r, index) => {
-          const numericId =
-            typeof r.id === "string" ? stringToHash(r.id) : r.id || 0;
+        const mapped = withIds.map((r, index) => {
+          // Keep real DB UUID so Get Directions → trackers works.
+          // Default mock pins ("1","2",…) are unchanged when chat has no results.
+          const restaurantId = String(r.id);
           const rating = r.rating || 4.0;
           const mockMatch = MOCK_RESTAURANTS.find(
-            (m) =>
-              m.id === numericId ||
-              m.name.toLowerCase() === r.name.toLowerCase(),
+            (m) => m.name.toLowerCase() === String(r.name || "").toLowerCase(),
           );
           return {
-            id: numericId,
+            id: restaurantId,
             name: r.name,
             rating,
             cuisine: r.cuisine || "Any",
@@ -123,8 +120,10 @@ export default function MapInterface() {
                 ? [r.longitude, r.latitude]
                 : mockMatch?.coordinates || [101.71, 3.15],
             image: mockMatch?.image,
+            images: mockMatch?.images,
             promotions: mockPromotions.filter(
-              (promo) => promo.id === numericId,
+              (promo) =>
+                promo.id === restaurantId || promo.id === mockMatch?.id,
             ),
           } as Restaurant;
         });
@@ -242,6 +241,8 @@ export default function MapInterface() {
   }, []);
 
   const handleDirections = useCallback((restaurant: Restaurant) => {
+    // End-to-end: Visit → trackers → nightly job → foot_traffic_hourly → chart
+    trackVisit(restaurant.id);
     const [lng, lat] = restaurant.coordinates;
     window.open(
       `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,

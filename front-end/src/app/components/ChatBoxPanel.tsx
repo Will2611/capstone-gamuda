@@ -579,7 +579,7 @@ export default function ChatBoxPanel({
               )}
             </div>
             <div
-              className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+              className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.userId === selfUserId
                   ? "bg-bs-gold text-bs-neutral-900 rounded-tr-sm"
                   : "bg-bs-neutral-100 text-bs-neutral-800 rounded-tl-sm"
