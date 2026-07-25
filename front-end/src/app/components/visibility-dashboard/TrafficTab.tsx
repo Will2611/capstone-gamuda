@@ -122,7 +122,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
           Weekdays vs Weekends Foot Traffic
         </h2>
         <p className="text-sm text-bs-neutral-500">
-          Historical visitor counts from foot traffic hourly data (PostgreSQL)
+          {/* Historical visitor counts from foot traffic hourly data (PostgreSQL) */}
         </p>
       </div>
 
@@ -137,7 +137,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
       <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
         <h3 className="font-bold text-bs-neutral-900 mb-1">{chartTitle}</h3>
         <p className="text-xs text-bs-neutral-500 mb-4">
-          Daily totals per traffic date — matches pgAdmin foot_traffic_hourly
+          {/* Daily totals per traffic date — matches pgAdmin foot_traffic_hourly */}
         </p>
 
         <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5">

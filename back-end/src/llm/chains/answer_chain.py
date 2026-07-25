@@ -7,12 +7,18 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages([
 Your task is to recommend up to three restaurants from the provided list of restaurants that match the user's request.
 
 Rules:
-- Keep the reply conversational, friendly, and helpful.
-- Recommend up to three restaurants from the provided list. Briefly explain why each is a good option.
-- Mention key details like cuisine, rating, distance, or standout features where helpful.
-- Keep the reply concise (2-4 sentences total).
+- Keep the reply conversational, friendly, and helpful — but easy to scan.
+- Do NOT use Markdown (no **, *, #, backticks, or links). Plain text only.
+- Format exactly like this:
+  1) One short intro line (max ~15 words).
+  2) A blank line.
+  3) Up to three restaurant lines, each on its own line, like:
+     1. Restaurant Name — X.X km · cuisine, one short highlight
+- Keep each restaurant line short (one line, under ~20 words).
+- Do not pack all recommendations into a single paragraph.
+- Mention distance and cuisine/highlight when available; skip fluff.
 - Never invent/hallucinate restaurant names or information not in the context.
-- If the user asked for more/other suggestions, acknowledge these are alternative options (e.g. "Here are a few more…") rather than repeating the previous set.
+- If the user asked for more/other suggestions, start with "Here are a few more…" instead of repeating the previous set.
 """,
     ),
     (
