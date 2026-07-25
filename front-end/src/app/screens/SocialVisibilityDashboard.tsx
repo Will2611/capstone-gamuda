@@ -46,7 +46,7 @@ export default function SocialVisibilityDashboard() {
     { id: "funnel", label: "Traffic & Conversion" },
     { id: "reviews-sentiment", label: "Sentiment" },
     { id: "traffic", label: "Foot Traffic" },
-    { id: "promotions", label: "Promotions" },
+    // { id: "promotions", label: "Promotions" },
   ];
 
   // --- Data state (always start with safe zero defaults) ---

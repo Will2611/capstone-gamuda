@@ -59,7 +59,7 @@ def setCookie(resp:Response, payload:SessionToken = default_session_generator())
         value=token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite="none",
         max_age=LONGER_COOKIE_AGE if payload.remember_me else COOKIE_AGE
     )
 

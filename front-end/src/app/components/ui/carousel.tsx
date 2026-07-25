@@ -35,6 +35,7 @@ type CarouselContextProps = {
   scrollNext: () => void;
   canScrollPrev: boolean;
   canScrollNext: boolean;
+  currentIndex: number;
 } & CarouselProps;
 
 const CarouselContext = createContext<CarouselContextProps | null>(null);
@@ -67,13 +68,20 @@ function Carousel({
   );
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const onSelect = useCallback((api: CarouselApi) => {
     if (!api) return;
     setCanScrollPrev(api.canScrollPrev());
     setCanScrollNext(api.canScrollNext());
+    setCurrentIndex(api.selectedScrollSnap());
   }, []);
-
+  useEffect(() => {
+    console.log("mount");
+    return () => {
+      console.log("dismount");
+    };
+  }, []);
   const scrollPrev = useCallback(() => {
     api?.scrollPrev();
   }, [api]);
@@ -123,6 +131,7 @@ function Carousel({
         scrollNext,
         canScrollPrev,
         canScrollNext,
+        currentIndex,
       }}
     >
       <div
@@ -139,13 +148,17 @@ function Carousel({
   );
 }
 
-function CarouselContent({ className, ...props }: ComponentProps<"div">) {
+function CarouselContent({
+  className,
+  overwriteHidden: allowOverflow = false,
+  ...props
+}: ComponentProps<"div"> & { overwriteHidden?: boolean }) {
   const { carouselRef, orientation } = useCarousel();
 
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className={allowOverflow ? "" : `overflow-hidden`}
       data-slot="carousel-content"
     >
       <div
@@ -160,9 +173,20 @@ function CarouselContent({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-function CarouselItem({ className, ...props }: ComponentProps<"div">) {
-  const { orientation } = useCarousel();
-
+function CarouselItem({
+  className,
+  selfIndex,
+  ...props
+}: ComponentProps<"div"> & { selfIndex: number }) {
+  const { orientation, currentIndex, api } = useCarousel();
+  useEffect(() => {
+    return () => {
+      if (!api) return;
+      if (currentIndex + 1 > api.slideNodes().length) {
+        api.scrollTo(0);
+      }
+    };
+  }, []);
   return (
     <div
       role="group"
@@ -172,6 +196,8 @@ function CarouselItem({ className, ...props }: ComponentProps<"div">) {
         "min-w-0 shrink-0 grow-0 basis-full",
         orientation === "horizontal" ? "pl-4" : "pt-4",
         className,
+        // Only if not being displayed
+        currentIndex == selfIndex ? "" : "max-h-0 overflow-y-hidden",
       )}
       {...props}
     />
@@ -235,6 +261,26 @@ function CarouselNext({
       <ArrowRight />
       <span className="sr-only">Next slide</span>
     </Button>
+  );
+}
+
+export function BasicCarousel() {
+  return (
+    <Carousel className="w-full max-w-xs">
+      <CarouselContent>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <CarouselItem selfIndex={index} key={index}>
+            <div className="p-1">
+              <div className="flex aspect-square items-center justify-center rounded border bg-card text-card-foreground">
+                <span className="text-4xl font-semibold">{index + 1}</span>
+              </div>
+            </div>
+          </CarouselItem>
+        ))}
+      </CarouselContent>
+      <CarouselPrevious />
+      <CarouselNext />
+    </Carousel>
   );
 }
 

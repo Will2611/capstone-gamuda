@@ -8,7 +8,7 @@ import { Menu, X } from "lucide-react";
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { isAuthenticated, logout, user } = useAuth();
-  const { profile } = useUser()
+  const { profile } = useUser();
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -18,19 +18,17 @@ export function Navigation() {
     // { label: "Dashboard", path: "/social-visibility" },
     // { label: "Privacy", path: "/privacy" },
   ];
-  if (user?.role !== 'owner') {
-    navItems.push({ label: "Find Restaurants", path: "/map" })
+  if (user?.role !== "owner") {
+    navItems.push({ label: "Find Restaurants", path: "/map" });
   }
   if (isAuthenticated) {
     if (user?.role === "client") {
-      navItems.push(
-        { label: "Profile", path: "/profile" }
-      )
+      navItems.push({ label: "Profile", path: "/profile" });
     }
     if (user?.role === "owner") {
       navItems.push(
         { label: "Dashboard", path: "/social-visibility" },
-        { label: "Promotions", path: "/promotion" }
+        { label: "Promotions", path: "/promotion" },
       );
     }
   }
@@ -53,9 +51,10 @@ export function Navigation() {
                 <NavLink
                   to={item.path}
                   className={({ isActive }) =>
-                    `transition-colors text-sm font-medium ${isActive
-                      ? "text-bs-gold font-medium"
-                      : "text-bs-neutral-700 hover:text-bs-gold"
+                    `transition-colors text-sm font-medium ${
+                      isActive
+                        ? "text-bs-gold font-medium"
+                        : "text-bs-neutral-700 hover:text-bs-gold"
                     }`
                   }
                 >
@@ -86,12 +85,15 @@ export function Navigation() {
                 Log In
               </NavLink>
             )}
-            <NavLink
-              className="bg-bs-gold text-bs-neutral-900 px-5 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors text-sm font-medium"
-              to={"/food-match"}
-            >
-              Food Buddy
-            </NavLink>
+
+            {user?.role !== "owner" && (
+              <NavLink
+                className="bg-bs-gold text-bs-neutral-900 px-5 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors text-sm font-medium"
+                to={"/food-match"}
+              >
+                Food Buddy
+              </NavLink>
+            )}
           </div>
 
           <button
@@ -124,9 +126,10 @@ export function Navigation() {
                   to={item.path}
                   onClick={() => setMenuOpen(false)}
                   className={({ isActive }) =>
-                    `block w-full text-start py-2 transition-colors font-medium ${isActive
-                      ? "text-bs-gold font-medium"
-                      : "text-bs-neutral-700 hover:text-bs-gold"
+                    `block w-full text-start py-2 transition-colors font-medium ${
+                      isActive
+                        ? "text-bs-gold font-medium"
+                        : "text-bs-neutral-700 hover:text-bs-gold"
                     }`
                   }
                 >
@@ -155,14 +158,15 @@ export function Navigation() {
                 </NavLink>
               </>
             )}
-
-            <NavLink
-              className="block w-full text-center mt-4 bg-bs-gold text-bs-neutral-900 px-6 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
-              onClick={() => setMenuOpen(false)}
-              to={"/food-match"}
-            >
-              Food Buddy
-            </NavLink>
+            {user?.role !== "owner" && (
+              <NavLink
+                className="block w-full text-center mt-4 bg-bs-gold text-bs-neutral-900 px-6 py-2 rounded-lg hover:bg-[#FFE44D] transition-colors font-medium"
+                onClick={() => setMenuOpen(false)}
+                to={"/food-match"}
+              >
+                Food Buddy
+              </NavLink>
+            )}
           </ul>
         )}
       </div>
