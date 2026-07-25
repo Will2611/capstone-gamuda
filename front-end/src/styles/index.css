@@ -1,18 +1,17 @@
-@import './fonts.css';
-@import './tailwind.css';
-@import './theme.css';
+@import "./fonts.css";
+@import "./tailwind.css";
+@import "./theme.css";
 
 /* Global background gradient injection */
-body, #root {
+/* body, #root {
   background: linear-gradient(to bottom, #ffcca0, #f5eb9d, #e1f7a8) !important;
   background-attachment: fixed !important;
-}
+} */
 
 /* Make all full-page screen wrappers transparent to show the gradient */
-.min-h-screen,
+/* .min-h-screen,
 .min-h-\[calc\(100vh-73px\)\],
 .h-\[calc\(100vh-73px\)\] {
   background-color: transparent !important;
   background-image: none !important;
-}
-
+} */

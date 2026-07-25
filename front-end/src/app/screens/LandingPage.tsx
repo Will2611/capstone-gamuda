@@ -7,7 +7,7 @@ import heroFoodBg1 from "@/assets/hero-food-bg.png";
 import heroFoodBg2 from "@/assets/hero-food-bg-2.png";
 import heroFoodBg3 from "@/assets/hero-food-bg-3.png";
 import { Clock4, MapPin, CalendarRange } from "lucide-react";
-import { FoodEmojiRain } from "../components/landing/FoodEmojiRain";
+// import { FoodEmojiRain } from "../components/landing/FoodEmojiRain";
 
 const HERO_IMAGES = [heroFoodBg1, heroFoodBg2, heroFoodBg3];
 
@@ -52,7 +52,7 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen">
       {/* Animated Food Emoji Background Rain */}
-      <FoodEmojiRain />
+      {/* <FoodEmojiRain /> */}
 
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-bs-gold/20 via-bs-red/10 to-bs-blue/20 overflow-hidden">
