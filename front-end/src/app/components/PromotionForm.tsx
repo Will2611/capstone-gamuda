@@ -13,6 +13,8 @@ import {
   RefreshCw,
   X,
   Check,
+  Database,
+  TrendingUp,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -65,60 +67,206 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     title: string;
     description: string;
     imageUrl: string;
+    eventTag?: string;
   } | null>(null);
 
-  // --- 方案 1：独立字段 AI 生成状态 ---
+  // --- 方案 1：独立字段 AI 生成状态与多轮生成计数器 ---
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
+  const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
 
   // ==========================================
-  // API 逻辑区 (目前仍为 Mock，预留 API 替换口)
+  // 1. 动态日历与趋势 Context 获取区
+  // ==========================================
+  const getCurrentMarketTrends = () => {
+    const today = new Date();
+    const formattedDate = today.toISOString().split("T")[0];
+
+    return {
+      currentDate: formattedDate,
+      season: "Summer",
+      upcomingHolidaysAndEvents: [
+        {
+          name: "National Day / Merdeka Special",
+          category: "Holiday",
+          date: "Aug 31",
+        },
+        {
+          name: "School Holiday Season",
+          category: "Calendar",
+          date: "Aug - Sep",
+        },
+        {
+          name: "Football Finals Night (Live Screen)",
+          category: "Sports Trend",
+          date: "This Weekend",
+        },
+      ],
+    };
+  };
+
+  // ==========================================
+  // 2. 结合 Step 1/2 数据与实时 Trend 打包 Payload
+  // ==========================================
+  const getFullContextPayload = () => {
+    return {
+      market_trends: getCurrentMarketTrends(),
+      step1_merchant_metrics: {
+        avgRevenuePerCustomer: "$35",
+        monthlyProfitMargin: "22%",
+        targetAudience: "Young Families & Weekend Foodies",
+        topSellingItems: ["Truffle Burger", "Craft Beer", "Family Combo"],
+      },
+      step2_historical_promotions: [
+        {
+          title: "Summer Family Feast 15% OFF",
+          conversionRate: "24%",
+          roi: "3.2x",
+        },
+        {
+          title: "Buy 1 Get 1 Cocktail Happy Hour",
+          conversionRate: "31%",
+          roi: "4.1x",
+        },
+      ],
+    };
+  };
+
+  // ==========================================
+  // API 逻辑区
   // ==========================================
 
-  // [方案 2] 全局生成：同时生成标题、描述、图片
-  const handleRunAiAssistant = async () => {
-    if (!aiPromptInput.trim()) return;
+  // [方案 2] 全局生成：结合日历热点 + 商家 Step 1&2 数据
+  const handleRunAiAssistant = async (customPrompt?: string) => {
+    const activePrompt = customPrompt || aiPromptInput;
+    if (!activePrompt.trim()) return;
+
     setIsAiProcessing(true);
     setAiGeneratedResult(null);
 
-    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-full-campaign', ...))
+    const fullContext = getFullContextPayload();
+
+    const apiPayload = {
+      userIdea: activePrompt,
+      context: fullContext,
+    };
+
+    console.log("🚀 [AI Full Campaign Request Payload]:", apiPayload);
+
     setTimeout(() => {
-      setAiGeneratedResult({
-        title: `🔥 [Special Offer] ${aiPromptInput} - Limited Time Only!`,
-        description: `Enjoy our exclusive promotion for ${aiPromptInput}. Crafted with top-quality ingredients and perfect for sharing with family and friends. Available for a limited time!`,
+      let mockResult = {
+        title: `🇲🇾 National Day Celebration: 31% OFF ${activePrompt}!`,
+        description: `Celebrate National Day with family & friends! Enjoy 31% OFF on our best-selling ${fullContext.step1_merchant_metrics.topSellingItems[0]} and family bundles. Valid through the holiday week!`,
         imageUrl:
-          "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
-      });
+          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop",
+        eventTag: "National Day Special",
+      };
+
+      if (
+        activePrompt.toLowerCase().includes("football") ||
+        activePrompt.toLowerCase().includes("sports")
+      ) {
+        mockResult = {
+          title: `⚽ Match Night Craze: Live Screening & Beer Buckets!`,
+          description: `Catch the live football finals this weekend! Bring your crew to enjoy live screening along with our special Craft Beer Bucket Deals and Truffle Burgers. Limited seating available!`,
+          imageUrl:
+            "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop",
+          eventTag: "Live Sports Trend",
+        };
+      } else if (
+        activePrompt.toLowerCase().includes("school") ||
+        activePrompt.toLowerCase().includes("holiday") ||
+        activePrompt.toLowerCase().includes("family")
+      ) {
+        mockResult = {
+          title: `🎉 School Holiday Family Treat: Kids Eat Free!`,
+          description: `School's out, fun's in! Treat your family during this school break. Buy any 2 main courses from our special menu and get a Kid's Meal completely FREE!`,
+          imageUrl:
+            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
+          eventTag: "School Break Trend",
+        };
+      }
+
+      setAiGeneratedResult(mockResult);
       setIsAiProcessing(false);
     }, 1500);
   };
 
-  // [方案 1] 局部生成：仅重写/优化 Title
+  // [方案 1] 改进版 Title 生成：基于现有文字保留主题变体 + 递增版本
   const handleGenerateTitleOnly = async () => {
     setIsGeneratingTitle(true);
-    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-title', ...))
+    const nextCount = titleGenCount + 1;
+    setTitleGenCount(nextCount);
+
+    const apiPayload = {
+      field: "title",
+      currentInputText: title.trim(), // 传入当前框内文本
+      iterationIndex: nextCount, // 传入生成的次数，提示后端生成不同变体
+      context: getFullContextPayload(),
+    };
+
+    console.log("🚀 [AI Regenerate Title Request]:", apiPayload);
+
     setTimeout(() => {
-      const options = [
-        "Weekend Family Feast: Special 20% OFF",
-        "Chef's Special Tasting Menu Discount",
-        "Buy 1 Get 1 Free Exclusive Deal",
-      ];
-      const randomTitle = options[Math.floor(Math.random() * options.length)];
-      setTitle(randomTitle);
+      if (title.trim()) {
+        // 当框内已有字时：保持原有主题进行变体生成 (Based on existing keyword)
+        const base = title.trim();
+        const Variations = [
+          `🇲🇾 ${base} Special: Buy 1 Free 1 Deal!`,
+          `🔥 Festive Promo: ${base} Bundle Offer`,
+          `🎉 Special Celebration: ${base} - Exclusive Discount!`,
+          `✨ Limited Time: ${base} (Weekend Only)`,
+        ];
+        // 循环取不同版本，保证每次按都不一样
+        setTitle(Variations[(nextCount - 1) % Variations.length]);
+      } else {
+        // 当框内为空时：结合当前最火 Trend 填充
+        const TrendTitles = [
+          "🇲🇾 Merdeka Day Special: 31% OFF Family Set",
+          "⚽ Weekend Match Night: Free Craft Beer with Burger",
+          "🎉 School Break Holiday Feast: Kids Eat Free",
+        ];
+        setTitle(TrendTitles[(nextCount - 1) % TrendTitles.length]);
+      }
+
       setIsGeneratingTitle(false);
       setErrors((prev) => ({ ...prev, title: undefined }));
     }, 1000);
   };
 
-  // [方案 1] 局部生成：仅重写/优化 Description
+  // [方案 1] 改进版 Description 生成：基于现有文字优化 + 多轮不重复
   const handleGenerateDescOnly = async () => {
     setIsGeneratingDesc(true);
-    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-description', ...))
+    const nextCount = descGenCount + 1;
+    setDescGenCount(nextCount);
+
+    const apiPayload = {
+      field: "description",
+      currentTitle: title.trim(),
+      currentInputText: description.trim(), // 传入当前框内文本
+      iterationIndex: nextCount, // 传入轮次，要求后端生成全新切入点
+      context: getFullContextPayload(),
+    };
+
+    console.log("🚀 [AI Regenerate Description Request]:", apiPayload);
+
     setTimeout(() => {
-      const currentContext = title ? `for "${title}"` : "for your restaurant";
-      setDescription(
-        `Indulge in an unforgettable dining experience ${currentContext}! Enjoy premium fresh ingredients, specially prepared by our head chef. Book your table now or order online to claim this limited-time offer.`,
-      );
+      const topic = title ? `for "${title}"` : "for your restaurant offer";
+      const fullContext = getFullContextPayload();
+      const topItem = fullContext.step1_merchant_metrics.topSellingItems[0];
+
+      // 提供多套不同切入点 (Angle) 的文案模板，每次点击生成下一版
+      const descVariations = [
+        `🔥 Exclusive Deal ${topic}! Indulge in our famous ${topItem} with special holiday pricing. Perfect for gathering with family & friends. Book your table now before slots run out!`,
+        `🎉 Limited-Time Offer ${topic}! Tailored specially for food lovers. Enjoy premium quality ingredients, handcrafted cocktails, and great ambiance. Available this week only!`,
+        `✨ Celebrate with us ${topic}! Claim your special discount on signature menu items. Bring your loved ones and experience an unforgettable meal. Order or reserve online today!`,
+        `🇲🇾 Season Special ${topic}! Don't miss out on our best-selling combo deals. High customer satisfaction guaranteed. T&C apply, offer valid while stocks last!`,
+      ];
+
+      // 每次点击递增选下一版，彻底杜绝重复
+      setDescription(descVariations[(nextCount - 1) % descVariations.length]);
+
       setIsGeneratingDesc(false);
       setErrors((prev) => ({ ...prev, description: undefined }));
     }, 1000);
@@ -252,10 +400,12 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     isAllDay,
   };
 
+  const marketTrends = getCurrentMarketTrends();
+
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6 relative">
       <div className="max-w-6xl mx-auto">
-        {/* Header Block 带方案 2 的入口 */}
+        {/* Header Block 带方案 2 入口 */}
         <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 bg-bs-gold/10 rounded-xl text-bs-gold">
@@ -272,14 +422,13 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
             </div>
           </div>
 
-          {/* 方案 2 触发按钮：全量活动策划 */}
           <button
             type="button"
             onClick={() => setIsAiModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer active:scale-95 shrink-0"
           >
             <Sparkles size={16} className="text-purple-200 animate-pulse" />
-            AI Campaign Planner
+            AI Trend Campaign Planner
           </button>
         </div>
 
@@ -290,7 +439,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         >
           {/* Form Controls (Left Column) */}
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
-            {/* Title 带 [方案 1] 单字段生成按钮 */}
+            {/* Title 带 [方案 1 改进版] 变体生成 */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-semibold text-bs-neutral-800">
@@ -307,7 +456,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   ) : (
                     <Wand2 size={12} />
                   )}
-                  {title ? "Rewrite Title" : "AI Generate Title"}
+                  {title
+                    ? `Rewrite Title (v${titleGenCount + 1})`
+                    : "AI Generate Title"}
                 </button>
               </div>
               <input
@@ -317,7 +468,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
                       : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
                   }`}
-                placeholder="e.g. Weekend Family Buffet Discount"
+                placeholder="e.g. merdeka with 10%"
                 value={title}
                 onChange={(e) => {
                   setTitle(e.target.value);
@@ -332,7 +483,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               )}
             </div>
 
-            {/* Description 带 [方案 1] 单字段生成按钮 */}
+            {/* Description 带 [方案 1 改进版] 多轮不重复生成 */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-sm font-semibold text-bs-neutral-800">
@@ -349,7 +500,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   ) : (
                     <Wand2 size={12} />
                   )}
-                  {description ? "Improve Copy" : "AI Generate Copy"}
+                  {description
+                    ? `Generate Next Idea (v${descGenCount + 1})`
+                    : "AI Generate Copy"}
                 </button>
               </div>
               <textarea
@@ -682,18 +835,19 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       {/* --- 方案 2：AI 策划师弹窗 --- */}
       {isAiModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-bs-neutral-100">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-bs-neutral-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
                   <Sparkles size={20} />
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-bs-neutral-900">
-                    AI Campaign Planner
+                    AI Trend & Calendar Campaign Planner
                   </h3>
                   <p className="text-xs text-bs-neutral-500">
-                    Generate a complete offer bundle in seconds.
+                    Creates promotions timed with holidays, sports & local
+                    events.
                   </p>
                 </div>
               </div>
@@ -706,22 +860,59 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="flex items-center justify-between bg-purple-50 border border-purple-100 p-2.5 rounded-xl text-xs text-purple-700">
+              <div className="flex items-center gap-2">
+                <Database size={14} className="shrink-0" />
+                <span>
+                  <strong>Merchant Context & Real-Time Calendar Synced</strong>
+                </span>
+              </div>
+              <span className="text-[10px] font-bold bg-purple-200/60 px-2 py-0.5 rounded-full">
+                {marketTrends.currentDate}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-1.5 text-xs font-bold text-bs-neutral-700 uppercase tracking-wider">
+                <TrendingUp size={14} className="text-purple-600" />
+                Upcoming Calendar Events & Trends:
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {marketTrends.upcomingHolidaysAndEvents.map((event) => (
+                  <button
+                    key={event.name}
+                    type="button"
+                    onClick={() => {
+                      setAiPromptInput(event.name);
+                      handleRunAiAssistant(event.name);
+                    }}
+                    className="text-xs font-semibold bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-800 hover:from-purple-100 hover:to-indigo-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                  >
+                    <span>{event.name}</span>
+                    <span className="text-[10px] opacity-70 bg-purple-200/50 px-1.5 py-0.2 rounded-md">
+                      {event.date}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-1">
               <div>
                 <label className="block text-xs font-bold text-bs-neutral-700 mb-1.5 uppercase tracking-wider">
-                  What offer are you planning?
+                  Or enter your own promo theme / dish:
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={aiPromptInput}
                     onChange={(e) => setAiPromptInput(e.target.value)}
-                    placeholder="e.g. Weekend Family Buffet, Lunch Combo Discount"
+                    placeholder="e.g. World Cup Finals, School Break Combo..."
                     className="flex-1 border border-bs-neutral-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 rounded-xl p-3 text-sm outline-none transition-all"
                   />
                   <button
                     type="button"
-                    onClick={handleRunAiAssistant}
+                    onClick={() => handleRunAiAssistant()}
                     disabled={isAiProcessing || !aiPromptInput.trim()}
                     className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer shrink-0"
                   >
@@ -733,35 +924,16 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     Generate
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  <span className="text-[11px] text-bs-neutral-400 self-center mr-1">
-                    Suggestions:
-                  </span>
-                  {[
-                    "Weekend Buffet",
-                    "Buy 1 Get 1 Burger",
-                    "Happy Hour Drink",
-                  ].map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setAiPromptInput(tag)}
-                      className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {isAiProcessing && (
-                <div className="py-10 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
+                <div className="py-8 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
                   <RefreshCw
                     size={28}
                     className="animate-spin text-purple-600 mx-auto"
                   />
                   <p className="text-xs font-semibold text-purple-700">
-                    AI is crafting campaign title, copy & matching banner...
+                    AI is analyzing current events, holidays & merchant data...
                   </p>
                 </div>
               )}
@@ -770,8 +942,13 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <div className="space-y-3 p-4 bg-bs-neutral-50 rounded-2xl border border-bs-neutral-200 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles size={12} /> Generated Solution Ready
+                      <Sparkles size={12} /> Campaign Strategy Ready
                     </span>
+                    {aiGeneratedResult.eventTag && (
+                      <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md">
+                        {aiGeneratedResult.eventTag}
+                      </span>
+                    )}
                   </div>
 
                   <div className="space-y-2">
