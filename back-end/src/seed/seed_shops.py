@@ -5,7 +5,6 @@ import asyncio
 from src.database.connection import SessionLocal, create_tables, drop_tables, engine
 from src.database.migrate_visibility import ensure_visibility_schema
 import src.database.models  # noqa: F401 — register all ORM tables before create_all
-from src.database.models.test import TestModel
 from src.database.models.restaurants import RestaurantModel, DAYS_OF_WEEK_TYPE
 import uuid_utils.compat as uuid
 from typing import get_args, cast

@@ -4,7 +4,7 @@ Apply visibility schema changes to an existing database.
 create_all() only creates missing tables — it does not add new columns.
 Run this on startup so sentiment_data picks up restaurant_name, neutral_pct, reviews.
 """
-from sqlalchemy import inspect, text
+from sqlalchemy import inspect, text, Inspector
 from sqlalchemy.engine import Engine, Connection
 
 
@@ -26,10 +26,13 @@ def ensure_visibility_schema(engine: Engine) -> None:
                 conn.execute(text(
                     "ALTER TABLE restaurants_measured DROP COLUMN review_ratings"
                 ))
+        if inspector.has_table('restaurants'):
+            restaurants_update(conn=conn, inspector=inspector)
 
         # Foot traffic is hourly-only; drop legacy daily table if present
         if inspector.has_table("foot_traffic_daily"):
             conn.execute(text("DROP TABLE IF EXISTS foot_traffic_daily CASCADE"))
+        drop_tables(conn=conn,inspector=inspector,table_names=['shops','restaurants_measured'])
 
 def sentiment_schema_update (conn:Connection, existing:set[str]):
     if "neutral_pct" not in existing:
@@ -54,3 +57,16 @@ def sentiment_schema_update (conn:Connection, existing:set[str]):
         conn.execute(text(
             "ALTER TABLE sentiment_data ADD COLUMN reviews JSONB"
         ))
+
+def restaurants_update(conn:Connection, inspector: Inspector):
+    existing_indexes = inspector.get_indexes('restaurants')
+    existing_index_names = set([index['name'] for index in existing_indexes])
+    if 'ix_restaurants_geohash' in existing_index_names:
+        conn.execute(text("DROP INDEX IF EXISTS ix_restaurants_geohash"))
+    return
+
+def drop_tables(conn:Connection, inspector:Inspector, table_names:list[str]):
+    for name in table_names:
+        if inspector.has_table(name):
+            conn.execute(text(f'DROP TABLE {name}'))
+    return

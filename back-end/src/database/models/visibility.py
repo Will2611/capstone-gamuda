@@ -8,17 +8,6 @@ from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
 import uuid_utils.compat as uuid
 from src.database.schemas.reviews import SENTIMENT_TYPE, SentimentModelValidation
 
-
-class RestaurantVisbilityModel(DBBaseModelTimeMixIn, Base):
-    __tablename__ = "restaurants_measured"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, index=True, init=False)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    cuisines: Mapped[str] = mapped_column(String(200), nullable=False)
-    latitude: Mapped[float] = mapped_column(Float, nullable=False)
-    longitude: Mapped[float] = mapped_column(Float, nullable=False)
-
-
 class VisibilityMetricsModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ = "visibility_metrics"
 

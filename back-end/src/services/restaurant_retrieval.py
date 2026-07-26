@@ -6,11 +6,12 @@ import logging
 import math
 import os
 from typing import Any
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from src.database.models.restaurants import DAYS_OF_WEEK, RestaurantModel
+from src.database.models.restaurants import DAYS_OF_WEEK,DAYS_OF_WEEK_TYPE, RestaurantModel
 from src.database.models.user import ClientModel
 from src.llm.service import (
     calculate_haversine_distance,
@@ -34,8 +35,8 @@ def _travel_minutes(distance_km: float) -> int:
     return max(5, int(math.ceil((distance_km / AVG_SPEED_KMH) * 60)))
 
 
-def _weekday_name(d: datetime.date) -> str:
-    return DAYS_OF_WEEK[d.weekday()]
+def _weekday_name(d: datetime.date) -> DAYS_OF_WEEK_TYPE:
+    return cast(DAYS_OF_WEEK_TYPE,DAYS_OF_WEEK[d.weekday()])
 
 
 def _time_in_shift(t: datetime.time, open_t: datetime.time, close_t: datetime.time) -> bool:
@@ -56,7 +57,7 @@ def _is_open_during(
 ) -> bool:
     hours = restaurant.opening_hours_struct or {}
     day = _weekday_name(on_date)
-    shifts = hours.get(day) or hours.get(day.lower()) or []
+    shifts = hours.get(day) or []
     if not shifts:
         # Unknown hours — keep candidate rather than over-filtering
         return True
@@ -272,6 +273,7 @@ def _external_mutual_fill(
     p_ids = [r.get("google_place_id") for r in external if r.get("google_place_id")]
     names = [r.get("name").strip() for r in external if r.get("name")]
     
+    
     existing_pids = set()
     if p_ids:
         existing_pids = {
@@ -317,6 +319,11 @@ def _pair_search_context(
     if None in (lat_a, lng_a, lat_b, lng_b):
         logger.warning("Missing location for one or both clients")
         return None
+    # Force type narrowing
+    assert lat_a is not None
+    assert lng_a is not None
+    assert lat_b is not None
+    assert lng_b is not None
 
     mid_lat = (lat_a + lat_b) / 2
     mid_lng = (lng_a + lng_b) / 2
