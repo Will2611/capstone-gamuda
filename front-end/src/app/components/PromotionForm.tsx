@@ -11,6 +11,8 @@ import {
   Sparkles,
   Wand2,
   RefreshCw,
+  X,
+  Check,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -55,44 +57,55 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // AI Loading States
-  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  // --- 方案 2：AI 助手弹窗状态控制 ---
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiPromptInput, setAiPromptInput] = useState("");
+  const [isAiProcessing, setIsAiProcessing] = useState(false);
 
-  // --- AI Trigger Handlers ---
-  const handleAITitleGen = () => {
-    setIsGeneratingTitle(true);
-    setTimeout(() => {
-      // Mock AI response
-      setTitle("🔥 Buy 1 Get 1 Free: Signature Wagyu Burger Set!");
-      setErrors((prev) => ({ ...prev, title: undefined }));
-      setIsGeneratingTitle(false);
-    }, 1000);
-  };
+  // 模拟 AI 弹窗内生成的一整套营销方案结果
+  const [aiGeneratedResult, setAiGeneratedResult] = useState<{
+    title: string;
+    description: string;
+    imageUrl: string;
+  } | null>(null);
 
-  const handleAIDescGen = () => {
-    setIsGeneratingDesc(true);
-    setTimeout(() => {
-      // Mock AI response
-      setDescription(
-        "Indulge in our premium Australian Wagyu beef patties with melted cheddar. Valid for dine-in only every weekday from 2 PM to 5 PM. T&C applies.",
-      );
-      setErrors((prev) => ({ ...prev, description: undefined }));
-      setIsGeneratingDesc(false);
-    }, 1200);
-  };
+  // 模拟方案 2：AI 根据用户输入生成完整活动策划
+  const handleRunAiAssistant = () => {
+    if (!aiPromptInput.trim()) return;
+    setIsAiProcessing(true);
+    setAiGeneratedResult(null);
 
-  const handleAIImageGen = () => {
-    setIsGeneratingImage(true);
     setTimeout(() => {
-      // Mock AI generated banner
-      setImageUrl(
-        "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop",
-      );
-      setErrors((prev) => ({ ...prev, imageUrl: undefined }));
-      setIsGeneratingImage(false);
+      // 模拟根据用户输入智能匹配的内容
+      setAiGeneratedResult({
+        title: `🔥 [Special] ${aiPromptInput} - Limited Time Offer!`,
+        description: `Enjoy our exclusive promotion for ${aiPromptInput}. Crafted with top-quality ingredients and perfect for sharing with family and friends. Available during operating hours. Terms and conditions apply.`,
+        imageUrl:
+          "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
+      });
+      setIsAiProcessing(false);
     }, 1500);
+  };
+
+  // 方案 2：一键应用 AI 生成的结果到表单中
+  const handleApplyAiResult = () => {
+    if (!aiGeneratedResult) return;
+    setTitle(aiGeneratedResult.title);
+    setDescription(aiGeneratedResult.description);
+    setImageUrl(aiGeneratedResult.imageUrl);
+
+    // 清除相关错误提示
+    setErrors((prev) => ({
+      ...prev,
+      title: undefined,
+      description: undefined,
+      imageUrl: undefined,
+    }));
+
+    // 关闭弹窗并清空输入
+    setIsAiModalOpen(false);
+    setAiPromptInput("");
+    setAiGeneratedResult(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -205,11 +218,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   };
 
   return (
-    <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6">
+    <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6 relative">
       <div className="max-w-6xl mx-auto">
-        {/* Header Block */}
-        <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-6 mb-8 shadow-sm">
-          <div className="flex items-center gap-3.5 mb-2">
+        {/* Header Block 带方案 2 的 AI 入口 */}
+        <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
             <div className="p-2.5 bg-bs-gold/10 rounded-xl text-bs-gold">
               <Megaphone size={24} />
             </div>
@@ -223,6 +236,16 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </p>
             </div>
           </div>
+
+          {/* 方案 2 触发按钮 */}
+          <button
+            type="button"
+            onClick={() => setIsAiModalOpen(true)}
+            className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <Sparkles size={16} className="text-purple-200 animate-pulse" />
+            AI Marketing Assistant
+          </button>
         </div>
 
         {/* Dynamic Two-Column Layout */}
@@ -234,26 +257,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
             {/* Title */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold text-bs-neutral-800">
-                  Promotion Title <span className="text-red-500">*</span>
-                </label>
-
-                {/* AI Assist Button */}
-                <button
-                  type="button"
-                  onClick={handleAITitleGen}
-                  disabled={isGeneratingTitle}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <Sparkles
-                    size={13}
-                    className={isGeneratingTitle ? "animate-spin" : ""}
-                  />
-                  {isGeneratingTitle ? "Generating..." : "AI Catchy Title"}
-                </button>
-              </div>
-
+              <label className="block text-sm font-semibold text-bs-neutral-800 mb-1.5">
+                Promotion Title <span className="text-red-500">*</span>
+              </label>
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
                   ${
@@ -278,26 +284,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
             {/* Description */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-semibold text-bs-neutral-800">
-                  Description <span className="text-red-500">*</span>
-                </label>
-
-                {/* AI Assist Button */}
-                <button
-                  type="button"
-                  onClick={handleAIDescGen}
-                  disabled={isGeneratingDesc}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <Wand2
-                    size={13}
-                    className={isGeneratingDesc ? "animate-spin" : ""}
-                  />
-                  {isGeneratingDesc ? "Writing..." : "AI Generate Desc"}
-                </button>
-              </div>
-
+              <label className="block text-sm font-semibold text-bs-neutral-800 mb-1.5">
+                Description <span className="text-red-500">*</span>
+              </label>
               <textarea
                 rows={4}
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
@@ -323,26 +312,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
             {/* Image Upload Area */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="flex items-center gap-2 text-sm font-semibold text-bs-neutral-800">
-                  <ImageIcon size={16} className="text-bs-neutral-500" />
-                  Promotion Banner Image <span className="text-red-500">*</span>
-                </label>
-
-                {/* AI Image Banner Button */}
-                <button
-                  type="button"
-                  onClick={handleAIImageGen}
-                  disabled={isGeneratingImage}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  <Sparkles
-                    size={13}
-                    className={isGeneratingImage ? "animate-spin" : ""}
-                  />
-                  {isGeneratingImage ? "Designing..." : "AI Generate Image"}
-                </button>
-              </div>
+              <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
+                <ImageIcon size={16} className="text-bs-neutral-500" />
+                Promotion Banner Image <span className="text-red-500">*</span>
+              </label>
 
               <input
                 type="file"
@@ -365,17 +338,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                         : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
                   }`}
               >
-                {isGeneratingImage ? (
-                  <div className="text-center py-4 space-y-2">
-                    <RefreshCw
-                      size={24}
-                      className="animate-spin text-purple-600 mx-auto"
-                    />
-                    <p className="text-xs font-semibold text-purple-700">
-                      AI is crafting a high-converting banner image...
-                    </p>
-                  </div>
-                ) : imageUrl ? (
+                {imageUrl ? (
                   <div className="text-center space-y-3">
                     <img
                       src={imageUrl}
@@ -650,6 +613,147 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           </div>
         </form>
       </div>
+
+      {/* --- 方案 2：AI 助手弹窗组件 (Modal) --- */}
+      {isAiModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-6">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-bs-neutral-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-bs-neutral-900">
+                    AI Marketing Strategist
+                  </h3>
+                  <p className="text-xs text-bs-neutral-500">
+                    Describe your promotion goal, AI will design it for you.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAiModalOpen(false)}
+                className="p-2 text-bs-neutral-400 hover:text-bs-neutral-700 rounded-xl hover:bg-bs-neutral-100 transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-bs-neutral-700 mb-1.5 uppercase tracking-wider">
+                  What kind of promotion do you want to run?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiPromptInput}
+                    onChange={(e) => setAiPromptInput(e.target.value)}
+                    placeholder="e.g. Weekend Family Buffet or Valentine's Steak Dinner"
+                    className="flex-1 border border-bs-neutral-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 rounded-xl p-3 text-sm outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRunAiAssistant}
+                    disabled={isAiProcessing || !aiPromptInput.trim()}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                  >
+                    {isAiProcessing ? (
+                      <RefreshCw size={16} className="animate-spin" />
+                    ) : (
+                      <Wand2 size={16} />
+                    )}
+                    Generate
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[11px] text-bs-neutral-400 self-center mr-1">
+                    Suggestions:
+                  </span>
+                  {[
+                    "Weekend Buffet",
+                    "Buy 1 Get 1 Burger",
+                    "Happy Hour Drink",
+                  ].map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setAiPromptInput(tag)}
+                      className="text-xs bg-purple-50 text-purple-700 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI 生成结果预览区域 */}
+              {isAiProcessing && (
+                <div className="py-10 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
+                  <RefreshCw
+                    size={28}
+                    className="animate-spin text-purple-600 mx-auto"
+                  />
+                  <p className="text-xs font-semibold text-purple-700">
+                    AI is brainstorming creative copy and banners for you...
+                  </p>
+                </div>
+              )}
+
+              {aiGeneratedResult && !isAiProcessing && (
+                <div className="space-y-3 p-4 bg-bs-neutral-50 rounded-2xl border border-bs-neutral-200 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles size={12} /> Generated Solution Ready
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
+                        Title
+                      </span>
+                      <p className="text-sm font-bold text-bs-neutral-900">
+                        {aiGeneratedResult.title}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
+                        Description
+                      </span>
+                      <p className="text-xs text-bs-neutral-600 line-clamp-2">
+                        {aiGeneratedResult.description}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
+                        Banner
+                      </span>
+                      <img
+                        src={aiGeneratedResult.imageUrl}
+                        alt="AI Banner"
+                        className="h-20 w-full object-cover rounded-lg mt-1"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleApplyAiResult}
+                    className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  >
+                    <Check size={16} /> Apply to Form
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
