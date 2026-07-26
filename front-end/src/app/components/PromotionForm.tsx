@@ -57,29 +57,35 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  // --- 方案 2：AI 助手弹窗状态控制 ---
+  // --- 方案 2：全量 AI 助手弹窗状态 ---
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiPromptInput, setAiPromptInput] = useState("");
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-
-  // 模拟 AI 弹窗内生成的一整套营销方案结果
   const [aiGeneratedResult, setAiGeneratedResult] = useState<{
     title: string;
     description: string;
     imageUrl: string;
   } | null>(null);
 
-  // 模拟方案 2：AI 根据用户输入生成完整活动策划
-  const handleRunAiAssistant = () => {
+  // --- 方案 1：独立字段 AI 生成状态 ---
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+
+  // ==========================================
+  // API 逻辑区 (目前仍为 Mock，预留 API 替换口)
+  // ==========================================
+
+  // [方案 2] 全局生成：同时生成标题、描述、图片
+  const handleRunAiAssistant = async () => {
     if (!aiPromptInput.trim()) return;
     setIsAiProcessing(true);
     setAiGeneratedResult(null);
 
+    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-full-campaign', ...))
     setTimeout(() => {
-      // 模拟根据用户输入智能匹配的内容
       setAiGeneratedResult({
-        title: `🔥 [Special] ${aiPromptInput} - Limited Time Offer!`,
-        description: `Enjoy our exclusive promotion for ${aiPromptInput}. Crafted with top-quality ingredients and perfect for sharing with family and friends. Available during operating hours. Terms and conditions apply.`,
+        title: `🔥 [Special Offer] ${aiPromptInput} - Limited Time Only!`,
+        description: `Enjoy our exclusive promotion for ${aiPromptInput}. Crafted with top-quality ingredients and perfect for sharing with family and friends. Available for a limited time!`,
         imageUrl:
           "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
       });
@@ -87,14 +93,44 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     }, 1500);
   };
 
-  // 方案 2：一键应用 AI 生成的结果到表单中
+  // [方案 1] 局部生成：仅重写/优化 Title
+  const handleGenerateTitleOnly = async () => {
+    setIsGeneratingTitle(true);
+    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-title', ...))
+    setTimeout(() => {
+      const options = [
+        "Weekend Family Feast: Special 20% OFF",
+        "Chef's Special Tasting Menu Discount",
+        "Buy 1 Get 1 Free Exclusive Deal",
+      ];
+      const randomTitle = options[Math.floor(Math.random() * options.length)];
+      setTitle(randomTitle);
+      setIsGeneratingTitle(false);
+      setErrors((prev) => ({ ...prev, title: undefined }));
+    }, 1000);
+  };
+
+  // [方案 1] 局部生成：仅重写/优化 Description
+  const handleGenerateDescOnly = async () => {
+    setIsGeneratingDesc(true);
+    // TODO: 替换为真实 API 调用 (e.g., await fetch('/api/ai/generate-description', ...))
+    setTimeout(() => {
+      const currentContext = title ? `for "${title}"` : "for your restaurant";
+      setDescription(
+        `Indulge in an unforgettable dining experience ${currentContext}! Enjoy premium fresh ingredients, specially prepared by our head chef. Book your table now or order online to claim this limited-time offer.`,
+      );
+      setIsGeneratingDesc(false);
+      setErrors((prev) => ({ ...prev, description: undefined }));
+    }, 1000);
+  };
+
+  // 应用方案 2 的结果
   const handleApplyAiResult = () => {
     if (!aiGeneratedResult) return;
     setTitle(aiGeneratedResult.title);
     setDescription(aiGeneratedResult.description);
     setImageUrl(aiGeneratedResult.imageUrl);
 
-    // 清除相关错误提示
     setErrors((prev) => ({
       ...prev,
       title: undefined,
@@ -102,7 +138,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       imageUrl: undefined,
     }));
 
-    // 关闭弹窗并清空输入
     setIsAiModalOpen(false);
     setAiPromptInput("");
     setAiGeneratedResult(null);
@@ -220,7 +255,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6 relative">
       <div className="max-w-6xl mx-auto">
-        {/* Header Block 带方案 2 的 AI 入口 */}
+        {/* Header Block 带方案 2 的入口 */}
         <div className="bg-white border border-bs-neutral-200/80 rounded-2xl p-6 mb-8 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="p-2.5 bg-bs-gold/10 rounded-xl text-bs-gold">
@@ -237,14 +272,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
             </div>
           </div>
 
-          {/* 方案 2 触发按钮 */}
+          {/* 方案 2 触发按钮：全量活动策划 */}
           <button
             type="button"
             onClick={() => setIsAiModalOpen(true)}
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-sm px-4 py-2.5 rounded-xl shadow-sm hover:shadow transition-all cursor-pointer active:scale-95 shrink-0"
           >
             <Sparkles size={16} className="text-purple-200 animate-pulse" />
-            AI Marketing Assistant
+            AI Campaign Planner
           </button>
         </div>
 
@@ -255,11 +290,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         >
           {/* Form Controls (Left Column) */}
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
-            {/* Title */}
+            {/* Title 带 [方案 1] 单字段生成按钮 */}
             <div>
-              <label className="block text-sm font-semibold text-bs-neutral-800 mb-1.5">
-                Promotion Title <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-bs-neutral-800">
+                  Promotion Title <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateTitleOnly}
+                  disabled={isGeneratingTitle}
+                  className="text-xs font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingTitle ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Wand2 size={12} />
+                  )}
+                  {title ? "Rewrite Title" : "AI Generate Title"}
+                </button>
+              </div>
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
                   ${
@@ -282,11 +332,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               )}
             </div>
 
-            {/* Description */}
+            {/* Description 带 [方案 1] 单字段生成按钮 */}
             <div>
-              <label className="block text-sm font-semibold text-bs-neutral-800 mb-1.5">
-                Description <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-bs-neutral-800">
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateDescOnly}
+                  disabled={isGeneratingDesc}
+                  className="text-xs font-semibold text-purple-600 hover:text-purple-800 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingDesc ? (
+                    <RefreshCw size={12} className="animate-spin" />
+                  ) : (
+                    <Wand2 size={12} />
+                  )}
+                  {description ? "Improve Copy" : "AI Generate Copy"}
+                </button>
+              </div>
               <textarea
                 rows={4}
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
@@ -614,11 +679,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         </form>
       </div>
 
-      {/* --- 方案 2：AI 助手弹窗组件 (Modal) --- */}
+      {/* --- 方案 2：AI 策划师弹窗 --- */}
       {isAiModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-6">
-            {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-bs-neutral-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
@@ -626,10 +690,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-bs-neutral-900">
-                    AI Marketing Strategist
+                    AI Campaign Planner
                   </h3>
                   <p className="text-xs text-bs-neutral-500">
-                    Describe your promotion goal, AI will design it for you.
+                    Generate a complete offer bundle in seconds.
                   </p>
                 </div>
               </div>
@@ -642,18 +706,17 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-bs-neutral-700 mb-1.5 uppercase tracking-wider">
-                  What kind of promotion do you want to run?
+                  What offer are you planning?
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={aiPromptInput}
                     onChange={(e) => setAiPromptInput(e.target.value)}
-                    placeholder="e.g. Weekend Family Buffet or Valentine's Steak Dinner"
+                    placeholder="e.g. Weekend Family Buffet, Lunch Combo Discount"
                     className="flex-1 border border-bs-neutral-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 rounded-xl p-3 text-sm outline-none transition-all"
                   />
                   <button
@@ -691,7 +754,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 </div>
               </div>
 
-              {/* AI 生成结果预览区域 */}
               {isAiProcessing && (
                 <div className="py-10 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
                   <RefreshCw
@@ -699,7 +761,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     className="animate-spin text-purple-600 mx-auto"
                   />
                   <p className="text-xs font-semibold text-purple-700">
-                    AI is brainstorming creative copy and banners for you...
+                    AI is crafting campaign title, copy & matching banner...
                   </p>
                 </div>
               )}
@@ -746,7 +808,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     onClick={handleApplyAiResult}
                     className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                   >
-                    <Check size={16} /> Apply to Form
+                    <Check size={16} /> Apply All to Form
                   </button>
                 </div>
               )}
