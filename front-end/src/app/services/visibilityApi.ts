@@ -68,6 +68,7 @@ export interface Sentiment {
   negativePct: number;
   neutralPct: number;
   complaintThemes: ComplaintThemeItem[];
+  positiveThemes: ComplaintThemeItem[];
 }
 
 /** Coerce unknown values to a finite number; never returns NaN. */
@@ -114,6 +115,7 @@ export const EMPTY_SENTIMENT: Sentiment = {
   negativePct: 0,
   neutralPct: 0,
   complaintThemes: [],
+  positiveThemes: [],
 };
 
 export const EMPTY_FUNNEL_STAGES: FunnelStage[] = [
@@ -180,6 +182,16 @@ export function normalizeFunnelStages(
   }));
 }
 
+function normalizeThemeList(
+  themes: ComplaintThemeItem[] | null | undefined,
+): ComplaintThemeItem[] {
+  if (!Array.isArray(themes)) return [];
+  return themes.map((c) => ({
+    theme: c?.theme || "Unknown",
+    count: safeNumber(c?.count),
+  }));
+}
+
 export function normalizeSentiment(
   raw: Partial<Sentiment> | null | undefined,
 ): Sentiment {
@@ -187,12 +199,8 @@ export function normalizeSentiment(
     positivePct: safeNumber(raw?.positivePct),
     negativePct: safeNumber(raw?.negativePct),
     neutralPct: safeNumber(raw?.neutralPct),
-    complaintThemes: Array.isArray(raw?.complaintThemes)
-      ? raw!.complaintThemes.map((c) => ({
-          theme: c?.theme || "Unknown",
-          count: safeNumber(c?.count),
-        }))
-      : [],
+    complaintThemes: normalizeThemeList(raw?.complaintThemes),
+    positiveThemes: normalizeThemeList(raw?.positiveThemes),
   };
 }
 
@@ -293,12 +301,20 @@ export interface ReviewsByTheme {
   reviews: ReviewItem[];
 }
 
+export type ThemeSentimentType = "Positive" | "Negative" | "Neutral";
+
 export async function getReviewsByTheme(
   restaurantId: string,
   theme: string,
+  sentimentType: ThemeSentimentType = "Negative",
 ): Promise<ReviewsByTheme> {
+  const params = new URLSearchParams({
+    restaurantId,
+    theme,
+    sentimentType,
+  });
   const response = await fetch(
-    `${API_BASE}/visibility/getReviewsByTheme?restaurantId=${restaurantId}&theme=${encodeURIComponent(theme)}`,
+    `${API_BASE}/visibility/getReviewsByTheme?${params.toString()}`,
   );
 
   if (!response.ok) {

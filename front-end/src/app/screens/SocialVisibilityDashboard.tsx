@@ -28,10 +28,11 @@ import {
   type ReviewsByTheme,
   type FootTrafficResponse,
   type ActionSuggestionsResponse,
+  type ThemeSentimentType,
 } from "../services/visibilityApi";
 import { MetricsTab } from "../components/visibility-dashboard/MetricsTab";
 import { FunnelTab } from "../components/visibility-dashboard/FunnelTab";
-import { ReviewsTab } from "../components/visibility-dashboard/ReviewsTab";
+// import { ReviewsTab } from "../components/visibility-dashboard/ReviewsTab" disabled for now, as it is not used in the current code;
 import { SentimentTab } from "../components/visibility-dashboard/SentimentTab";
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 import { PromotionsTab } from "../components/visibility-dashboard/PromotionsTab";
@@ -43,7 +44,7 @@ export default function SocialVisibilityDashboard() {
   const tabs = [
     { id: "metrics", label: "Top Metrics" },
     { id: "funnel", label: "Traffic & Conversion" },
-    { id: "reviews-sentiment", label: "Google Reviews & Sentiment" },
+    { id: "reviews-sentiment", label: "Sentiment" },
     { id: "traffic", label: "Foot Traffic" },
     { id: "promotions", label: "Promotions" },
   ];
@@ -67,6 +68,8 @@ export default function SocialVisibilityDashboard() {
   const [themeReviewsData, setThemeReviewsData] =
     useState<ReviewsByTheme | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<string>("");
+  const [selectedThemeSentiment, setSelectedThemeSentiment] =
+    useState<ThemeSentimentType>("Negative");
   const [loadingReviews, setLoadingReviews] = useState(false);
 
   // -- Action suggestions --
@@ -87,12 +90,20 @@ export default function SocialVisibilityDashboard() {
   //   }
   // };
 
-  const handleThemeClick = async (theme: string) => {
+  const handleThemeClick = async (
+    theme: string,
+    sentimentType: ThemeSentimentType = "Negative",
+  ) => {
     if (!selectedRestaurantId) return;
     setSelectedTheme(theme);
+    setSelectedThemeSentiment(sentimentType);
     setLoadingReviews(true);
     try {
-      const data = await getReviewsByTheme(selectedRestaurantId, theme);
+      const data = await getReviewsByTheme(
+        selectedRestaurantId,
+        theme,
+        sentimentType,
+      );
       setThemeReviewsData(data);
     } catch {
       setThemeReviewsData(null);
@@ -313,7 +324,14 @@ export default function SocialVisibilityDashboard() {
 
       {!loading && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-8">
-          {activeTab === "metrics" && <MetricsTab summary={summary} />}
+          {activeTab === "metrics" && (
+            <MetricsTab
+              summary={summary}
+              funnel={funnel}
+              sentiment={sentiment}
+              footTraffic={footTraffic}
+            />
+          )}
 
           {activeTab === "funnel" && (
             <FunnelTab funnel={funnel} />
@@ -321,12 +339,13 @@ export default function SocialVisibilityDashboard() {
           )}
 
           {activeTab === "reviews-sentiment" && (
-            <div className="space-y-10">
+            <div className="space-y-8">
               <SentimentTab
                 sentiment={sentiment}
                 handleThemeClick={handleThemeClick}
               />
-              <ReviewsTab social={social} />
+              {/* Google Reviews centered below the two theme charts REMOVE*/}
+              {/* <ReviewsTab social={social} /> */}
             </div>
           )}
 
@@ -360,7 +379,7 @@ export default function SocialVisibilityDashboard() {
           >
             <div className="flex items-center justify-between p-4 border-b border-bs-neutral-200">
               <h3 className="font-bold text-bs-neutral-900">
-                Negative Reviews &middot; "{selectedTheme}"
+                {selectedThemeSentiment} Reviews &middot; "{selectedTheme}"
               </h3>
               <button
                 onClick={() => setThemeReviewsData(null)}
@@ -377,18 +396,25 @@ export default function SocialVisibilityDashboard() {
               ) : (
                 <>
                   <p className="text-sm text-bs-neutral-600 mb-3">
-                    <span className="font-bold text-bs-red">
+                    <span
+                      className={`font-bold ${
+                        selectedThemeSentiment === "Positive"
+                          ? "text-bs-green"
+                          : "text-bs-red"
+                      }`}
+                    >
                       {themeReviewsData.matchedCount}
                     </span>{" "}
                     of{" "}
                     <span className="font-bold">
                       {themeReviewsData.totalNegative}
                     </span>{" "}
-                    negative reviews mention this complaint
+                    {selectedThemeSentiment.toLowerCase()} reviews mention this
+                    theme
                   </p>
                   {themeReviewsData.reviews.length === 0 ? (
                     <p className="text-sm text-bs-neutral-500">
-                      No negative reviews found.
+                      No {selectedThemeSentiment.toLowerCase()} reviews found.
                     </p>
                   ) : (
                     <div className="space-y-3">
@@ -397,7 +423,9 @@ export default function SocialVisibilityDashboard() {
                           key={i}
                           className={`p-3 rounded-lg border ${
                             rev.matched
-                              ? "border-bs-red/30 bg-bs-red/5"
+                              ? selectedThemeSentiment === "Positive"
+                                ? "border-bs-green/30 bg-bs-green/5"
+                                : "border-bs-red/30 bg-bs-red/5"
                               : "border-bs-neutral-100 bg-bs-neutral-50"
                           }`}
                         >
@@ -407,7 +435,13 @@ export default function SocialVisibilityDashboard() {
                               {"☆".repeat(5 - rev.stars)}
                             </span>
                             {rev.matched && (
-                              <span className="text-xs bg-bs-red/10 text-bs-red px-2 py-0.5 rounded-full font-medium">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  selectedThemeSentiment === "Positive"
+                                    ? "bg-bs-green/10 text-bs-green"
+                                    : "bg-bs-red/10 text-bs-red"
+                                }`}
+                              >
                                 Match
                               </span>
                             )}

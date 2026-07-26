@@ -297,13 +297,15 @@ async def get_sentiment(db: db_dependency, restaurantId: uuid.UUID = Query(...))
 
     complaint_rows = (
         db.query(SentimentThemeModel)
-        .filter(SentimentThemeModel.sentiment_type == 'Negative')
+        .filter(SentimentThemeModel.sentiment_type == "Negative")
         .filter(SentimentThemeModel.sentiment_id == row.id)
-        .join(
-            SentimentDataModel,
-            SentimentThemeModel.sentiment_id == SentimentDataModel.id,
-        )
-        .filter(SentimentDataModel.id == row.id)
+        .order_by(desc(SentimentThemeModel.count))
+        .all()
+    )
+    positive_rows = (
+        db.query(SentimentThemeModel)
+        .filter(SentimentThemeModel.sentiment_type == "Positive")
+        .filter(SentimentThemeModel.sentiment_id == row.id)
         .order_by(desc(SentimentThemeModel.count))
         .all()
     )
@@ -315,6 +317,10 @@ async def get_sentiment(db: db_dependency, restaurantId: uuid.UUID = Query(...))
             ComplaintThemeEntry(theme=c.theme, count=c.count)
             for c in complaint_rows
         ],
+        positiveThemes=[
+            ComplaintThemeEntry(theme=c.theme, count=c.count)
+            for c in positive_rows
+        ],
     )
 
 
@@ -323,6 +329,10 @@ async def get_reviews_by_theme(
     db: db_dependency,
     restaurantId: uuid.UUID = Query(...),
     theme: str = Query("Wait Time"),
+    sentimentType: str = Query(
+        "Negative",
+        description="Positive | Negative | Neutral — which theme bucket to open",
+    ),
 ):
     sentiment = (
         db.query(SentimentDataModel)
@@ -332,11 +342,14 @@ async def get_reviews_by_theme(
     )
     if not sentiment:
         raise HTTPException(status_code=404, detail="No reviews found")
+
+    allowed_types = {"Positive", "Negative", "Neutral"}
+    resolved_type = sentimentType if sentimentType in allowed_types else "Negative"
+
     themed_reviews = (
         db.query(SentimentThemeModel)
         .filter(SentimentThemeModel.sentiment_id == sentiment.id)
-        .filter(SentimentThemeModel.sentiment_type.in_(['Negative','Neutral']))
-        # .filter(SentimentThemeModel.theme.ilike(theme.strip().lower()))
+        .filter(SentimentThemeModel.sentiment_type == resolved_type)
         .order_by(desc(SentimentThemeModel.created_at))
         .all()
     )

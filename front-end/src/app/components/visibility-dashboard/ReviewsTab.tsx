@@ -7,26 +7,34 @@ interface ReviewsTabProps {
 }
 
 export function ReviewsTab({ social }: ReviewsTabProps) {
+  const googlePlatforms = social.filter((p) => p.platform === "Google Reviews");
+
   return (
     <section aria-labelledby="social-visibility">
-      <h2 id="social-visibility" className="mb-4">
+      <h2 id="social-visibility" className="mb-4 text-center">
         Google Review Visibility
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-        {social
-          .filter((p) => p.platform === "Google Reviews")
-          .map((p) => (
-            <SocialMediaCard
-              key={p.platform}
-              platform={p.platform}
-              icon={<Star size={24} />}
-              metrics={p.metrics}
-              ctaLabel={`Open ${p.platform}`}
-              url={p.url}
-              color="text-bs-gold"
-              hideOpenButton={true}
-            />
-          ))}
+      <div className="flex justify-center mt-4">
+        <div className="w-full max-w-md">
+          {googlePlatforms.length === 0 ? (
+            <p className="text-sm text-bs-neutral-500 text-center py-8">
+              No Google Reviews data available
+            </p>
+          ) : (
+            googlePlatforms.map((p) => (
+              <SocialMediaCard
+                key={p.platform}
+                platform={p.platform}
+                icon={<Star size={24} />}
+                metrics={p.metrics}
+                ctaLabel={`Open ${p.platform}`}
+                url={p.url}
+                color="text-bs-gold"
+                hideOpenButton={true}
+              />
+            ))
+          )}
+        </div>
       </div>
     </section>
   );
