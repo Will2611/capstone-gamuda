@@ -46,6 +46,11 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
     () => buildStackedChartData(footTraffic.chartDays ?? []),
     [footTraffic.chartDays],
   );
+  /** Tiny always-positive top stack so Recharts always draws a total label. */
+  const chartData = useMemo(
+    () => stackedData.map((row) => ({ ...row, labelAnchor: 0.001 })),
+    [stackedData],
+  );
   // const insights = footTraffic.insights ?? [];
   const chartTitle = useMemo(
     () => formatChartWeekRange(footTraffic.chartDays ?? []),
@@ -99,8 +104,11 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
   };
 
   const renderTotal = (props: any) => {
-    const { x, y, width, value } = props;
-    if (!value) return null;
+    const { x, y, width, payload, index } = props;
+    const row = payload ?? chartData[index];
+    if (!row || x == null || y == null || width == null) return null;
+    const total = row.total;
+    if (total == null || Number.isNaN(Number(total))) return null;
     return (
       <text
         x={x + width / 2}
@@ -110,7 +118,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
         fontWeight={700}
         fill="#262626"
       >
-        {value}
+        {total}
       </text>
     );
   };
@@ -157,9 +165,9 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
 
         <ResponsiveContainer width="100%" height={320}>
           <BarChart
-            data={stackedData}
+            data={chartData}
             barCategoryGap="22%"
-            margin={{ top: 24, right: 8, left: 0, bottom: 0 }}
+            margin={{ top: 40, right: 8, left: 0, bottom: 0 }}
           >
             <CartesianGrid vertical={false} stroke="#E5E5E5" />
             <XAxis
@@ -183,14 +191,19 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
-                const total = (payload as any[]).reduce(
+                const segments = (payload as any[]).filter(
+                  (p) =>
+                    p.dataKey !== "labelAnchor" &&
+                    TRAFFIC_SEGMENTS.some((seg) => seg.key === p.dataKey),
+                );
+                const total = segments.reduce(
                   (s: number, p: any) => s + (p.value ?? 0),
                   0,
                 );
                 return (
                   <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg text-xs min-w-[160px]">
                     <p className="font-bold text-gray-800 mb-1">{label}</p>
-                    {[...(payload as any[])].reverse().map((p: any) => (
+                    {[...segments].reverse().map((p: any) => (
                       <p
                         key={p.dataKey}
                         style={{ color: p.fill }}
@@ -209,18 +222,13 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
               }}
             />
 
-            {TRAFFIC_SEGMENTS.map((s, si) => (
+            {TRAFFIC_SEGMENTS.map((s) => (
               <Bar
                 key={s.key}
                 dataKey={s.key}
                 stackId="stack"
                 fill={s.color}
                 name={s.label}
-                radius={
-                  si === TRAFFIC_SEGMENTS.length - 1
-                    ? [4, 4, 0, 0]
-                    : [0, 0, 0, 0]
-                }
                 onClick={(barData) => {
                   const dayIndex = barData?.payload?.dayIndex;
                   if (typeof dayIndex === "number") {
@@ -249,15 +257,21 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
                   />
                 ))}
                 <LabelList dataKey={s.key} content={renderLabel} />
-                {si === TRAFFIC_SEGMENTS.length - 1 && (
-                  <LabelList
-                    dataKey="total"
-                    position="top"
-                    content={renderTotal}
-                  />
-                )}
               </Bar>
             ))}
+            {/* Always-positive invisible top slice — guarantees a total label per bar */}
+            <Bar
+              dataKey="labelAnchor"
+              stackId="stack"
+              fill="transparent"
+              stroke="none"
+              legendType="none"
+              isAnimationActive={false}
+              name=""
+              radius={[4, 4, 0, 0]}
+            >
+              <LabelList dataKey="total" position="top" content={renderTotal} />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
