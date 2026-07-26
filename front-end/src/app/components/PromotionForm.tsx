@@ -8,6 +8,9 @@ import {
   Clock,
   Upload,
   AlertCircle,
+  Sparkles,
+  Wand2,
+  RefreshCw,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -51,6 +54,46 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   );
 
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // AI Loading States
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+
+  // --- AI Trigger Handlers ---
+  const handleAITitleGen = () => {
+    setIsGeneratingTitle(true);
+    setTimeout(() => {
+      // Mock AI response
+      setTitle("🔥 Buy 1 Get 1 Free: Signature Wagyu Burger Set!");
+      setErrors((prev) => ({ ...prev, title: undefined }));
+      setIsGeneratingTitle(false);
+    }, 1000);
+  };
+
+  const handleAIDescGen = () => {
+    setIsGeneratingDesc(true);
+    setTimeout(() => {
+      // Mock AI response
+      setDescription(
+        "Indulge in our premium Australian Wagyu beef patties with melted cheddar. Valid for dine-in only every weekday from 2 PM to 5 PM. T&C applies.",
+      );
+      setErrors((prev) => ({ ...prev, description: undefined }));
+      setIsGeneratingDesc(false);
+    }, 1200);
+  };
+
+  const handleAIImageGen = () => {
+    setIsGeneratingImage(true);
+    setTimeout(() => {
+      // Mock AI generated banner
+      setImageUrl(
+        "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop",
+      );
+      setErrors((prev) => ({ ...prev, imageUrl: undefined }));
+      setIsGeneratingImage(false);
+    }, 1500);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,7 +147,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // Prevents fallback page reload
+    e.preventDefault();
 
     if (!validateForm()) {
       return;
@@ -182,7 +225,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           </div>
         </div>
 
-        {/* Dynamic Two-Column Layout wrapped in a Form */}
+        {/* Dynamic Two-Column Layout */}
         <form
           onSubmit={handleSubmit}
           className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
@@ -191,9 +234,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
           <div className="lg:col-span-7 bg-white border border-bs-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6">
             {/* Title */}
             <div>
-              <label className="block mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                Promotion Title <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-bs-neutral-800">
+                  Promotion Title <span className="text-red-500">*</span>
+                </label>
+
+                {/* AI Assist Button */}
+                <button
+                  type="button"
+                  onClick={handleAITitleGen}
+                  disabled={isGeneratingTitle}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Sparkles
+                    size={13}
+                    className={isGeneratingTitle ? "animate-spin" : ""}
+                  />
+                  {isGeneratingTitle ? "Generating..." : "AI Catchy Title"}
+                </button>
+              </div>
+
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
                   ${
@@ -218,9 +278,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
             {/* Description */}
             <div>
-              <label className="block mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                Description <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-sm font-semibold text-bs-neutral-800">
+                  Description <span className="text-red-500">*</span>
+                </label>
+
+                {/* AI Assist Button */}
+                <button
+                  type="button"
+                  onClick={handleAIDescGen}
+                  disabled={isGeneratingDesc}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Wand2
+                    size={13}
+                    className={isGeneratingDesc ? "animate-spin" : ""}
+                  />
+                  {isGeneratingDesc ? "Writing..." : "AI Generate Desc"}
+                </button>
+              </div>
+
               <textarea
                 rows={4}
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
@@ -246,10 +323,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
             {/* Image Upload Area */}
             <div>
-              <label className="flex items-center gap-2 mb-1.5 text-sm font-semibold text-bs-neutral-800">
-                <ImageIcon size={16} className="text-bs-neutral-500" />
-                Promotion Banner Image <span className="text-red-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="flex items-center gap-2 text-sm font-semibold text-bs-neutral-800">
+                  <ImageIcon size={16} className="text-bs-neutral-500" />
+                  Promotion Banner Image <span className="text-red-500">*</span>
+                </label>
+
+                {/* AI Image Banner Button */}
+                <button
+                  type="button"
+                  onClick={handleAIImageGen}
+                  disabled={isGeneratingImage}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 active:scale-95 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  <Sparkles
+                    size={13}
+                    className={isGeneratingImage ? "animate-spin" : ""}
+                  />
+                  {isGeneratingImage ? "Designing..." : "AI Generate Image"}
+                </button>
+              </div>
 
               <input
                 type="file"
@@ -272,7 +365,17 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                         : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
                   }`}
               >
-                {imageUrl ? (
+                {isGeneratingImage ? (
+                  <div className="text-center py-4 space-y-2">
+                    <RefreshCw
+                      size={24}
+                      className="animate-spin text-purple-600 mx-auto"
+                    />
+                    <p className="text-xs font-semibold text-purple-700">
+                      AI is crafting a high-converting banner image...
+                    </p>
+                  </div>
+                ) : imageUrl ? (
                   <div className="text-center space-y-3">
                     <img
                       src={imageUrl}
@@ -281,7 +384,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                     />
                     <div className="flex items-center justify-center gap-2">
                       <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                        Image Loaded Successfully
+                        Image Loaded
                       </span>
                       <button
                         type="button"
@@ -298,13 +401,21 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 ) : (
                   <div className="text-center space-y-2">
                     <div
-                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${errors.imageUrl ? "text-red-500 border-red-200" : "text-bs-neutral-500 border-bs-neutral-200"}`}
+                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${
+                        errors.imageUrl
+                          ? "text-red-500 border-red-200"
+                          : "text-bs-neutral-500 border-bs-neutral-200"
+                      }`}
                     >
                       <Upload size={22} />
                     </div>
                     <div>
                       <p
-                        className={`text-sm font-bold ${errors.imageUrl ? "text-red-700" : "text-bs-neutral-800"}`}
+                        className={`text-sm font-bold ${
+                          errors.imageUrl
+                            ? "text-red-700"
+                            : "text-bs-neutral-800"
+                        }`}
                       >
                         Click to upload promotion image
                       </p>
@@ -353,14 +464,18 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${errors.startDate ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
+                      ${
+                        errors.startDate
+                          ? "border-red-500 focus:border-red-600"
+                          : "border-bs-neutral-300 focus:border-bs-gold"
+                      }`}
                     value={startDate}
                     onChange={(e) => {
                       setStartDate(e.target.value);
                       setErrors((prev) => ({
                         ...prev,
                         startDate: undefined,
-                        endDate: undefined, // Clear end date bounds error too
+                        endDate: undefined,
                       }));
                     }}
                   />
@@ -378,7 +493,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${errors.endDate ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
+                      ${
+                        errors.endDate
+                          ? "border-red-500 focus:border-red-600"
+                          : "border-bs-neutral-300 focus:border-bs-gold"
+                      }`}
                     value={endDate}
                     onChange={(e) => {
                       setEndDate(e.target.value);
@@ -431,14 +550,18 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${errors.startTime ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
+                          ${
+                            errors.startTime
+                              ? "border-red-500 focus:border-red-600"
+                              : "border-bs-neutral-300 focus:border-bs-gold"
+                          }`}
                         value={startTime}
                         onChange={(e) => {
                           setStartTime(e.target.value);
                           setErrors((prev) => ({
                             ...prev,
                             startTime: undefined,
-                            endTime: undefined, // Clear timing sequence conflicts
+                            endTime: undefined,
                           }));
                         }}
                       />
@@ -457,7 +580,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${errors.endTime ? "border-red-500 focus:border-red-600" : "border-bs-neutral-300 focus:border-bs-gold"}`}
+                          ${
+                            errors.endTime
+                              ? "border-red-500 focus:border-red-600"
+                              : "border-bs-neutral-300 focus:border-bs-gold"
+                          }`}
                         value={endTime}
                         onChange={(e) => {
                           setEndTime(e.target.value);
@@ -483,14 +610,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <button
                 type="button"
                 onClick={() => navigate("/promotion")}
-                className="flex-1 py-3 px-4 rounded-xl border border-bs-neutral-300 text-bs-neutral-700 font-semibold text-sm hover:bg-bs-neutral-50 transition-colors"
+                className="flex-1 py-3 px-4 rounded-xl border border-bs-neutral-300 text-bs-neutral-700 font-semibold text-sm hover:bg-bs-neutral-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
 
               <button
                 type="submit"
-                className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all"
+                className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all cursor-pointer"
               >
                 {initialData ? "Update Promotion" : "Create Promotion"}
               </button>
