@@ -71,7 +71,9 @@ export function Navigation() {
                   Hi, {profile?.displayName?.split(" ")[0] ?? "there"}
                 </span>
                 <button
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                  }}
                   className="text-sm text-bs-neutral-700 hover:text-bs-red transition-colors px-3 py-2"
                 >
                   Log Out
@@ -140,7 +142,9 @@ export function Navigation() {
             {isAuthenticated ? (
               <button
                 onClick={() => {
-                  logout();
+                  () => {
+                    logout();
+                  };
                   setMenuOpen(false);
                 }}
                 className="block w-full text-start py-2 text-bs-neutral-700 hover:text-bs-red"

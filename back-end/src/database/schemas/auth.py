@@ -14,6 +14,7 @@ class SignUpRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    rememberMe:bool = False
 
 
 class AuthUserResponse(BaseModel):

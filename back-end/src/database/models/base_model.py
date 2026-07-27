@@ -59,9 +59,33 @@ class PydanticJSONType(TypeDecorator):
             return None
         return self.pydantic_model.model_validate(value)
 
-class GeohashHelper:
-     
+class PydanticArrayJSONType(TypeDecorator):
+    """
+    SQLAlchemy TypeDecorator to store a list of Pydantic models as JSON.
+    """
+    impl = JSON
+    cache_ok = True
+    def __init__(self, pydantic_model: type[BaseModel]):
+        super().__init__()
+        self.pydantic_model = pydantic_model
 
+    def process_bind_param(
+        self, value: Optional[List[BaseModel]], dialect: Any
+    ) -> Optional[List[dict]]:
+        if value is None:
+            return None
+        # Convert each Pydantic model in the list to a JSON-compatible dict
+        return [item.model_dump(mode='json') for item in value]
+
+    def process_result_value(
+        self, value: Optional[List[dict]], dialect: Any
+    ) -> Optional[List[BaseModel]]:
+        if value is None:
+            return None
+        # Reconstruct a list of Pydantic models from the list of dicts
+        return [self.pydantic_model.model_validate(item) for item in value]
+    
+class GeohashHelper:
     @staticmethod
     def column_geohash_factory(latitude_column='latitude', longitude_column="longitude"):
         """Only use if it is an SQLAlchemy class with columns named latitude and longitude."""

@@ -12,11 +12,31 @@ langchain-ollama
 langchain
 pygeohash
 proximityhash
+asyncpg
+boto3
+pypdf
+langchain-community
+langchain-google-cloud-sql-pg
+langchain-mongodb
+tiktoken
+pymongo
+langgraph
+langgraph-checkpoint-postgres
+langgraph-checkpoint-postgres-pg8000
+
+mcp
+fastmcp
+tenacity
+langchain-mcp-adapters
+
 uuid-utils
 tzdata
 nltk
 Faker
 pyjwt
+pywebpush
+webpush
+aiohttp
 
 #pip install fastapi uvicorn openai pydantic
 #npm install recharts lucide-react

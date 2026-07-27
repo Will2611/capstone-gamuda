@@ -9,12 +9,12 @@ import uuid_utils.compat as uuid
 from sqlalchemy.orm import mapped_column, Mapped
 from pydantic import EmailStr
 from typing import Literal, Optional, List
-from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin, RestaurantDetailsTableMixin, GeohashHelper
+from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin, RestaurantDetailsTableMixin, GeohashHelper, PydanticArrayJSONType
 import hashlib
 import hmac
 import os
 from sqlalchemy.dialects.postgresql import ARRAY, TIME
-from src.database.schemas.user import USER_ROLE_TYPE
+from src.database.schemas.user import USER_ROLE_TYPE, UserSubscription
 
 class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     __tablename__ = 'users'
@@ -23,6 +23,7 @@ class UserModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     full_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[EmailStr] = mapped_column(String, unique=True, index=True)
     hashedPassword: Mapped[str] = mapped_column(String(255), nullable=False)
+    user_notifications:Mapped[Optional[list[UserSubscription]]] = mapped_column(PydanticArrayJSONType(UserSubscription), default=None)
     avatar_url: Mapped[Optional[str]] = mapped_column(String, nullable=True, default=None)
 
     # Add property aliases so Pydantic can automatically pull display_name and role

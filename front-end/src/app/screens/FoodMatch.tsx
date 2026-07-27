@@ -152,6 +152,37 @@ export default function FoodMatch() {
     void refreshNearby();
   }, [profile.profileComplete, refreshNearby]);
 
+  interface PushEventMessage<T = any> {
+    type: string;
+    payload: T;
+    timestamp: Date;
+  }
+
+  const handlePushEventMatch = (ev: MessageEvent<PushEventMessage>) => {
+    const { type, payload } = ev.data;
+    if (type === "PUSHED_RECEIVED") {
+      const { isMatched } = payload;
+      if (isMatched) {
+        refreshNearby();
+      }
+    }
+  };
+  useEffect(() => {
+    const cleanUp: (() => void)[] = [];
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.addEventListener("message", handlePushEventMatch);
+      cleanUp.push(() => {
+        navigator.serviceWorker.removeEventListener(
+          "message",
+          handlePushEventMatch,
+        );
+      });
+    }
+    return () => {
+      cleanUp.forEach((fn) => fn());
+    };
+  }, []);
+
   const handleClearMatches = useCallback(async () => {
     if (
       !window.confirm(
@@ -268,7 +299,10 @@ export default function FoodMatch() {
       setActiveChat(plannerMatch);
       setActiveTab("matches");
 
-      if (updated.status === "overlap_found" || updated.status === "recommending") {
+      if (
+        updated.status === "overlap_found" ||
+        updated.status === "recommending"
+      ) {
         // Poll until restaurant ready
         void pollRecommendation(plannerMatch.id, updated.id);
       }
@@ -302,7 +336,10 @@ export default function FoodMatch() {
           setPopupOpen(true);
           return;
         }
-        if (plan.status === "overlap_found" && (plan.candidate_count ?? 0) === 0) {
+        if (
+          plan.status === "overlap_found" &&
+          (plan.candidate_count ?? 0) === 0
+        ) {
           return;
         }
       } catch {
@@ -340,10 +377,7 @@ export default function FoodMatch() {
     if (!activeChat || !isAuthenticated || !activePlan) return;
     setCycling(true);
     try {
-      const updated = await nextRestaurant(
-        activePlan.id,
-        activePlan.version,
-      );
+      const updated = await nextRestaurant(activePlan.id, activePlan.version);
       setDatePlan(activeChat.id, updated);
     } catch (err: unknown) {
       console.error(err);
@@ -488,10 +522,10 @@ export default function FoodMatch() {
           dummyResponses: socketUrl
             ? []
             : [
-              "Can't wait to try somewhere new!",
-              "That time works for me — let's lock it in.",
-              "I'm free this weekend for a food date!",
-            ],
+                "Can't wait to try somewhere new!",
+                "That time works for me — let's lock it in.",
+                "I'm free this weekend for a food date!",
+              ],
         },
       ],
     };
@@ -550,10 +584,11 @@ export default function FoodMatch() {
           <button
             type="button"
             onClick={() => setActiveTab("discover")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${activeTab === "discover"
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === "discover"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "bg-white/70 text-bs-neutral-600"
-              }`}
+            }`}
           >
             <Users className="w-4 h-4 inline mr-1.5" />
             Discover
@@ -561,10 +596,11 @@ export default function FoodMatch() {
           <button
             type="button"
             onClick={() => setActiveTab("matches")}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${activeTab === "matches"
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              activeTab === "matches"
                 ? "bg-bs-gold text-bs-neutral-900"
                 : "bg-white/70 text-bs-neutral-600"
-              }`}
+            }`}
           >
             <Heart className="w-4 h-4 inline mr-1.5" />
             Matches ({matches.length})

@@ -1,4 +1,5 @@
-import { type ReactNode } from "react";
+import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 
 // const IsDev = import.meta.env.VITE_IS_DEV;
@@ -8,8 +9,9 @@ function PWABadge({ children }: { children: ReactNode }) {
   const period = 60 * 60 * 1000;
   // Mounting
 
+  useState<ServiceWorkerRegistration | null>(null);
+
   const {
-    // offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
@@ -18,11 +20,14 @@ function PWABadge({ children }: { children: ReactNode }) {
       if (r) {
         if (r?.active?.state === "activated") {
           registerPeriodicSync(period, swUrl, r);
+          requestNotificationPermission(r);
         } else if (r?.installing) {
           r.installing.addEventListener("statechange", (e) => {
             const sw = e.target as ServiceWorker;
-            if (sw.state === "activated")
+            if (sw.state === "activated") {
               registerPeriodicSync(period, swUrl, r);
+              requestNotificationPermission(r);
+            }
           });
         }
       }
@@ -32,54 +37,43 @@ function PWABadge({ children }: { children: ReactNode }) {
     },
   });
 
-  // const [isOffline, setIsOffline] = useState<boolean>(false);
-  // useEffect(() => {
-  //   const handleSetToOffline = () => {
-  //     setIsOffline(true);
-  //   };
-  //   const handleSetToOnline = () => {
-  //     setIsOffline(false);
-  //   };
-  //   window.addEventListener("offline", handleSetToOffline);
-  //   window.addEventListener("online", handleSetToOnline);
-  // 
-  //   return () => {
-  //     window.removeEventListener("offline", handleSetToOffline);
-  //     window.removeEventListener("online", handleSetToOnline);
-  //   };
-  // }, []);
-
   function close() {
     // setOfflineReady(false);
     setNeedRefresh(false);
   }
-
+  const display = useMemo(() => {
+    return needRefresh || true;
+  }, [needRefresh]);
   return (
     <>
-      <div className="PWABadge" role="alert" aria-labelledby="toast-message">
+      {children}
+      <div
+        className="sticky bottom-0 right-0 z-10 bg-gray-200 shadow-lg p-4 border border-red-100 opacity-50 hover:opacity-100"
+        role="alert"
+        aria-labelledby="toast-message"
+      >
         {/* <span>Is it Offline :{`${isOffline}`}</span> */}
-        {needRefresh && (
+        {display && (
           <div className="PWABadge-toast">
-            <div className="PWABadge-message">
+            <div className="text-right">
               <span id="toast-message">
                 New content available, click on reload button to update.
               </span>
             </div>
-            <div className="PWABadge-buttons">
-              <button
-                className="PWABadge-toast-button"
-                onClick={() => updateServiceWorker(true)}
-              >
+            <div className="text-right px-4">
+              <button className="p-4" onClick={() => updateServiceWorker(true)}>
                 Reload
               </button>
-              <button className="PWABadge-toast-button" onClick={() => close()}>
+              <button
+                className="bg-black-600 text-white-600"
+                onClick={() => close()}
+              >
                 Close
               </button>
             </div>
           </div>
         )}
       </div>
-      {children}
     </>
   );
 }
@@ -111,17 +105,48 @@ function registerPeriodicSync(
   }, period);
 }
 
-// function subscribeNotifications(r: ServiceWorkerRegistration) {
-//   r.pushManager
-//     .subscribe({ userVisibleOnly: true, applicationServerKey: "" })
-//     .then((subscription) => {
-//       // Send the subscription to your server
-//       // const response = await fetch('/api/subscribe', {
-//       //   method: 'POST',
-//       //   headers: {
-//       //     'Content-Type': 'application/json',
-//       //   },
-//       //   body: JSON.stringify(subscription),
-//       // });
-//     });
-// }
+// src/App.tsx or a dedicated hook
+const requestNotificationPermission = async (
+  registration: ServiceWorkerRegistration | undefined,
+) => {
+  if (!registration) return;
+  if (!("Notification" in window)) return;
+  // if (!import.meta.env.VITE_VAPID_PUB_KEY) return;
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    // console.log("Notification permission granted.");
+
+    // Register for push (requires a VAPID key from your backend)
+
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      console.log("existingsub", existingSub.toJSON());
+      return;
+    }
+    const bytesKeys = urlBase64ToUint8Array(
+      "BK6J_i98HLZDQpDhR_eoyFDnWaFCV9kNMmV32c6BTtyrFLQ5Y-nzTDcWHXI8F7_oCyqb4YVUSDp6s7UdD6fzcOc",
+    );
+
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: bytesKeys,
+    });
+    const a = subscription.toJSON();
+    console.log("subscription", a);
+    // console.log("Push Subscription:", subscription);
+    // console.log("Push Subscription:", subscription);
+    // Send 'subscription' to your backend server here
+  }
+};
+
+// Helper to convert VAPID key
+const urlBase64ToUint8Array = (base64String: string) => {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
