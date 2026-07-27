@@ -156,12 +156,13 @@ def _build_init_payload(room_id: str, viewer_id: str) -> Optional[dict]:
 
         # Peer avatar / name for the header (the other person)
         peer = next((u for u in users if str(u.id) != viewer_id), None)
-
+        # Make it the 100 latest messages, resorted to be ascending orders
         msgs = (
             db.query(ChatMessageModel)
             .filter(ChatMessageModel.room_id == rid)
-            .order_by(ChatMessageModel.created_at.asc())
+            .order_by(ChatMessageModel.created_at.desc())
             .limit(100)
+            .order_by(ChatMessageModel.created_at.asc())
             .all()
         )
         messages = []
@@ -270,6 +271,7 @@ async def websocket_endpoint(
                                 room_id=_UUID(room_id),
                                 user_id=uid,
                                 payloads_stringified=None,
+                                session_id=None
                             )
                         )
                         db.commit()

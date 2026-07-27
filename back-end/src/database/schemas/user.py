@@ -6,7 +6,6 @@ from pydantic import Field, EmailStr, BaseModel, Field, EmailStr, ConfigDict
 from pydantic.alias_generators import to_camel
 from typing import Literal, Optional
 from .base_model import DBBaseRequest
-import pygeohash as gh
 from typing import Literal, Optional, List
 import datetime
 
