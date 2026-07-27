@@ -40,7 +40,7 @@ import { FunnelTab } from "../components/visibility-dashboard/FunnelTab";
 import { SentimentTab } from "../components/visibility-dashboard/SentimentTab";
 import { DemographicsTab } from "../components/visibility-dashboard/DemographicsTab";
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
-import { PromotionsTab } from "../components/visibility-dashboard/PromotionsTab";
+
 
 export default function SocialVisibilityDashboard() {
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export default function SocialVisibilityDashboard() {
     { id: "reviews-sentiment", label: "Google Reviews & Sentiment" },
     { id: "demographics", label: "Customer Demographics" },
     { id: "traffic", label: "Foot Traffic" },
-    // { id: "promotions", label: "Promotions" },
+    
   ];
 
   // --- Data state (always start with safe zero defaults) ---
@@ -376,10 +376,6 @@ export default function SocialVisibilityDashboard() {
 
           {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}
 
-          {activeTab === "promotions" && (
-            <PromotionsTab />
-            // <PromotionsTab handleQuickFix={handleQuickFix} />
-          )}
         </div>
       )}
 
