@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import {
   Megaphone,
   Calendar,
@@ -37,10 +37,20 @@ interface FormErrors {
 
 export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const navigate = useNavigate();
-
-  const [title, setTitle] = useState(initialData?.title ?? "");
+  const location = useLocation();
+  const prefilled = location.state as {
+    prefillTitle?: string;
+    prefillDescription?: string;
+  } | null;
+  // const [title, setTitle] = useState(initialData?.title ?? "");
+  // const [description, setDescription] = useState(
+  //   initialData?.description ?? "",
+  // );
+  const [title, setTitle] = useState(
+    prefilled?.prefillTitle ?? initialData?.title ?? "",
+  );
   const [description, setDescription] = useState(
-    initialData?.description ?? "",
+    prefilled?.prefillDescription ?? initialData?.description ?? "",
   );
   const [imageUrl, setImageUrl] = useState(initialData?.imageUrl ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl ?? "");

@@ -19,3 +19,4 @@ Faker
 pyjwt
 
 #pip install fastapi uvicorn openai pydantic
+#npm install recharts lucide-react

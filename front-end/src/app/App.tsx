@@ -36,6 +36,7 @@ import PromotionManagement from "./screens/PromotionManagement";
 import PromotionFormPage from "./screens/PromotionFormPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LoadingProvider, useLoading } from "./context/LoadingContext";
+import { PromotionAnalytics } from "./components/PromotionAnalytics";
 
 function ContextNest({ children }: { children: ReactNode }) {
   return (
@@ -66,6 +67,7 @@ function RoutesCompiled() {
           <Route path="/business" element={<BusinessPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/promotionAnalytics" element={<PromotionAnalytics />} />
 
           {/* Update to nested in /user */}
           {/* Update to be in /user/profile */}
