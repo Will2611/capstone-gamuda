@@ -3,7 +3,6 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, desc
 from src.database.connection import db_dependency
 from src.database.models.visibility import (
-    RestaurantVisbilityModel,
     VisibilityMetricsModel,
     FunnelStageModel,
     SocialPlatformMetricsModel,

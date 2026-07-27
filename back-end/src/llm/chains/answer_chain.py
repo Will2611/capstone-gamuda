@@ -1,5 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from src.llm.schemas import RestaurantResult
+from langchain_core.language_models import BaseChatModel
+
 ANSWER_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
@@ -46,7 +48,7 @@ def format_restaurant_context(restaurants: list[RestaurantResult]) -> str:
     return "\n".join(lines)
 
 
-async def generate_answer(llm, user_message: str, restaurants: list[RestaurantResult]) -> str:
+async def generate_answer(llm:BaseChatModel, user_message: str, restaurants: list[RestaurantResult]) -> str:
     chain = ANSWER_PROMPT | llm
     response = await chain.ainvoke({
         "user_message": user_message,

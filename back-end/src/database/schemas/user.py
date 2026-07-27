@@ -33,14 +33,6 @@ class ClientRequest(UserRequest):
     latitude:Optional[float]
     geohash:Optional[float]
 
-def generate_geohash(context):
-    current_param= context.get_current_parameters()
-    recent_lat =  current_param.get('recent_latitude')
-    recent_long =  current_param.get('recent_longitude')
-    if recent_lat and recent_long:
-        return gh.encode(latitude=current_param.get('recent_latitude'),longitude=current_param.get('recent_longitude') )
-    return None
-
 class OwnerRequest(UserRequest):
     # PreFill as default
     user_type:Literal['owner'] = Field("owner")# type: ignore[assignment]
@@ -57,7 +49,7 @@ class ClientPreferencesSchema(BaseModel):
 
 # Dedicated schema for Client Registration
 class ClientRegisterRequest(UserRequest):
-    user_type: Literal['client'] = "client"
+    user_type: Literal['client'] = "client" # type: ignore[assignment]
     gender: str
     birthday: datetime.date 
     religion: str
@@ -90,3 +82,10 @@ class ClientResponse(BaseModel):
     recent_latitude: Optional[float] = None
     recent_longitude: Optional[float] = None
     geohash: Optional[str] = None
+
+class SubscriptionKeys(BaseModel):
+    p256dh:str
+    auth:str
+class UserSubscription(BaseModel):
+    endpoint:str
+    key:SubscriptionKeys

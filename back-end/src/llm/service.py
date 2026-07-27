@@ -14,8 +14,14 @@ from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import func
 from datetime import datetime
 from src.database.models.restaurants import RestaurantModel
-from src.services.external_search import search_external_restaurants
-
+from src.services.external_search import (
+    search_external_restaurants,
+    NormalisedExternalRestaurant,
+    HashlessExternalRestaurant
+    )
+from langchain_core.language_models.chat_models import BaseChatModel
+from sqlalchemy.orm import Session
+import uuid_utils.compat as uuid
 from . import config
 
 # Thread pool for running synchronous external API calls concurrently
@@ -26,7 +32,7 @@ Help users choose restaurants based on cuisine, mood, budget, dietary needs (hal
 Keep replies concise (2-4 sentences). Suggest specific restaurant types or areas when possible."""
 
 
-def get_llm():
+def get_llm()->BaseChatModel:
     if config.LLM_PROVIDER == "gemini":
         if not config.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
@@ -42,7 +48,7 @@ def get_llm():
     )
 
 
-def _to_langchain_messages(messages: list[dict]) -> list:
+def _to_langchain_messages(messages: list[dict]) -> list[BaseMessage]:
     lc_messages:list[BaseMessage] = [SystemMessage(content=SYSTEM_PROMPT)]
     for msg in messages:
         if msg["role"] == "assistant":
@@ -108,7 +114,7 @@ def matches_cuisine(restaurant_categories: list[str], requested_cuisines: list[s
     return False
 
 def query_restaurants_by_proximity_and_cuisine(
-    db,
+    db:Session,
     cuisines: list[str],
     latitude: float,
     longitude: float,
@@ -117,7 +123,24 @@ def query_restaurants_by_proximity_and_cuisine(
     dietary: list[str] = [],
 ) -> list:
     # 1. Encode user location into nearby geohashes (precision 5)
-    hashes_str = proximityhash.create_geohash(latitude, longitude, radius_km * 1000, 5)
+    #   (maximum X axis error, in km)     
+    # 1   5,009.4km x 4,992.6km
+    # 2   1,252.3km x 624.1km
+    # 3   156.5km x 156km
+    # 4   39.1km x 19.5km
+    # 5   4.9km x 4.9km
+    # 6   1.2km x 609.4m, good for raddius >10 km, with max MoErr of 1 km (10%)
+    # 7   152.9m x 152.4m good for raddius 1-5, with max MoErr of 200m (20% - 5% respectively)
+    # 8   38.2m x 19m
+    # 9   4.8m x 4.8m
+    # 10  1.2m x 59.5cm
+    # 11  14.9cm x 14.9cm
+    # 12  3.7cm x 1.9cm 
+    import pygeohash as gh
+    # Allow for caching?
+    lat,long =gh.decode(gh.encode(latitude,longitude,7))
+    hashes_str = proximityhash.create_geohash(latitude, longitude, radius_km * 1000, 7, georaptor_flag=True)
+    
     geohash_list = hashes_str.split(',')
     
     # 2. Query candidates from DB that are in those geohash cells (prefix check)
@@ -162,11 +185,11 @@ def query_restaurants_by_proximity_and_cuisine(
     sorted_items = sorted(filtered, key=sort_key)
     return sorted_items
 
-def upsert_external_results(db, normalized_results: list[dict]):
+def upsert_external_results(db:Session, normalized_results: list[NormalisedExternalRestaurant]):
     for data in normalized_results:
         place_id = data["google_place_id"]
         existing = db.query(RestaurantModel).filter(RestaurantModel.google_place_id == place_id).first()
-        if existing:
+        if place_id and existing:
             # Update only non-NULL fields
             for key, val in data.items():
                 if val is not None:
@@ -174,7 +197,7 @@ def upsert_external_results(db, normalized_results: list[dict]):
             existing.updated_at = datetime.now()
         else:
             constructor_data = {k: v for k, v in data.items() if k != "geohash"}
-            new_restaurant = RestaurantModel(**constructor_data)
+            new_restaurant = RestaurantModel(**constructor_data) # type: ignore[arg-type]
             db.add(new_restaurant)
     db.commit()
 
@@ -192,7 +215,7 @@ async def _fetch_external(
     latitude: float,
     longitude: float,
     radius_km: float,
-) -> list[dict]:
+) -> list[NormalisedExternalRestaurant]:
     """One external search: primary cuisine only (or generic if none).
 
     Strict gap-fill only needs enough new places to fill remaining slots,
@@ -208,10 +231,10 @@ async def _fetch_external(
     return result if isinstance(result, list) else []
 
 
-def _upsert_deduped(db, external_results: list[dict]) -> None:
+def _upsert_deduped(db, external_results: list[NormalisedExternalRestaurant]) -> None:
     """Deduplicate by google_place_id and upsert into the database."""
     seen: set[str] = set()
-    unique: list[dict] = []
+    unique: list[NormalisedExternalRestaurant] = []
     for r in external_results:
         pid = r.get("google_place_id")
         if pid and pid not in seen:
@@ -221,7 +244,7 @@ def _upsert_deduped(db, external_results: list[dict]) -> None:
         upsert_external_results(db, unique)
 
 
-def _map_to_results(selected: list[tuple]) -> list[RestaurantResult]:
+def _map_to_results(selected: list[tuple[RestaurantModel,float]]) -> list[RestaurantResult]:
     """Convert (RestaurantModel, distance_float) tuples to RestaurantResult objects."""
     results = []
     for r, dist in selected:
@@ -277,16 +300,16 @@ def _merge_unique(primary: list[tuple], extra: list[tuple], limit: int = RESULT_
 
 
 def _fresh_external_slice(
-    external_results: list[dict],
+    external_results: list[NormalisedExternalRestaurant],
     db_results: list[tuple],
     needed: int,
-) -> list[dict]:
+) -> list[NormalisedExternalRestaurant]:
     """Keep only places not already in DB, capped at the gap size."""
     if needed <= 0:
         return []
     existing_place_ids = {r.google_place_id for r, _ in db_results if r.google_place_id}
     existing_names = {r.name.lower().strip() for r, _ in db_results}
-    fresh: list[dict] = []
+    fresh: list[NormalisedExternalRestaurant] = []
     for r in external_results:
         p_id = r.get("google_place_id")
         name = (r.get("name") or "").lower().strip()
@@ -345,10 +368,10 @@ async def _gap_fill_external(
 
 async def chat_with_restaurant_search(
     messages: list[dict],
-    db,
+    db:Session,
     latitude: float | None = None,
     longitude: float | None = None,
-    exclude_restaurant_ids: list | None = None,
+    exclude_restaurant_ids: list[uuid.UUID] | None = None,
 ) -> tuple[str, list[RestaurantResult], list[str]]:
     llm = get_llm()
 
@@ -378,38 +401,39 @@ async def chat_with_restaurant_search(
     loop = asyncio.get_event_loop()
     selected: list[tuple] = []
     used_fallback_note: str | None = None
-
+    
     # 3. Handle location requirement when search is needed
-    if intent.needs_restaurant_search:
-        if latitude is None or longitude is None:
-            reply = "Please press the 'Locate Me' button so I can search for restaurants near your current location."
-            return reply, [], build_suggestions(intent, [], needs_location=True)
-
-        # Step 1: Exhaust local DB matches first
-        db_results = query_restaurants_by_proximity_and_cuisine(
-            db, intent.cuisines, latitude, longitude,
+    if latitude is None or longitude is None:
+        reply = "Please press the 'Locate Me' button so I can search for restaurants near your current location."
+        return reply, [], build_suggestions(intent, [], needs_location=True)
+    # 2.5 If search is not needed, then return reply (asking for more info) and empty list early
+    if not intent.needs_restaurant_search:
+        reply = await generate_answer(llm, latest_user,restaurants)
+        suggestions = build_suggestions(intent, restaurants)
+        return reply, restaurants, suggestions
+    # Step 1: Exhaust local DB matches first
+    db_results = query_restaurants_by_proximity_and_cuisine(
+        db, intent.cuisines, latitude, longitude,
+        radius_km=radius_km,
+        price_level=intent.price_level,
+        dietary=intent.dietary,
+    )
+    selected = _take_top(_exclude_shown(db_results, exclude_ids))
+    # Step 2: Strict gap-fill — SerpAPI only for remaining slots (e.g. 2 local → 1 call worth)
+    if len(selected) < RESULT_LIMIT:
+        selected = await _gap_fill_external(
+            db, loop, selected, exclude_ids,
+            cuisines=intent.cuisines,
+            latitude=latitude,
+            longitude=longitude,
             radius_km=radius_km,
             price_level=intent.price_level,
             dietary=intent.dietary,
         )
-        selected = _take_top(_exclude_shown(db_results, exclude_ids))
-
-        # Step 2: Strict gap-fill — SerpAPI only for remaining slots (e.g. 2 local → 1 call worth)
-        if len(selected) < RESULT_LIMIT:
-            selected = await _gap_fill_external(
-                db, loop, selected, exclude_ids,
-                cuisines=intent.cuisines,
-                latitude=latitude,
-                longitude=longitude,
-                radius_km=radius_km,
-                price_level=intent.price_level,
-                dietary=intent.dietary,
-            )
-
-        restaurants = _map_to_results(selected)
+    restaurants = _map_to_results(selected)
 
     # 4. Fallbacks — widen/relax local DB first; SerpAPI only to fill remaining gap
-    if intent.needs_restaurant_search and len(selected) < RESULT_LIMIT:
+    if len(selected) < RESULT_LIMIT:
         expanded_radius = radius_km * 1.5
         count_before_fb1 = len(selected)
 

@@ -4,11 +4,36 @@ import pygeohash as gh
 import time
 from typing import List, Dict, Any
 from fastapi import HTTPException
+from typing import TypedDict, Optional
 
 from dotenv import load_dotenv
 
 # Ensure environment variables are loaded
 load_dotenv()
+class HashlessExternalRestaurant(TypedDict):
+        google_place_id: Optional[str]
+        name: Optional[str]
+        cuisine: Optional[list[str]]
+        latitude: Optional[float]
+        longitude: Optional[float]
+        address: Optional[list[str]]
+        rating: Optional[float]
+        review_count: Optional[int]
+        price_level: Optional[int]
+        business_status: Optional[str]
+        #list of photo urls
+        photos: Optional[list[str] ]
+        source: Optional[str]
+        about: Optional[str]
+        timezone_offset: Optional[int]
+        contact_no: Optional[str]
+        website: Optional[str]
+        
+class NormalisedExternalRestaurant(HashlessExternalRestaurant):
+        geohash: Optional[str]
+
+        
+    
 
 # Global rate limiting for external API calls to avoid API key exhaustion
 # Limit: at most 5 external search calls per 60 seconds
@@ -30,19 +55,15 @@ def enforce_external_rate_limit() -> None:
         raise ExternalRateLimitException()
     _external_api_calls.append(now)
 
-def get_env_var(name: str, default: str = None) -> str:
-    return os.getenv(name, default)
-
-def search_external_restaurants(cuisine: str, latitude: float, longitude: float, radius: int = 10000) -> List[Dict[str, Any]]:
+def search_external_restaurants(cuisine: str, latitude: float, longitude: float, radius: int = 10000) -> List[NormalisedExternalRestaurant]:
     """
     Searches for restaurants of a specific cuisine within a given radius using Google Places or SerpAPI.
     Returns normalized dictionaries ready to be inserted into the database.
     """
     enforce_external_rate_limit()
-
-    provider = get_env_var("PLACES_PROVIDER", "serpapi")
-    google_key = get_env_var("GOOGLE_PLACES_API_KEY")
-    serpapi_key = get_env_var("SERPAPI_API_KEY")
+    provider = os.getenv("PLACES_PROVIDER", "serpapi")
+    google_key = os.getenv("GOOGLE_PLACES_API_KEY")
+    serpapi_key = os.getenv("SERPAPI_API_KEY")
     
     if provider == "google" and google_key:
         try:
@@ -62,10 +83,7 @@ def search_external_restaurants(cuisine: str, latitude: float, longitude: float,
     # If no providers configured or both failed, return empty list
     return []
     
-    # If no providers configured or both failed, return empty list
-    return []
-
-def search_google_places(cuisine: str, latitude: float, longitude: float, radius: int, key: str) -> List[Dict[str, Any]]:
+def search_google_places(cuisine: str, latitude: float, longitude: float, radius: int, key: str) -> List[NormalisedExternalRestaurant]:
     url = "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
     params = {
         "location": f"{latitude},{longitude}",
@@ -93,7 +111,7 @@ def search_google_places(cuisine: str, latitude: float, longitude: float, radius
         normalized.append(normalize_google_place(place, cuisine, lat, lng))
     return normalized
 
-def normalize_google_place(place: dict, cuisine: str, lat: float, lng: float) -> dict:
+def normalize_google_place(place: dict, cuisine: str, lat: float, lng: float) -> NormalisedExternalRestaurant:
     place_id = place.get("place_id")
     name = place.get("name")
     vicinity = place.get("vicinity")
@@ -131,10 +149,12 @@ def normalize_google_place(place: dict, cuisine: str, lat: float, lng: float) ->
         "photos": photos,
         "source": "Google Places",
         "about": "No description available.",
-        "timezone_offset": 480
+        "timezone_offset": 480,
+        "contact_no": None,
+        "website": None,
     }
 
-def search_serpapi(cuisine: str, latitude: float, longitude: float, radius: int, key: str) -> List[Dict[str, Any]]:
+def search_serpapi(cuisine: str, latitude: float, longitude: float, radius: int, key: str) -> List[NormalisedExternalRestaurant]:
     url = "https://serpapi.com/search.json"
     params = {
         "engine": "google_maps",
@@ -161,7 +181,7 @@ def search_serpapi(cuisine: str, latitude: float, longitude: float, radius: int,
         normalized.append(normalize_serpapi_place(place, cuisine, lat, lng))
     return normalized
 
-def normalize_serpapi_place(place: dict, cuisine: str, lat: float, lng: float) -> dict:
+def normalize_serpapi_place(place: dict, cuisine: str, lat: float, lng: float) -> NormalisedExternalRestaurant:
     place_id = place.get("place_id")
     name = place.get("title")
     address_str = place.get("address")
@@ -202,11 +222,10 @@ def normalize_serpapi_place(place: dict, cuisine: str, lat: float, lng: float) -
         "review_count": review_count,
         "price_level": price_level,
         "business_status": "OPERATIONAL",
-        "contact_no": phone_number,
-        "website": website,
-        "summary": summary,
         "about": summary,
         "photos": photos,
         "source": "SerpAPI",
-        "timezone_offset": 480
+        "timezone_offset": 480,
+        "contact_no": phone_number,
+        "website": website,
     }

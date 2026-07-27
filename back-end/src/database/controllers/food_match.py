@@ -138,6 +138,7 @@ def _create_or_get_connected_match(
         room_status="active",
         chat_name=f"{me.full_name} & {partner.full_name}",
         chat_caption="Food Match chat",
+        session_id=None
     )
     db.add(room)
     db.flush()
@@ -488,6 +489,8 @@ async def ensure_match(
 
     # Give demo partners a location near the current user if missing
     if partner.recent_latitude is None and me.recent_latitude is not None:
+        # If have one have the other geo-coordinate
+        assert me.recent_longitude is float
         _set_client_location(
             partner,
             me.recent_latitude + 0.01,

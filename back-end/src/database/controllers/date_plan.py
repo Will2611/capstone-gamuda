@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -228,6 +228,7 @@ def _persist_system_message(db, room_id: Optional[UUID], text: str, payload: dic
         message=text,
         room_id=room_id,
         user_id=None,
+        session_id=None,
         payloads_stringified=json.dumps(payload) if payload else None,
     )
     db.add(msg)
@@ -395,7 +396,7 @@ async def submit_availability(
         _persist_system_message(
             db,
             plan.chat_room_id,
-            f"Date confirmed — {result.overlap_date} at {result.meeting_time.strftime('%I:%M %p')}.",
+            f"Date confirmed — {result.overlap_date} at {result.meeting_time.strftime('%I:%M %p')}.",# type: ignore
             {"event": "overlap_found", "plan_id": str(plan.id)},
         )
         db.commit()
@@ -408,10 +409,10 @@ async def submit_availability(
 
     # No overlap — store suggestion (method B) for user choice
     suggested = {
-        "date": result.suggested_date.isoformat(),
-        "start_time": result.suggested_start.strftime("%H:%M:%S"),
-        "end_time": result.suggested_end.strftime("%H:%M:%S"),
-        "meeting_time": result.suggested_meeting_time.strftime("%H:%M:%S"),
+        "date": result.suggested_date.isoformat(), # type: ignore
+        "start_time": result.suggested_start.strftime("%H:%M:%S"), # type: ignore
+        "end_time": result.suggested_end.strftime("%H:%M:%S"), # type: ignore
+        "meeting_time": result.suggested_meeting_time.strftime("%H:%M:%S"), # type: ignore
         "rationale": result.rationale,
     }
     plan.status = "no_overlap"
@@ -495,12 +496,12 @@ async def accept_suggestion(
     plan.meeting_time = time.fromisoformat(s["meeting_time"])
     plan.status = "overlap_found"
     plan.suggestion_accepted = True
-    plan.confirmed_at = datetime.utcnow()
+    plan.confirmed_at = datetime.now(timezone.utc)
     db.add(plan)
     _persist_system_message(
         db,
         plan.chat_room_id,
-        f"Suggested time accepted — {plan.overlap_date} at {plan.meeting_time.strftime('%I:%M %p')}.",
+        f"Suggested time accepted — {plan.overlap_date} at {plan.meeting_time.strftime('%I:%M %p')}.", # type: ignore
         {"event": "overlap_found", "plan_id": str(plan.id)},
     )
     db.commit()

@@ -51,9 +51,10 @@ def theme_from_text(text: str) -> str:
         for kw in keywords:
             if kw in lower:
                 scores[theme] += 1
+    # If scores empty
     if not scores:
         return "Other"
-    return max(scores, key=scores.get)
+    return max(scores, key=scores.get) # type: ignore[arg-type]
 
 
 def has_sentiment_conflict(rating: int, text: str) -> bool:

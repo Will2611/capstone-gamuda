@@ -3,7 +3,6 @@ from src.database.connection import db_dependency
 import os
 from src.database.controllers.utils import get_subcontrollers
 from src.database.models.user import UserModel
-from src.database.controllers.utils import create_access_token
 from src.database.schemas.auth import LoginRequest, TokenResponse, AuthUserResponse
 from src.services.jwt import CookieCustom, setCookie
 

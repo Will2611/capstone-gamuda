@@ -42,11 +42,11 @@ class DatePlanModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
     match_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("matches.id"), nullable=False, index=True
     )
-    chat_room_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        Uuid, ForeignKey("chat_rooms.id"), nullable=True, index=True, default=None
-    )
     created_by: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("users.id"), nullable=False, index=True
+    )
+    chat_room_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid, ForeignKey("chat_rooms.id"), nullable=True, index=True, default=None
     )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
 

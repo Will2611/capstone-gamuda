@@ -3,7 +3,7 @@ from src.database.connection import Base
 from .base_model import DBBaseModelTimeMixIn, DBBaseModelIdMixin
 from sqlalchemy import String, Uuid,ForeignKey
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import  CheckConstraint, or_
+from sqlalchemy import  CheckConstraint
 from uuid_utils.compat import UUID
 from typing import Literal
 from sqlalchemy.orm import mapped_column, Mapped
@@ -13,9 +13,10 @@ class ChatMessageModel(DBBaseModelTimeMixIn,Base, DBBaseModelIdMixin):
     __tablename__='chat_messages'
     message: Mapped[str] = mapped_column(String, nullable=False)
     room_id: Mapped[UUID]= mapped_column(Uuid, ForeignKey('chat_rooms.id'), nullable=False)
-    user_id: Mapped[UUID]= mapped_column(Uuid, ForeignKey('users.id'), nullable=True) #Allow null for LLM only, may change to be different uesr id if we want to model-versioning?
+    user_id: Mapped[Optional[UUID]]= mapped_column(Uuid, ForeignKey('users.id'), nullable=True) #Allow null for LLM only, may change to be different uesr id if we want to model-versioning?
+    session_id: Mapped[Optional[UUID]]= mapped_column(Uuid, nullable=True) #Allow null for LLM only, may change to be different uesr id if we want to model-versioning?
     # Useful for as only chatlogs with payloads are llm suggestions, replacement for search History id
-    payloads_stringified:Mapped[str] = mapped_column(String, nullable=True)
+    payloads_stringified:Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
 
 # Chat types
@@ -28,7 +29,8 @@ room_statuses = ["active", "expired"]
 
 class ChatRoomModel(DBBaseModelTimeMixIn,Base, DBBaseModelIdMixin):
     __tablename__='chat_rooms'
-    creator_id: Mapped[UUID]= mapped_column(Uuid, ForeignKey('users.id'), nullable=False)
+    creator_id: Mapped[Optional[UUID]]= mapped_column(Uuid, ForeignKey('users.id'), nullable=True)
+    session_id: Mapped[Optional[UUID]]= mapped_column(Uuid, nullable=True)
     participants_id:Mapped[list[UUID]]= mapped_column(ARRAY(Uuid(as_uuid=True)),nullable=True)
     # Make sure to check later and update to chat_types
     chat_type:Mapped[Literal["human_casual", "llm_suggestions"]]=mapped_column(String, nullable=False)
@@ -48,6 +50,6 @@ class ChatRoomModel(DBBaseModelTimeMixIn,Base, DBBaseModelIdMixin):
         CheckConstraint(
             room_status.in_(room_statuses),
             name="ck_room_status"
-        )
+        ),
     )
 

@@ -1,5 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate
 from src.llm.intent import DiningIntent
+from langchain_core.runnables import Runnable
+
+from typing import cast
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.language_models import LanguageModelInput
 
 INTENT_PROMPT = ChatPromptTemplate.from_messages([
     (
@@ -62,11 +67,11 @@ def _format_conversation_context(messages: list[dict], max_turns: int = 6) -> st
 
 
 async def extract_intent(
-    llm,
+    llm:BaseChatModel,
     user_message: str,
     messages: list[dict] | None = None,
 ) -> DiningIntent:
-    structured_llm = llm.with_structured_output(DiningIntent)
+    structured_llm = cast(Runnable[LanguageModelInput,DiningIntent],llm.with_structured_output(DiningIntent))
     chain = INTENT_PROMPT | structured_llm
     # Exclude the latest user message from context (passed separately)
     prior = (messages or [])[:-1] if messages else []
@@ -74,3 +79,4 @@ async def extract_intent(
         "user_message": user_message,
         "conversation_context": _format_conversation_context(prior),
     })
+

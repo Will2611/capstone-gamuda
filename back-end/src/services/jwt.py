@@ -1,4 +1,4 @@
-from fastapi import Response, Request, Depends, HTTPException, WebSocket
+from fastapi import Response, Request, Depends, HTTPException, status
 from starlette.requests import HTTPConnection
 import jwt
 from typing import Optional, Union, cast, Annotated
@@ -6,7 +6,7 @@ from src.database.schemas.user import USER_ROLE_TYPE
 import uuid_utils.compat as uuid
 from pydantic import BaseModel
 import os
-
+import datetime
 
 TOKEN_NAME = "bitescout_token"
 SECRET_KEY = os.getenv('COOKIE_SECRET')
@@ -19,28 +19,46 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() in ("1", "true", "ye
 if not SECRET_KEY:
     raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
 
+
 class SessionToken(BaseModel):
     sessionId: uuid.UUID
     userId:Optional[uuid.UUID]
     role: Optional[USER_ROLE_TYPE]
     restuarantId:Optional[uuid.UUID]
     remember_me:bool
+    exp:Optional[datetime.datetime]
 
 def encode_payload(payload:SessionToken)->str:
     if not SECRET_KEY:
         raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
-    return jwt.encode(
-        cast(dict,payload.model_dump(mode='json')),
+    
+    data = cast(dict,payload.model_dump(mode='json'))
+    to_encode = data.copy()
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=LONGER_COOKIE_AGE if payload.remember_me else COOKIE_AGE)
+    to_encode.update({"exp": expire})
+    encoded_payload = jwt.encode(
+        to_encode,
         SECRET_KEY,
         algorithm=ALGORITHM
         )
+    return encoded_payload
 def decode_payload(token:str)->SessionToken:
     if not SECRET_KEY:
         raise ValueError("Generate Cookie_secret in .env with secrets.token_hex(32)")
-    parsed = SessionToken.model_validate(
-        jwt.decode(token,SECRET_KEY, algorithms=ALGORITHM)
-        )
-    return parsed
+    try:
+        decoded_payload  = jwt.decode(token,SECRET_KEY, algorithms=ALGORITHM)
+        parsed = SessionToken.model_validate(decoded_payload)
+        return parsed
+    except jwt.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+        ) from exc
+    except jwt.InvalidTokenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        ) from exc
 
 def default_session_generator()->SessionToken:
     return SessionToken(
@@ -48,7 +66,8 @@ def default_session_generator()->SessionToken:
         userId=None,
         role=None,
         restuarantId=None,
-        remember_me=False
+        remember_me=False,
+        exp=None
     )
 
 def setCookie(resp:Response, payload:SessionToken = default_session_generator()):
