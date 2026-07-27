@@ -21,7 +21,7 @@ const malaysianFoodImages = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [, setCurrentBgIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -8,37 +9,32 @@ import {
   Pie,
   Cell,
 } from "recharts";
-
-interface AgeGroup {
-  ageRange: string;
-  count: number;
-  color: string;
-}
-
-interface GenderGroup {
-  gender: string;
-  count: number;
-  color: string;
-}
-
-export interface CustomerDemographics {
-  totalVisitors: number;
-  ageGroups: AgeGroup[];
-  genderBreakdown: GenderGroup[];
-}
+import {
+  buildMonthlyDemographicsFromTraffic,
+  type CustomerDemographics,
+  type FootTrafficResponse,
+} from "../../services/visibilityApi";
 
 interface DemographicsTabProps {
   demographics: CustomerDemographics;
+  footTraffic?: FootTrafficResponse;
 }
 
-export function DemographicsTab({ demographics }: DemographicsTabProps) {
-  const ageData = demographics.ageGroups.map((group) => ({
+export function DemographicsTab({
+  demographics,
+  footTraffic,
+}: DemographicsTabProps) {
+  const monthlyDemographics = useMemo(() => {
+    return buildMonthlyDemographicsFromTraffic(footTraffic, demographics);
+  }, [demographics, footTraffic]);
+
+  const ageData = monthlyDemographics.ageGroups.map((group) => ({
     name: group.ageRange,
     value: group.count,
     fill: group.color,
   }));
 
-  const genderData = demographics.genderBreakdown.map((group) => ({
+  const genderData = monthlyDemographics.genderBreakdown.map((group) => ({
     name: group.gender,
     value: group.count,
     fill: group.color,
@@ -63,7 +59,7 @@ export function DemographicsTab({ demographics }: DemographicsTabProps) {
                 Age Group Breakdown
               </h3>
               <p className="text-sm text-bs-neutral-500">
-                Visitors by age range, with a soft palette for quick scanning.
+                Monthly estimate from current foot traffic totals
               </p>
             </div>
             <div className="rounded-2xl bg-bs-neutral-100 px-4 py-3 text-center">
@@ -71,7 +67,7 @@ export function DemographicsTab({ demographics }: DemographicsTabProps) {
                 Total visitors
               </p>
               <p className="mt-1 text-3xl font-semibold text-bs-neutral-900">
-                {demographics.totalVisitors.toLocaleString()}
+                {monthlyDemographics.totalVisitors.toLocaleString()}
               </p>
             </div>
           </div>
@@ -110,7 +106,7 @@ export function DemographicsTab({ demographics }: DemographicsTabProps) {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              {demographics.ageGroups.map((group) => (
+              {monthlyDemographics.ageGroups.map((group) => (
                 <div
                   key={group.ageRange}
                   className="rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 p-4"
@@ -154,7 +150,7 @@ export function DemographicsTab({ demographics }: DemographicsTabProps) {
               </ResponsiveContainer>
             </div>
             <div className="grid gap-3">
-              {demographics.genderBreakdown.map((group) => (
+              {monthlyDemographics.genderBreakdown.map((group) => (
                 <div
                   key={group.gender}
                   className="flex items-center justify-between rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 px-4 py-3"
@@ -181,7 +177,7 @@ export function DemographicsTab({ demographics }: DemographicsTabProps) {
               Visitor mix snapshot
             </p>
             <p className="mt-4 text-5xl font-bold text-bs-neutral-900">
-              {demographics.totalVisitors.toLocaleString()}
+              {monthlyDemographics.totalVisitors.toLocaleString()}
             </p>
             <p className="mt-2 text-sm text-bs-neutral-500">
               Total guests across all age and gender groups

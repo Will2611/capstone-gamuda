@@ -36,6 +36,7 @@ from src.database.schemas.visibility import (
     RestaurantListItemResponse,
     ReviewsByThemeResponse,
     ReviewItemResponse,
+    DemographicGroupEntry,
     DemographicsResponse,
     FootTrafficResponse,
     ActionSuggestion,
@@ -359,7 +360,7 @@ async def get_demographics(db: db_dependency, restaurantId: uuid.UUID = Query(..
         "45-54": 0,
         "55+": 0,
     }
-    gender_counts: dict[str, int] = {"Female": 0, "Male": 0, "Other": 0}
+    gender_counts: dict[str, int] = {"Female": 0, "Male": 0, "Prefer not to say": 0}
 
     for gender, birth_date in rows:
         normalized_gender = (gender or "").strip().lower()
@@ -368,7 +369,7 @@ async def get_demographics(db: db_dependency, restaurantId: uuid.UUID = Query(..
         elif normalized_gender in {"male", "m"}:
             gender_label = "Male"
         else:
-            gender_label = "Other"
+            gender_label = "Prefer not to say"
 
         gender_counts[gender_label] += 1
 

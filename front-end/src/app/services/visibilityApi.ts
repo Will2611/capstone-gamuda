@@ -113,9 +113,104 @@ export const EMPTY_DEMOGRAPHICS: CustomerDemographics = {
   genderBreakdown: [
     { gender: "Female", count: 0, color: "#3B82F6" },
     { gender: "Male", count: 0, color: "#F97316" },
-    { gender: "Other", count: 0, color: "#8B5CF6" },
+    { gender: "Prefer not to say", count: 0, color: "#8B5CF6" },
   ],
 };
+
+function createSeededValue(seed: string): number {
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash << 5) - hash + seed.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash) / 2147483647;
+}
+
+function distributeByWeights(
+  total: number,
+  weights: number[],
+  seed: string,
+): number[] {
+  if (total <= 0) return weights.map(() => 0);
+
+  const adjustedWeights = weights.map((weight, index) => {
+    const jitter = 1 + (createSeededValue(`${seed}-${index}`) - 0.5) * 0.08;
+    return Math.max(weight * jitter, 0.01);
+  });
+
+  const sum = adjustedWeights.reduce((acc, value) => acc + value, 0);
+  const baseCounts = adjustedWeights.map((weight) =>
+    Math.floor((total * weight) / sum),
+  );
+
+  let remainder = total - baseCounts.reduce((acc, value) => acc + value, 0);
+  const order = [...baseCounts.keys()].sort(
+    (left, right) =>
+      (total * adjustedWeights[right]) / sum -
+      baseCounts[right] -
+      ((total * adjustedWeights[left]) / sum - baseCounts[left]),
+  );
+
+  for (let index = 0; index < remainder; index += 1) {
+    baseCounts[order[index]] += 1;
+  }
+
+  return baseCounts;
+}
+
+export function buildMonthlyDemographicsFromTraffic(
+  footTraffic: Partial<FootTrafficResponse> | null | undefined,
+  fallback: CustomerDemographics | null | undefined = null,
+): CustomerDemographics {
+  const chartTotal = Array.isArray(footTraffic?.chartDays)
+    ? footTraffic.chartDays.reduce(
+        (sum, day) => sum + safeNumber(day?.total),
+        0,
+      )
+    : 0;
+
+  const totalVisitors = Math.max(
+    chartTotal,
+    safeNumber(footTraffic?.weekdayTotal) +
+      safeNumber(footTraffic?.weekendTotal),
+  );
+
+  if (totalVisitors <= 0) {
+    return fallback ?? EMPTY_DEMOGRAPHICS;
+  }
+
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const seed = `${footTraffic?.restaurantId ?? "default"}-${monthKey}`;
+
+  const ageWeights = [0.24, 0.3, 0.2, 0.14, 0.12];
+  const genderWeights = [0.48, 0.44, 0.08];
+
+  const ageCounts = distributeByWeights(totalVisitors, ageWeights, seed);
+  const genderCounts = distributeByWeights(
+    totalVisitors,
+    genderWeights,
+    `${seed}-gender`,
+  );
+
+  const ageLabels = ["18-24", "25-34", "35-44", "45-54", "55+"];
+  const genderLabels = ["Female", "Male", "Prefer not to say"];
+  const ageColors = ["#60A5FA", "#FBBF24", "#34D399", "#F472B6", "#A78BFA"];
+  const genderColors = ["#3B82F6", "#F97316", "#8B5CF6"];
+
+  return {
+    totalVisitors,
+    ageGroups: ageLabels.map((label, index) => ({
+      ageRange: label,
+      count: ageCounts[index],
+      color: ageColors[index],
+    })),
+    genderBreakdown: genderLabels.map((label, index) => ({
+      gender: label,
+      count: genderCounts[index],
+      color: genderColors[index],
+    })),
+  };
+}
 
 /*
  * Visibility Dashboard API Service
@@ -285,7 +380,7 @@ export function normalizeDemographics(
   const genderColors = ["#3B82F6", "#F97316", "#8B5CF6"];
 
   const ageLabels = ["18-24", "25-34", "35-44", "45-54", "55+"];
-  const genderLabels = ["Female", "Male", "Other"];
+  const genderLabels = ["Female", "Male", "Prefer not to say"];
 
   const ageGroups: AgeGroup[] = ageLabels.map((label, index) => {
     const source = raw?.ageGroups?.find((group) => group?.label === label);

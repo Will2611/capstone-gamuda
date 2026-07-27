@@ -21,11 +21,9 @@ import {
   normalizeFunnelStages,
   normalizeSentiment,
   normalizeFootTraffic,
-  normalizeSocialPlatforms,
   normalizeDemographics,
   type SummaryMetrics,
   type FunnelStage,
-  type SocialPlatformCard,
   type Sentiment,
   type RestaurantItem,
   type ReviewsByTheme,
@@ -41,7 +39,6 @@ import { SentimentTab } from "../components/visibility-dashboard/SentimentTab";
 import { DemographicsTab } from "../components/visibility-dashboard/DemographicsTab";
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 
-
 export default function SocialVisibilityDashboard() {
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("metrics");
@@ -49,10 +46,9 @@ export default function SocialVisibilityDashboard() {
   const tabs = [
     { id: "metrics", label: "Top Metrics" },
     { id: "funnel", label: "Traffic & Conversion" },
-    { id: "reviews-sentiment", label: "Google Reviews & Sentiment" },
+    { id: "reviews-sentiment", label: "Sentiment" },
     { id: "demographics", label: "Customer Demographics" },
     { id: "traffic", label: "Foot Traffic" },
-    
   ];
 
   // --- Data state (always start with safe zero defaults) ---
@@ -62,7 +58,6 @@ export default function SocialVisibilityDashboard() {
   >(null);
   const [summary, setSummary] = useState<SummaryMetrics>(EMPTY_SUMMARY);
   const [funnel, setFunnel] = useState<FunnelStage[]>(EMPTY_FUNNEL_STAGES);
-  const [social, setSocial] = useState<SocialPlatformCard[]>([]);
   const [sentiment, setSentiment] = useState<Sentiment>(EMPTY_SENTIMENT);
   const [demographics, setDemographics] =
     useState<CustomerDemographics>(EMPTY_DEMOGRAPHICS);
@@ -167,7 +162,7 @@ export default function SocialVisibilityDashboard() {
       const [
         summaryRes,
         funnelRes,
-        socialRes,
+        ,
         sentimentRes,
         trafficRes,
         demographicsRes,
@@ -182,11 +177,6 @@ export default function SocialVisibilityDashboard() {
         funnelRes.status === "fulfilled"
           ? normalizeFunnelStages(funnelRes.value?.stages)
           : EMPTY_FUNNEL_STAGES.map((s) => ({ ...s })),
-      );
-      setSocial(
-        socialRes.status === "fulfilled"
-          ? normalizeSocialPlatforms(socialRes.value?.platforms)
-          : [],
       );
       setSentiment(
         sentimentRes.status === "fulfilled"
@@ -216,7 +206,6 @@ export default function SocialVisibilityDashboard() {
     } catch {
       setSummary(EMPTY_SUMMARY);
       setFunnel(EMPTY_FUNNEL_STAGES.map((s) => ({ ...s })));
-      setSocial([]);
       setSentiment(EMPTY_SENTIMENT);
       setFootTraffic({ ...EMPTY_FOOT_TRAFFIC, restaurantId: id });
       setError("Failed to load dashboard data. Showing defaults of 0.");
@@ -371,11 +360,13 @@ export default function SocialVisibilityDashboard() {
           )}
 
           {activeTab === "demographics" && (
-            <DemographicsTab demographics={demographics} />
+            <DemographicsTab
+              demographics={demographics}
+              footTraffic={footTraffic}
+            />
           )}
 
           {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}
-
         </div>
       )}
 
