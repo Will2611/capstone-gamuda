@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
-import { mockPromotions } from "../data/mockPromotions";
 
 interface PromotionFormProps {
   initialData?: Promotion;
@@ -68,6 +67,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   );
 
   const [errors, setErrors] = useState<FormErrors>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // --- 方案 2：全量 AI 助手弹窗状态 ---
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
@@ -352,40 +353,66 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
-    const promotion: Promotion = {
-      promoId: initialData?.promoId ?? crypto.randomUUID(),
-      id: initialData?.id ?? "1",
-      title: title.trim(),
-      description: description.trim(),
-      imageUrl: imageUrl.trim(),
-      websiteUrl: websiteUrl.trim(),
-      startDate,
-      startTime: isAllDay ? "" : startTime,
-      endDate,
-      endTime: isAllDay ? "" : endTime,
-      isAllDay,
-    };
+    try {
+      setIsSubmitting(true);
+      setApiError(null);
 
-    if (initialData) {
-      const idx = mockPromotions.findIndex(
-        (p) => p.promoId === initialData.promoId,
-      );
-      if (idx !== -1) {
-        mockPromotions[idx] = promotion;
+      const token = localStorage.getItem("bitescouts_token");
+
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        imageUrl: imageUrl.trim(),
+        websiteUrl: websiteUrl.trim(),
+        startDate,
+        endDate,
+        startTime: isAllDay ? null : (startTime || null),
+        endTime: isAllDay ? null : (endTime || null),
+        isAllDay,
+        status: "ACTIVE",
+        ...(initialData?.promoId ? { promoId: initialData.promoId } : {}),
+      };
+
+      const isEdit = Boolean(initialData && (initialData.id || initialData.promoId));
+      const targetId = initialData?.id || initialData?.promoId;
+      const url = isEdit
+        ? `http://localhost:8000/promotions/${targetId}`
+        : "http://localhost:8000/promotions";
+      const method = isEdit ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const resData = await response.json();
+
+      if (!response.ok) {
+        const errorMsg = Array.isArray(resData.detail)
+          ? resData.detail.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(", ")
+          : resData.detail || "Failed to save promotion";
+        throw new Error(errorMsg);
       }
-    } else {
-      mockPromotions.push(promotion);
-    }
 
-    onSubmit?.(promotion);
-    navigate("/promotion");
+      onSubmit?.(resData);
+      navigate("/promotion");
+    } catch (err: any) {
+      console.error("Failed to save promotion:", err);
+      setApiError(err.message || "Failed to save promotion to database");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currentPromoState: Promotion = {
@@ -473,10 +500,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </div>
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
-                  ${
-                    errors.title
-                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
-                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  ${errors.title
+                    ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                    : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
                   }`}
                 placeholder="e.g. merdeka with 10%"
                 value={title}
@@ -518,10 +544,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <textarea
                 rows={4}
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
-                  ${
-                    errors.description
-                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
-                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  ${errors.description
+                    ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                    : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
                   }`}
                 placeholder="Describe your special offer and any terms..."
                 value={description}
@@ -558,12 +583,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   document.getElementById("promo-image-upload")?.click()
                 }
                 className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200
-                  ${
-                    imageUrl
-                      ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
-                      : errors.imageUrl
-                        ? "border-red-500 bg-red-50/30 hover:bg-red-50/50"
-                        : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+                  ${imageUrl
+                    ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                    : errors.imageUrl
+                      ? "border-red-500 bg-red-50/30 hover:bg-red-50/50"
+                      : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
                   }`}
               >
                 {imageUrl ? (
@@ -592,21 +616,19 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 ) : (
                   <div className="text-center space-y-2">
                     <div
-                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${
-                        errors.imageUrl
+                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${errors.imageUrl
                           ? "text-red-500 border-red-200"
                           : "text-bs-neutral-500 border-bs-neutral-200"
-                      }`}
+                        }`}
                     >
                       <Upload size={22} />
                     </div>
                     <div>
                       <p
-                        className={`text-sm font-bold ${
-                          errors.imageUrl
+                        className={`text-sm font-bold ${errors.imageUrl
                             ? "text-red-700"
                             : "text-bs-neutral-800"
-                        }`}
+                          }`}
                       >
                         Click to upload promotion image
                       </p>
@@ -655,10 +677,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${
-                        errors.startDate
-                          ? "border-red-500 focus:border-red-600"
-                          : "border-bs-neutral-300 focus:border-bs-gold"
+                      ${errors.startDate
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-bs-neutral-300 focus:border-bs-gold"
                       }`}
                     value={startDate}
                     onChange={(e) => {
@@ -684,10 +705,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${
-                        errors.endDate
-                          ? "border-red-500 focus:border-red-600"
-                          : "border-bs-neutral-300 focus:border-bs-gold"
+                      ${errors.endDate
+                        ? "border-red-500 focus:border-red-600"
+                        : "border-bs-neutral-300 focus:border-bs-gold"
                       }`}
                     value={endDate}
                     onChange={(e) => {
@@ -741,10 +761,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${
-                            errors.startTime
-                              ? "border-red-500 focus:border-red-600"
-                              : "border-bs-neutral-300 focus:border-bs-gold"
+                          ${errors.startTime
+                            ? "border-red-500 focus:border-red-600"
+                            : "border-bs-neutral-300 focus:border-bs-gold"
                           }`}
                         value={startTime}
                         onChange={(e) => {
@@ -771,10 +790,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${
-                            errors.endTime
-                              ? "border-red-500 focus:border-red-600"
-                              : "border-bs-neutral-300 focus:border-bs-gold"
+                          ${errors.endTime
+                            ? "border-red-500 focus:border-red-600"
+                            : "border-bs-neutral-300 focus:border-bs-gold"
                           }`}
                         value={endTime}
                         onChange={(e) => {
@@ -796,21 +814,40 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </div>
             </div>
 
+            {/* API Submission Error */}
+            {apiError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-xs flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-red-500" />
+                <span>{apiError}</span>
+              </div>
+            )}
+
             {/* Submission Actions */}
             <div className="flex gap-4 pt-6 border-t border-bs-neutral-100">
               <button
                 type="button"
                 onClick={() => navigate("/promotion")}
-                className="flex-1 py-3 px-4 rounded-xl border border-bs-neutral-300 text-bs-neutral-700 font-semibold text-sm hover:bg-bs-neutral-50 transition-colors cursor-pointer"
+                disabled={isSubmitting}
+                className="flex-1 py-3 px-4 rounded-xl border border-bs-neutral-300 text-bs-neutral-700 font-semibold text-sm hover:bg-bs-neutral-50 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
 
               <button
                 type="submit"
-                className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="flex-1 py-3 px-4 rounded-xl bg-bs-gold hover:bg-[#FFD600] text-bs-neutral-900 font-semibold text-sm shadow-sm hover:shadow transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {initialData ? "Update Promotion" : "Create Promotion"}
+                {isSubmitting ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : initialData ? (
+                  "Update Promotion"
+                ) : (
+                  "Create Promotion"
+                )}
               </button>
             </div>
           </div>
@@ -825,8 +862,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <div className="p-2 bg-bs-neutral-200/40 rounded-3xl border border-bs-neutral-200 shadow-inner">
                 <PromotionCard
                   promotion={currentPromoState}
-                  onDelete={() => {}}
-                  onEdit={() => {}}
+                  onDelete={() => { }}
+                  onEdit={() => { }}
                 />
               </div>
 

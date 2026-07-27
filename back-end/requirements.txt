@@ -38,5 +38,9 @@ pywebpush
 webpush
 aiohttp
 
+gspread
+google-auth
+google-api-python-client
+
 #pip install fastapi uvicorn openai pydantic
 #npm install recharts lucide-react

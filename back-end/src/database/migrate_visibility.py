@@ -34,6 +34,28 @@ def ensure_visibility_schema(engine: Engine) -> None:
             conn.execute(text("DROP TABLE IF EXISTS foot_traffic_daily CASCADE"))
         drop_tables(conn=conn,inspector=inspector,table_names=['shops','restaurants_measured'])
 
+        if inspector.has_table("promotions"):
+            prom_cols_info = {col["name"]: str(col["type"]).lower() for col in inspector.get_columns("promotions")}
+            prom_cols = set(prom_cols_info.keys())
+            if "id" in prom_cols_info and "uuid" not in prom_cols_info["id"]:
+                conn.execute(text("""
+                    ALTER TABLE promotions 
+                    ALTER COLUMN id TYPE UUID 
+                    USING (
+                        CASE 
+                            WHEN id IS NULL THEN gen_random_uuid()
+                            WHEN id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN id::uuid 
+                            ELSE gen_random_uuid() 
+                        END
+                    )
+                """))
+            if "restaurant_id" not in prom_cols:
+                conn.execute(text("ALTER TABLE promotions ADD COLUMN restaurant_id UUID REFERENCES restaurants(id)"))
+            if "created_at" not in prom_cols:
+                conn.execute(text("ALTER TABLE promotions ADD COLUMN created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()"))
+            if "updated_at" not in prom_cols:
+                conn.execute(text("ALTER TABLE promotions ADD COLUMN updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()"))
+
 def sentiment_schema_update (conn:Connection, existing:set[str]):
     if "neutral_pct" not in existing:
         conn.execute(text(

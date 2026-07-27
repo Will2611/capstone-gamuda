@@ -4,7 +4,7 @@ import { Calendar, Clock, ExternalLink, Edit2, Trash2 } from "lucide-react";
 
 interface PromotionCardProps {
   promotion: Promotion;
-  onDelete: (id: string) => void;
+  onDelete: (promotion: Promotion) => void;
   onEdit: (promoId: string) => void;
 }
 
@@ -128,7 +128,7 @@ export function PromotionCard({
             </button>
 
             <button
-              onClick={() => onDelete(promotion.promoId)}
+              onClick={() => onDelete(promotion)}
               className="
                 flex items-center justify-center
                 p-2.5 px-3

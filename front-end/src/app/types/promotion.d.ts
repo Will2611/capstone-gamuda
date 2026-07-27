@@ -14,4 +14,5 @@ export interface Promotion {
   endTime: string;
 
   isAllDay: boolean;
+  status?: string;
 }

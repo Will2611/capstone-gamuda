@@ -124,31 +124,31 @@ class RestaurantModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin,RestaurantDetails
 
     # override_is_openned:Mapped[bool|None] = mapped_column(Boolean,nullable=True)
 
-class PromotionModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
-    __tablename__ = "promotions"
-    restaurant_id:Mapped[uuid.UUID] = mapped_column(
-        Uuid, 
-        ForeignKey('restaurants.id'),
-        index=True, 
-        init=False
-        )
-    title:Mapped[str]= mapped_column(String, nullable=False)
-    description:Mapped[str]= mapped_column(Text, nullable=False)
-    image_url:Mapped[str] = mapped_column(String, nullable=False)
-    website_url:Mapped[str] = mapped_column(String, nullable=False)
-    start_date: Mapped[datetime.date] = mapped_column(Date)
-    end_date: Mapped[datetime.date] = mapped_column(Date)
-    is_all_day:Mapped[bool] = mapped_column(Boolean)
-    start_time:Mapped[datetime.time] = mapped_column(Time, nullable=True)
-    end_time:Mapped[datetime.time] = mapped_column(Time, nullable=True)
+# class PromotionModel(DBBaseModelTimeMixIn, DBBaseModelIdMixin, Base):
+#     __tablename__ = "promotions"
+#     restaurant_id:Mapped[uuid.UUID] = mapped_column(
+#         Uuid, 
+#         ForeignKey('restaurants.id'),
+#         index=True, 
+#         init=False
+#         )
+#     title:Mapped[str]= mapped_column(String, nullable=False)
+#     description:Mapped[str]= mapped_column(Text, nullable=False)
+#     image_url:Mapped[str] = mapped_column(String, nullable=False)
+#     website_url:Mapped[str] = mapped_column(String, nullable=False)
+#     start_date: Mapped[datetime.date] = mapped_column(Date)
+#     end_date: Mapped[datetime.date] = mapped_column(Date)
+#     is_all_day:Mapped[bool] = mapped_column(Boolean)
+#     start_time:Mapped[datetime.time] = mapped_column(Time, nullable=True)
+#     end_time:Mapped[datetime.time] = mapped_column(Time, nullable=True)
 
-    __table_args__=((
-        CheckConstraint(
-            or_(
-                is_all_day ==True,
-                and_(start_time.is_not(None), end_time.is_not(None))
-                ),
-            name="cc_all_day_or_time_limited",
-            ),
+#     __table_args__=((
+#         CheckConstraint(
+#             or_(
+#                 is_all_day ==True,
+#                 and_(start_time.is_not(None), end_time.is_not(None))
+#                 ),
+#             name="cc_all_day_or_time_limited",
+#             ),
 
-    ))
+#     ))
