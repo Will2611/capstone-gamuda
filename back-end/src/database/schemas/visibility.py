@@ -183,6 +183,10 @@ class FootTrafficResponse(BaseModel):
     chartDays: list[ChartDayTrafficItem] = []
     weekdayTotal: int = 0
     weekendTotal: int = 0
+    weekOffset: int = 0
+    weekTotal: int = 0
+    otherWeekTotal: int | None = None
+    hasPreviousWeek: bool = False
     insights: list[TrafficInsightItem] = []
     updatedAt: str | None = None
 

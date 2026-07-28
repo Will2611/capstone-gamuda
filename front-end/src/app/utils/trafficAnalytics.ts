@@ -62,12 +62,8 @@ export function buildStackedChartData(
 
 export function formatChartWeekRange(chartDays: ChartDayTrafficItem[]): string {
   if (!chartDays.length) return "Hourly Foot Traffic";
-  if (chartDays.length === 1) {
-    return `Hourly Foot Traffic (${chartDays[0].trafficDate})`;
-  }
-  const first = chartDays[0].trafficDate;
-  const last = chartDays[chartDays.length - 1].trafficDate;
-  return `Hourly Foot Traffic (${first} – ${last})`;
+  const year = (chartDays[0].trafficDate ?? "").slice(0, 4) || "—";
+  return `Hourly Foot Traffic (${year})`;
 }
 
 export const TRAFFIC_SEGMENTS = [

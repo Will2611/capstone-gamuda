@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -10,11 +10,14 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { type FootTrafficResponse } from "../../services/visibilityApi";
+import {
+  getFootTraffic,
+  normalizeFootTraffic,
+  type FootTrafficResponse,
+} from "../../services/visibilityApi";
 import {
   buildStackedChartData,
   formatChartWeekRange,
-  // insightCardStyle,
   TRAFFIC_SEGMENTS,
   type TrafficSegmentKey,
 } from "../../utils/trafficAnalytics";
@@ -28,6 +31,8 @@ type Selection = {
   segment?: TrafficSegmentKey;
 };
 
+type WeekOffset = 0 | 1;
+
 function segmentOpacity(
   dayIndex: number,
   segmentKey: string,
@@ -39,37 +44,112 @@ function segmentOpacity(
   return 1;
 }
 
+function formatWeekDelta(
+  weekOffset: WeekOffset,
+  weekTotal: number,
+  otherWeekTotal: number | null,
+): { text: string; tone: "up" | "down" | "flat" } | null {
+  if (otherWeekTotal == null) return null;
+  const diff = weekTotal - otherWeekTotal;
+  const compareLabel = weekOffset === 0 ? "last week" : "this week";
+  if (otherWeekTotal === 0 && weekTotal === 0) {
+    return { text: `vs ${compareLabel} — same`, tone: "flat" };
+  }
+  if (otherWeekTotal === 0) {
+    return {
+      text: `vs ${compareLabel} ↑ new traffic (+${weekTotal} visits)`,
+      tone: "up",
+    };
+  }
+  const pct = Math.round((diff / otherWeekTotal) * 100);
+  if (diff === 0) {
+    return { text: `vs ${compareLabel} — same`, tone: "flat" };
+  }
+  if (diff > 0) {
+    return {
+      text: `vs ${compareLabel} ↑ ${pct}% (+${diff} visits)`,
+      tone: "up",
+    };
+  }
+  return {
+    text: `vs ${compareLabel} ↓ ${Math.abs(pct)}% (${diff} visits)`,
+    tone: "down",
+  };
+}
+
 export function TrafficTab({ footTraffic }: TrafficTabProps) {
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [weekOffset, setWeekOffset] = useState<WeekOffset>(0);
+  const [displayTraffic, setDisplayTraffic] =
+    useState<FootTrafficResponse>(footTraffic);
+  const [weekLoading, setWeekLoading] = useState(false);
+  const [weekError, setWeekError] = useState<string | null>(null);
+
+  const restaurantId = footTraffic.restaurantId;
+
+  // Sync when parent reloads restaurant (this week baseline).
+  useEffect(() => {
+    setWeekOffset(0);
+    setSelection(null);
+    setDisplayTraffic(footTraffic);
+    setWeekError(null);
+  }, [footTraffic]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+    if (weekOffset === 0) {
+      setDisplayTraffic(footTraffic);
+      return;
+    }
+
+    let cancelled = false;
+    setWeekLoading(true);
+    setWeekError(null);
+
+    void getFootTraffic(restaurantId, weekOffset)
+      .then((raw) => {
+        if (cancelled) return;
+        setDisplayTraffic(normalizeFootTraffic(raw, restaurantId));
+        setSelection(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWeekError("Could not load last week’s traffic.");
+      })
+      .finally(() => {
+        if (!cancelled) setWeekLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurantId, weekOffset, footTraffic]);
 
   const stackedData = useMemo(
-    () => buildStackedChartData(footTraffic.chartDays ?? []),
-    [footTraffic.chartDays],
+    () => buildStackedChartData(displayTraffic.chartDays ?? []),
+    [displayTraffic.chartDays],
   );
-  /** Tiny always-positive top stack so Recharts always draws a total label. */
   const chartData = useMemo(
     () => stackedData.map((row) => ({ ...row, labelAnchor: 0.001 })),
     [stackedData],
   );
-  // const insights = footTraffic.insights ?? [];
   const chartTitle = useMemo(
-    () => formatChartWeekRange(footTraffic.chartDays ?? []),
-    [footTraffic.chartDays],
+    () => formatChartWeekRange(displayTraffic.chartDays ?? []),
+    [displayTraffic.chartDays],
   );
 
-  // const selectFromInsight = (
-  //   dayIndex: number | null | undefined,
-  //   segment?: string | null,
-  // ) => {
-  //   if (dayIndex == null || Number.isNaN(dayIndex)) {
-  //     setSelection(null);
-  //     return;
-  //   }
-  //   setSelection({
-  //     dayIndex,
-  //     segment: (segment as TrafficSegmentKey | undefined) ?? undefined,
-  //   });
-  // };
+  const delta = useMemo(
+    () =>
+      formatWeekDelta(
+        weekOffset,
+        displayTraffic.weekTotal,
+        displayTraffic.otherWeekTotal,
+      ),
+    [weekOffset, displayTraffic.weekTotal, displayTraffic.otherWeekTotal],
+  );
+
+  const canShowLastWeek =
+    displayTraffic.hasPreviousWeek || footTraffic.hasPreviousWeek;
 
   const selectFromChart = (dayIndex: number, segment?: TrafficSegmentKey) => {
     setSelection((prev) => {
@@ -130,7 +210,7 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
           Weekdays vs Weekends Foot Traffic
         </h2>
         <p className="text-sm text-bs-neutral-500">
-          {/* Historical visitor counts from foot traffic hourly data (PostgreSQL) */}
+          Compare this week to last week to spot staffing and promo shifts.
         </p>
       </div>
 
@@ -143,12 +223,65 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
       )}
 
       <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6 mb-6">
-        <h3 className="font-bold text-bs-neutral-900 mb-1">{chartTitle}</h3>
-        <p className="text-xs text-bs-neutral-500 mb-4">
-          {/* Daily totals per traffic date — matches pgAdmin foot_traffic_hourly */}
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-1">
+          <div>
+            <h3 className="font-bold text-bs-neutral-900">
+              {chartTitle || "No traffic dates"}
+            </h3>
+            {delta && (
+              <p
+                className={`text-xs mt-1 font-medium ${
+                  delta.tone === "up"
+                    ? "text-emerald-600"
+                    : delta.tone === "down"
+                      ? "text-rose-600"
+                      : "text-bs-neutral-500"
+                }`}
+              >
+                {delta.text}
+              </p>
+            )}
+            {weekError && (
+              <p className="text-xs mt-1 text-rose-600">{weekError}</p>
+            )}
+          </div>
 
-        <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5">
+          <div
+            className="inline-flex rounded-lg border border-bs-neutral-200 p-0.5 self-start"
+            role="group"
+            aria-label="Select traffic week"
+          >
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                weekOffset === 0
+                  ? "bg-bs-blue text-white"
+                  : "text-bs-neutral-600 hover:bg-bs-neutral-50"
+              }`}
+            >
+              This week
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeekOffset(1)}
+              disabled={!canShowLastWeek}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                weekOffset === 1
+                  ? "bg-bs-blue text-white"
+                  : "text-bs-neutral-600 hover:bg-bs-neutral-50"
+              } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`}
+            >
+              Last week
+            </button>
+          </div>
+        </div>
+
+        {weekLoading && (
+          <p className="text-xs text-bs-neutral-500 mb-3">Loading week…</p>
+        )}
+
+        <div className="flex flex-wrap gap-x-5 gap-y-2 mb-5 mt-4">
           {TRAFFIC_SEGMENTS.map((s) => (
             <span
               key={s.key}
@@ -259,7 +392,6 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
                 <LabelList dataKey={s.key} content={renderLabel} />
               </Bar>
             ))}
-            {/* Always-positive invisible top slice — guarantees a total label per bar */}
             <Bar
               dataKey="labelAnchor"
               stackId="stack"
@@ -275,49 +407,6 @@ export function TrafficTab({ footTraffic }: TrafficTabProps) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      {/* REMOVE <div className="bg-white rounded-xl border-2 border-bs-neutral-200 p-6">
-        <h3 className="font-bold text-bs-neutral-900 mb-4">Traffic Insight</h3>
-        <div className="space-y-3">
-          {insights.length === 0 ? (
-            <p className="text-sm text-bs-neutral-500">
-              Insights will appear when foot traffic data is available.
-            </p>
-          ) : (
-            insights.map((insight) => {
-              const style = insightCardStyle(insight.type);
-              const isSelected =
-                selection != null &&
-                insight.linkedDayIndex === selection.dayIndex &&
-                (!insight.linkedSegment ||
-                  !selection.segment ||
-                  insight.linkedSegment === selection.segment);
-
-              return (
-                <button
-                  key={insight.id}
-                  type="button"
-                  onClick={() =>
-                    selectFromInsight(
-                      insight.linkedDayIndex,
-                      insight.linkedSegment,
-                    )
-                  }
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${style.border} ${
-                    isSelected ? "ring-2 ring-bs-blue shadow-sm" : ""
-                  }`}
-                  style={{ background: style.background }}
-                >
-                  <p className={`text-xs font-bold mb-1 ${style.title}`}>
-                    {insight.title}
-                  </p>
-                  <p className="text-sm text-bs-neutral-700">{insight.body}</p>
-                </button>
-              );
-            })
-          )}
-        </div>
-      </div> */}
     </section>
   );
 }

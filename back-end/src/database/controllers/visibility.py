@@ -50,9 +50,11 @@ from src.database.calculations import (
     compute_average_rating,
 )
 from src.database.traffic_analytics import (
-    CHART_DAY_COUNT,
+    MAX_WEEK_OFFSET,
     build_chart_days,
     build_traffic_insights,
+    select_week_dates,
+    week_has_data,
 )
 import  uuid_utils.compat as uuid
 router = APIRouter(prefix="/visibility", tags=["visibility"])
@@ -474,27 +476,59 @@ async def get_reviews_by_theme(
 async def get_foot_traffic(
     db: db_dependency,
     restaurantId: uuid.UUID = Query(...),
+    weekOffset: int = Query(
+        0,
+        ge=0,
+        le=MAX_WEEK_OFFSET,
+        description="0 = this week (newest dates), 1 = last week",
+    ),
 ):
-    """Foot traffic from foot_traffic_hourly — latest 7 dates, real counts per day."""
-    chart_date_rows = (
+    """Foot traffic from foot_traffic_hourly — 7 dates per weekOffset."""
+    all_date_rows = (
         db.query(FootTrafficHourlyModel.traffic_date)
         .filter(FootTrafficHourlyModel.restaurant_id == restaurantId)
         .distinct()
         .order_by(FootTrafficHourlyModel.traffic_date.desc())
-        .limit(CHART_DAY_COUNT)
         .all()
     )
-    chart_dates = sorted(row[0] for row in chart_date_rows)
+    all_dates_desc = [row[0] for row in all_date_rows]
+    has_previous_week = week_has_data(all_dates_desc, 1)
+    chart_dates = select_week_dates(all_dates_desc, weekOffset)
+
+    empty = FootTrafficResponse(
+        restaurantId=restaurantId,
+        chartDays=[],
+        weekdayTotal=0,
+        weekendTotal=0,
+        weekOffset=weekOffset,
+        weekTotal=0,
+        otherWeekTotal=None,
+        hasPreviousWeek=has_previous_week,
+        insights=build_traffic_insights([], []),
+        updatedAt=datetime.now(timezone.utc).isoformat(),
+    )
 
     if not chart_dates:
-        return FootTrafficResponse(
-            restaurantId=restaurantId,
-            chartDays=[],
-            weekdayTotal=0,
-            weekendTotal=0,
-            insights=build_traffic_insights([], []),
-            updatedAt=datetime.now(timezone.utc).isoformat(),
+        return empty
+
+    def _sum_visitors_for_dates(dates: list) -> int:
+        if not dates:
+            return 0
+        total = (
+            db.query(func.coalesce(func.sum(FootTrafficHourlyModel.visitors), 0))
+            .filter(
+                FootTrafficHourlyModel.restaurant_id == restaurantId,
+                FootTrafficHourlyModel.traffic_date.in_(dates),
+            )
+            .scalar()
         )
+        return int(total or 0)
+
+    other_offset = 1 if weekOffset == 0 else 0
+    other_dates = select_week_dates(all_dates_desc, other_offset)
+    other_week_total = (
+        _sum_visitors_for_dates(other_dates) if other_dates else None
+    )
 
     hourly_rows = (
         db.query(
@@ -524,12 +558,17 @@ async def get_foot_traffic(
 
     weekday_total = sum(d.total for d in chart_days if d.dayType == "Weekday")
     weekend_total = sum(d.total for d in chart_days if d.dayType == "Weekend")
+    week_total = weekday_total + weekend_total
 
     return FootTrafficResponse(
         restaurantId=restaurantId,
         chartDays=chart_days,
         weekdayTotal=weekday_total,
         weekendTotal=weekend_total,
+        weekOffset=weekOffset,
+        weekTotal=week_total,
+        otherWeekTotal=other_week_total,
+        hasPreviousWeek=has_previous_week,
         insights=insights,
         updatedAt=datetime.now(timezone.utc).isoformat(),
     )

@@ -269,14 +269,14 @@ export default function SocialVisibilityDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-bs-neutral-100 pb-20">
-      {/* Header */}
-      <div className="bg-white border-b border-bs-neutral-200 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <div className="h-[calc(100vh-4.5rem)] bg-bs-neutral-100 flex flex-col overflow-hidden">
+      {/* Frozen dashboard header — BiteScouts nav stays above; page does not scroll */}
+      <div className="shrink-0 bg-white border-b border-bs-neutral-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h1 className="mb-2">Visibility & Insights Dashboard</h1>
-              <p className="text-bs-neutral-600">
+              <h1 className="mb-1">Visibility & Insights Dashboard</h1>
+              <p className="text-sm text-bs-neutral-600">
                 Understand your traffic and visibility with actionable insights
               </p>
             </div>
@@ -298,86 +298,75 @@ export default function SocialVisibilityDashboard() {
       </div>
 
       {error && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4">
+        <div className="shrink-0 max-w-7xl mx-auto w-full px-4 sm:px-6 pt-3">
           <div className="bg-bs-red/10 border border-bs-red/20 text-bs-red rounded-lg p-4 text-sm">
             {error}
           </div>
         </div>
       )}
 
-      {loading && (
-        <div className="min-h-[60vh] flex items-center justify-center">
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
           <Loader2 className="animate-spin text-bs-blue" size={40} />
         </div>
-      )}
+      ) : (
+        /* Tabs + panels: only this region scrolls */
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 pb-8">
+            <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 px-4 sm:px-6 bg-bs-neutral-100/95 backdrop-blur-sm border-b border-bs-neutral-200 mb-6">
+              <div className="flex gap-1 overflow-x-auto py-3">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                      activeTab === tab.id
+                        ? "bg-white text-bs-blue border border-bs-neutral-200 border-b-white -mb-px"
+                        : "text-bs-neutral-500 hover:text-bs-neutral-700"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-      {!loading && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          {/* Tab Navigation */}
-          <div className="flex gap-1 overflow-x-auto py-4 border-b border-bs-neutral-200 mb-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
-                  activeTab === tab.id
-                    ? "bg-white text-bs-blue border border-bs-neutral-200 border-b-white -mb-px"
-                    : "text-bs-neutral-500 hover:text-bs-neutral-700"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <div className="space-y-8">
+              {activeTab === "metrics" && (
+                <MetricsTab
+                  summary={summary}
+                  funnel={funnel}
+                  sentiment={sentiment}
+                  footTraffic={footTraffic}
+                />
+              )}
+
+              {activeTab === "funnel" && <FunnelTab funnel={funnel} />}
+
+              {activeTab === "reviews-sentiment" && (
+                <div className="space-y-8">
+                  <SentimentTab
+                    sentiment={sentiment}
+                    handleThemeClick={handleThemeClick}
+                  />
+                </div>
+              )}
+
+              {activeTab === "demographics" && (
+                <DemographicsTab
+                  demographics={demographics}
+                  footTraffic={footTraffic}
+                />
+              )}
+
+              {activeTab === "traffic" && (
+                <TrafficTab footTraffic={footTraffic} />
+              )}
+            </div>
           </div>
         </div>
       )}
-
-      {!loading && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-8 space-y-8">
-          {activeTab === "metrics" && (
-            <MetricsTab
-              summary={summary}
-              funnel={funnel}
-              sentiment={sentiment}
-              footTraffic={footTraffic}
-            />
-          )}
-
-          {activeTab === "funnel" && (
-            <FunnelTab funnel={funnel} />
-            // <FunnelTab funnel={funnel} dropOffStage={dropOffStage} />
-          )}
-
-          {activeTab === "reviews-sentiment" && (
-            <div className="space-y-8">
-              <SentimentTab
-                sentiment={sentiment}
-                handleThemeClick={handleThemeClick}
-              />
-              {/* Google Reviews centered below the two theme charts REMOVE*/}
-              {/* <ReviewsTab social={social} /> */}
-            </div>
-          )}
-
-          {activeTab === "demographics" && (
-            <DemographicsTab
-              demographics={demographics}
-              footTraffic={footTraffic}
-            />
-          )}
-
-          {activeTab === "traffic" && <TrafficTab footTraffic={footTraffic} />}
-        </div>
-      )}
-
-      {/* Sticky CTA Bar REMOVE TILL FURTHER NOTICE*/}
-      {/* <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-bs-neutral-200 shadow-lg z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-90 py-4 flex flex-col sm:flex-row gap-3">
-          <button className="flex-1 px-4 py-3 bg-bs-neutral-900 text-white rounded-lg hover:bg-bs-neutral-800 transition-colors font-bold">
-            Download Report
-          </button>
-        </div>
-      </div> */}
 
       {/* Theme Reviews Modal */}
       {themeReviewsData !== null && (

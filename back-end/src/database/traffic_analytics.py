@@ -10,6 +10,8 @@ import uuid_utils.compat as uuid
 from src.database.schemas.visibility import ChartDayTrafficItem, TrafficInsightItem
 
 CHART_DAY_COUNT = 7
+# Max weekOffset for This week (0) / Last week (1) toggle.
+MAX_WEEK_OFFSET = 1
 
 WEEKDAY_NAMES = [
     "Monday",
@@ -37,6 +39,30 @@ def day_name_and_type(traffic_date: date) -> tuple[str, str]:
     day_name = WEEKDAY_NAMES[traffic_date.isoweekday() - 1]
     day_type = "Weekend" if traffic_date.isoweekday() > 5 else "Weekday"
     return day_name, day_type
+
+
+def select_week_dates(
+    all_dates_desc: list[date],
+    week_offset: int,
+    *,
+    days_per_week: int = CHART_DAY_COUNT,
+) -> list[date]:
+    """
+    Pick a chart week from distinct traffic dates ordered newest-first.
+    week_offset=0 → newest week; 1 → previous week; etc.
+    Returns dates sorted oldest→newest for chart display.
+    """
+    if week_offset < 0:
+        raise ValueError("week_offset must be >= 0")
+    start = week_offset * days_per_week
+    end = start + days_per_week
+    slice_desc = all_dates_desc[start:end]
+    return sorted(slice_desc)
+
+
+def week_has_data(all_dates_desc: list[date], week_offset: int) -> bool:
+    start = week_offset * CHART_DAY_COUNT
+    return start < len(all_dates_desc)
 
 
 def aggregate_visits_by_hour(

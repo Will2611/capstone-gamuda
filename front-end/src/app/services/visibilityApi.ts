@@ -580,6 +580,10 @@ export interface FootTrafficResponse {
   chartDays: ChartDayTrafficItem[];
   weekdayTotal: number;
   weekendTotal: number;
+  weekOffset: number;
+  weekTotal: number;
+  otherWeekTotal: number | null;
+  hasPreviousWeek: boolean;
   insights: TrafficInsightItem[];
   updatedAt?: string | null;
 }
@@ -589,6 +593,10 @@ export const EMPTY_FOOT_TRAFFIC: FootTrafficResponse = {
   chartDays: [],
   weekdayTotal: 0,
   weekendTotal: 0,
+  weekOffset: 0,
+  weekTotal: 0,
+  otherWeekTotal: null,
+  hasPreviousWeek: false,
   insights: [],
   updatedAt: null,
 };
@@ -618,6 +626,14 @@ export function normalizeFootTraffic(
       : [],
     weekdayTotal: safeNumber(raw?.weekdayTotal),
     weekendTotal: safeNumber(raw?.weekendTotal),
+    weekOffset: safeNumber(raw?.weekOffset),
+    weekTotal: safeNumber(
+      raw?.weekTotal,
+      safeNumber(raw?.weekdayTotal) + safeNumber(raw?.weekendTotal),
+    ),
+    otherWeekTotal:
+      raw?.otherWeekTotal == null ? null : safeNumber(raw.otherWeekTotal),
+    hasPreviousWeek: Boolean(raw?.hasPreviousWeek),
     insights: Array.isArray(raw?.insights)
       ? raw!.insights.map((item) => ({
           id: item?.id ?? "",
@@ -637,8 +653,12 @@ export function normalizeFootTraffic(
 
 export async function getFootTraffic(
   restaurantId: string,
+  weekOffset = 0,
 ): Promise<FootTrafficResponse> {
-  const params = new URLSearchParams({ restaurantId });
+  const params = new URLSearchParams({
+    restaurantId,
+    weekOffset: String(weekOffset),
+  });
   const response = await fetch(
     `${API_BASE}/visibility/getFootTraffic?${params.toString()}`,
   );
