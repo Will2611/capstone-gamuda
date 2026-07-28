@@ -76,7 +76,8 @@ export default defineConfig(({ mode }) => {
     },
 
     // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
-    assetsInclude: ["**/*.csv"],
+    assetsInclude: ["**/*.csv", "**/*.png", "**/*.svg"],
+    publicDir: "assets",
 
     // Change localhost port
     // server: {

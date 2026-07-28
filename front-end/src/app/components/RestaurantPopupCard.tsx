@@ -16,7 +16,7 @@ import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import type { Restaurant } from "../types/restaurant";
 import type { Sentiment } from "../services/visibilityApi";
 import { Button } from "./Button";
-import Instagram from "@/assets/instagram.svg?react";
+import Instagram from "/instagram.svg?react";
 
 import { isPromotionActive } from "../utils/promotionUtils";
 import { PromotionPreview } from "./PromotionPreview";

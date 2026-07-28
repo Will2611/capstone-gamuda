@@ -38,7 +38,10 @@ registerRoute(
 self.addEventListener("push", onPush);
 
 self.addEventListener("notificationclick", onNotificationClick);
-
+const options = {
+  icon: "/icon.svg",
+  badge: "/icon.svg",
+};
 async function onPush(event: PushEvent) {
   if (!event.data) {
     return;
@@ -53,6 +56,7 @@ async function onPush(event: PushEvent) {
   event.waitUntil(
     self.registration.showNotification(title || "New Notification", {
       ...rest,
+      ...options,
     }),
   );
 }

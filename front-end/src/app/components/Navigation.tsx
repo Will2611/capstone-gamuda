@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router";
 import { useAuth } from "../context/AuthContext";
 import { useUser } from "../context/UserContext";
-import BiteSccoutIcon from "@/assets/icon.svg?react";
+import BiteSccoutIcon from "/icon.svg?react";
 import { Menu, X } from "lucide-react";
 
 export function Navigation() {

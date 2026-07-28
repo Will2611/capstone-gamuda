@@ -3,20 +3,22 @@ import { useNavigate } from "react-router";
 import { useState, useEffect } from "react";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
-import MapBannerSVG from "@/assets/map-banner.svg?react";
-import heroFoodBg1 from "@/assets/hero-food-bg.png";
-import heroFoodBg2 from "@/assets/hero-food-bg-2.png";
-import heroFoodBg3 from "@/assets/hero-food-bg-3.png";
+import MapBannerSVG from "/map-banner.svg?react";
 import { Clock4, MapPin, CalendarRange } from "lucide-react";
+// import heroFoodBg1 from "@/assets/hero-food-bg.png";
+// import heroFoodBg2 from "@/assets/hero-food-bg-2.png";
+// import heroFoodBg3 from "@/assets/hero-food-bg-3.png";
 // import { FoodEmojiRain } from "../components/landing/FoodEmojiRain";
-
-const HERO_IMAGES = [heroFoodBg1, heroFoodBg2, heroFoodBg3];
+// const HERO_IMAGES = [heroFoodBg1, heroFoodBg2, heroFoodBg3];
 
 const malaysianFoodImages = [
-  "/src/assets/images/malaysian-food-1.jpg",
-  "/src/assets/images/malaysian-food-2.jpg",
-  "/src/assets/images/malaysian-food-3.jpg",
-  "/src/assets/images/malaysian-food-4.jpg",
+  "/images/malaysian-food-1.jpg",
+  "/images/malaysian-food-2.jpg",
+  "/images/malaysian-food-3.jpg",
+  "/images/malaysian-food-4.jpg",
+  "/hero-food-bg.png",
+  "/hero-food-bg-2.png",
+  "/hero-food-bg-3.png",
 ];
 
 export default function LandingPage() {
@@ -25,7 +27,9 @@ export default function LandingPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentBgIndex((prevIndex) => (prevIndex + 1) % HERO_IMAGES.length);
+      setCurrentBgIndex(
+        (prevIndex) => (prevIndex + 1) % malaysianFoodImages.length,
+      );
     }, 6000); // changes image every 6 seconds
     return () => clearInterval(interval);
   }, []);
