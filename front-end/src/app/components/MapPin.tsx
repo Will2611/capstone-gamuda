@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import MapPinColored from "/map-pin-coloured.svg?react";
+import MapPinColored from "@/assets/map-pin-coloured.svg?react";
 import { AlertCircle } from "lucide-react";
 
 interface MapPinProps {

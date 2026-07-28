@@ -14,7 +14,7 @@ import { getSentiment, type Sentiment } from "../services/visibilityApi";
 import { trackVisit } from "../services/trackersApi";
 import type { Restaurant, SearchPreferences } from "../types/restaurant";
 import { mockPromotions } from "../data/mockPromotions";
-import PersonPin from "/person-circle-pin.svg?react";
+import PersonPin from "@/assets/person-circle-pin.svg?react";
 import FilterBar from "../components/FilterBar";
 
 const emptyForm: SearchPreferences = {

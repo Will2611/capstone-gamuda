@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router";
 import { LoginForm } from "../components/LoginForm";
 import { useAuth } from "../context/AuthContext";
-import BiteSccoutIcon from "/icon.svg?react";
+import BiteSccoutIcon from "@/assets/icon.svg?react";
 import { useLoading } from "../context/LoadingContext";
 
 export default function LoginPage() {

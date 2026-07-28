@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Heart, Star } from "lucide-react";
-import ThreeDots from "/three-dots.svg?react";
+import ThreeDots from "@/assets/three-dots.svg?react";
 
 const ICON_SIZE = 16;
 const STAR_FILL = "#FFD700";
