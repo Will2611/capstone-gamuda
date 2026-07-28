@@ -13,6 +13,8 @@ import {
   Calendar,
 } from "lucide-react";
 import {
+  LineChart,
+  Line,
   BarChart,
   Bar,
   XAxis,
@@ -180,9 +182,14 @@ export function MetricsTab({
 
   // 2. 根据选中的年份过滤财务数据
   const filteredFinancials = useMemo(() => {
-    if (selectedYear === "All") return financials;
-    return financials.filter((item) =>
-      item.month_year.startsWith(selectedYear),
+    const baseData =
+      selectedYear === "All"
+        ? financials
+        : financials.filter((item) => item.month_year.startsWith(selectedYear));
+
+    // 👈 按 month_year 从小到大排序 (如 2026-01 到 2026-12)
+    return [...baseData].sort((a, b) =>
+      a.month_year.localeCompare(b.month_year),
     );
   }, [financials, selectedYear]);
 
@@ -466,27 +473,46 @@ export function MetricsTab({
                     />
                   </BarChart>
                 ) : activeModal === "aov" ? (
-                  <BarChart data={filteredFinancials}>
+                  <LineChart data={filteredFinancials}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month_year" tick={{ fontSize: 11 }} />
+                    <XAxis
+                      dataKey="month_year"
+                      tick={{ fontSize: 11 }}
+                      padding={{ left: 30, right: 30 }}
+                    />
                     <YAxis tick={{ fontSize: 11 }} unit="$" />
                     <Tooltip formatter={(value: any) => [`$${value}`, "AOV"]} />
-                    <Bar dataKey="aov" fill="#10b981" radius={[6, 6, 0, 0]} />
-                  </BarChart>
+                    <Line
+                      type="monotone"
+                      dataKey="aov"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#10b981" }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
                 ) : (
-                  <BarChart data={filteredFinancials}>
+                  /* 3. Profit Margin 改为 LineChart (紫色折线) */
+                  <LineChart data={filteredFinancials}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month_year" tick={{ fontSize: 11 }} />
+                    <XAxis
+                      dataKey="month_year"
+                      tick={{ fontSize: 11 }}
+                      padding={{ left: 30, right: 30 }}
+                    />
                     <YAxis tick={{ fontSize: 11 }} unit="%" />
                     <Tooltip
                       formatter={(value: any) => [`${value}%`, "Margin"]}
                     />
-                    <Bar
+                    <Line
+                      type="monotone"
                       dataKey="profit_margin"
-                      fill="#9333ea"
-                      radius={[6, 6, 0, 0]}
+                      stroke="#9333ea"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#9333ea" }}
+                      activeDot={{ r: 6 }}
                     />
-                  </BarChart>
+                  </LineChart>
                 )}
               </ResponsiveContainer>
             </div>
