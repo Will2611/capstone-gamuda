@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AIPromotionRecommendation } from "../types/aipromotion";
 import { useNavigate, useLocation } from "react-router";
 import {
   Megaphone,
@@ -71,235 +72,313 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const [apiError, setApiError] = useState<string | null>(null);
 
   // --- 方案 2：全量 AI 助手弹窗状态 ---
+  // const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  // const [aiPromptInput, setAiPromptInput] = useState("");
+  // const [isAiProcessing, setIsAiProcessing] = useState(false);
+  // const [aiGeneratedResult, setAiGeneratedResult] = useState<{
+  //   title: string;
+  //   description: string;
+  //   imageUrl: string;
+  //   eventTag?: string;
+  // } | null>(null);
+
+  // // --- 方案 1：独立字段 AI 生成状态与多轮生成计数器 ---
+  // const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  // const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  // const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
+  // const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
+
+  // // ==========================================
+  // // 1. 动态日历与趋势 Context 获取区
+  // // ==========================================
+  // const getCurrentMarketTrends = () => {
+  //   const today = new Date();
+  //   const formattedDate = today.toISOString().split("T")[0];
+
+  //   return {
+  //     currentDate: formattedDate,
+  //     season: "Summer",
+  //     upcomingHolidaysAndEvents: [
+  //       {
+  //         name: "National Day / Merdeka Special",
+  //         category: "Holiday",
+  //         date: "Aug 31",
+  //       },
+  //       {
+  //         name: "School Holiday Season",
+  //         category: "Calendar",
+  //         date: "Aug - Sep",
+  //       },
+  //       {
+  //         name: "Football Finals Night (Live Screen)",
+  //         category: "Sports Trend",
+  //         date: "This Weekend",
+  //       },
+  //     ],
+  //   };
+  // };
+
+  // // ==========================================
+  // // 2. 结合 Step 1/2 数据与实时 Trend 打包 Payload
+  // // ==========================================
+  // const getFullContextPayload = () => {
+  //   return {
+  //     market_trends: getCurrentMarketTrends(),
+  //     step1_merchant_metrics: {
+  //       avgRevenuePerCustomer: "$35",
+  //       monthlyProfitMargin: "22%",
+  //       targetAudience: "Young Families & Weekend Foodies",
+  //       topSellingItems: ["Truffle Burger", "Craft Beer", "Family Combo"],
+  //     },
+  //     step2_historical_promotions: [
+  //       {
+  //         title: "Summer Family Feast 15% OFF",
+  //         conversionRate: "24%",
+  //         roi: "3.2x",
+  //       },
+  //       {
+  //         title: "Buy 1 Get 1 Cocktail Happy Hour",
+  //         conversionRate: "31%",
+  //         roi: "4.1x",
+  //       },
+  //     ],
+  //   };
+  // };
+
+  // // ==========================================
+  // // API 逻辑区
+  // // ==========================================
+
+  // // [方案 2] 全局生成：结合日历热点 + 商家 Step 1&2 数据
+  // const handleRunAiAssistant = async (customPrompt?: string) => {
+  //   const activePrompt = customPrompt || aiPromptInput;
+  //   if (!activePrompt.trim()) return;
+
+  //   setIsAiProcessing(true);
+  //   setAiGeneratedResult(null);
+
+  //   const fullContext = getFullContextPayload();
+
+  //   const apiPayload = {
+  //     userIdea: activePrompt,
+  //     context: fullContext,
+  //   };
+
+  //   console.log("🚀 [AI Full Campaign Request Payload]:", apiPayload);
+
+  //   setTimeout(() => {
+  //     let mockResult = {
+  //       title: `🇲🇾 National Day Celebration: 31% OFF ${activePrompt}!`,
+  //       description: `Celebrate National Day with family & friends! Enjoy 31% OFF on our best-selling ${fullContext.step1_merchant_metrics.topSellingItems[0]} and family bundles. Valid through the holiday week!`,
+  //       imageUrl:
+  //         "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop",
+  //       eventTag: "National Day Special",
+  //     };
+
+  //     if (
+  //       activePrompt.toLowerCase().includes("football") ||
+  //       activePrompt.toLowerCase().includes("sports")
+  //     ) {
+  //       mockResult = {
+  //         title: `⚽ Match Night Craze: Live Screening & Beer Buckets!`,
+  //         description: `Catch the live football finals this weekend! Bring your crew to enjoy live screening along with our special Craft Beer Bucket Deals and Truffle Burgers. Limited seating available!`,
+  //         imageUrl:
+  //           "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop",
+  //         eventTag: "Live Sports Trend",
+  //       };
+  //     } else if (
+  //       activePrompt.toLowerCase().includes("school") ||
+  //       activePrompt.toLowerCase().includes("holiday") ||
+  //       activePrompt.toLowerCase().includes("family")
+  //     ) {
+  //       mockResult = {
+  //         title: `🎉 School Holiday Family Treat: Kids Eat Free!`,
+  //         description: `School's out, fun's in! Treat your family during this school break. Buy any 2 main courses from our special menu and get a Kid's Meal completely FREE!`,
+  //         imageUrl:
+  //           "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
+  //         eventTag: "School Break Trend",
+  //       };
+  //     }
+
+  //     setAiGeneratedResult(mockResult);
+  //     setIsAiProcessing(false);
+  //   }, 1500);
+  // };
+
+  // // [方案 1] 改进版 Title 生成：基于现有文字保留主题变体 + 递增版本
+  // const handleGenerateTitleOnly = async () => {
+  //   setIsGeneratingTitle(true);
+  //   const nextCount = titleGenCount + 1;
+  //   setTitleGenCount(nextCount);
+
+  //   const apiPayload = {
+  //     field: "title",
+  //     currentInputText: title.trim(), // 传入当前框内文本
+  //     iterationIndex: nextCount, // 传入生成的次数，提示后端生成不同变体
+  //     context: getFullContextPayload(),
+  //   };
+
+  //   console.log("🚀 [AI Regenerate Title Request]:", apiPayload);
+
+  //   setTimeout(() => {
+  //     if (title.trim()) {
+  //       // 当框内已有字时：保持原有主题进行变体生成 (Based on existing keyword)
+  //       const base = title.trim();
+  //       const Variations = [
+  //         `🇲🇾 ${base} Special: Buy 1 Free 1 Deal!`,
+  //         `🔥 Festive Promo: ${base} Bundle Offer`,
+  //         `🎉 Special Celebration: ${base} - Exclusive Discount!`,
+  //         `✨ Limited Time: ${base} (Weekend Only)`,
+  //       ];
+  //       // 循环取不同版本，保证每次按都不一样
+  //       setTitle(Variations[(nextCount - 1) % Variations.length]);
+  //     } else {
+  //       // 当框内为空时：结合当前最火 Trend 填充
+  //       const TrendTitles = [
+  //         "🇲🇾 Merdeka Day Special: 31% OFF Family Set",
+  //         "⚽ Weekend Match Night: Free Craft Beer with Burger",
+  //         "🎉 School Break Holiday Feast: Kids Eat Free",
+  //       ];
+  //       setTitle(TrendTitles[(nextCount - 1) % TrendTitles.length]);
+  //     }
+
+  //     setIsGeneratingTitle(false);
+  //     setErrors((prev) => ({ ...prev, title: undefined }));
+  //   }, 1000);
+  // };
+
+  // // [方案 1] 改进版 Description 生成：基于现有文字优化 + 多轮不重复
+  // const handleGenerateDescOnly = async () => {
+  //   setIsGeneratingDesc(true);
+  //   const nextCount = descGenCount + 1;
+  //   setDescGenCount(nextCount);
+
+  //   const apiPayload = {
+  //     field: "description",
+  //     currentTitle: title.trim(),
+  //     currentInputText: description.trim(), // 传入当前框内文本
+  //     iterationIndex: nextCount, // 传入轮次，要求后端生成全新切入点
+  //     context: getFullContextPayload(),
+  //   };
+
+  //   console.log("🚀 [AI Regenerate Description Request]:", apiPayload);
+
+  //   setTimeout(() => {
+  //     const topic = title ? `for "${title}"` : "for your restaurant offer";
+  //     const fullContext = getFullContextPayload();
+  //     const topItem = fullContext.step1_merchant_metrics.topSellingItems[0];
+
+  //     // 提供多套不同切入点 (Angle) 的文案模板，每次点击生成下一版
+  //     const descVariations = [
+  //       `🔥 Exclusive Deal ${topic}! Indulge in our famous ${topItem} with special holiday pricing. Perfect for gathering with family & friends. Book your table now before slots run out!`,
+  //       `🎉 Limited-Time Offer ${topic}! Tailored specially for food lovers. Enjoy premium quality ingredients, handcrafted cocktails, and great ambiance. Available this week only!`,
+  //       `✨ Celebrate with us ${topic}! Claim your special discount on signature menu items. Bring your loved ones and experience an unforgettable meal. Order or reserve online today!`,
+  //       `🇲🇾 Season Special ${topic}! Don't miss out on our best-selling combo deals. High customer satisfaction guaranteed. T&C apply, offer valid while stocks last!`,
+  //     ];
+
+  //     // 每次点击递增选下一版，彻底杜绝重复
+  //     setDescription(descVariations[(nextCount - 1) % descVariations.length]);
+
+  //     setIsGeneratingDesc(false);
+  //     setErrors((prev) => ({ ...prev, description: undefined }));
+  //   }, 1000);
+  // };
+
+  // // 应用方案 2 的结果
+  // const handleApplyAiResult = () => {
+  //   if (!aiGeneratedResult) return;
+  //   setTitle(aiGeneratedResult.title);
+  //   setDescription(aiGeneratedResult.description);
+  //   setImageUrl(aiGeneratedResult.imageUrl);
+
+  //   setErrors((prev) => ({
+  //     ...prev,
+  //     title: undefined,
+  //     description: undefined,
+  //     imageUrl: undefined,
+  //   }));
+
+  //   setIsAiModalOpen(false);
+  //   setAiPromptInput("");
+  //   setAiGeneratedResult(null);
+  // };
+
+  // --- AI Modal State ---
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiPromptInput, setAiPromptInput] = useState("");
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-  const [aiGeneratedResult, setAiGeneratedResult] = useState<{
-    title: string;
-    description: string;
-    imageUrl: string;
-    eventTag?: string;
-  } | null>(null);
-
-  // --- 方案 1：独立字段 AI 生成状态与多轮生成计数器 ---
-  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
-  const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
+  const [aiRecommendations, setAiRecommendations] = useState<
+    AIPromotionRecommendation[]
+  >([]);
+  const [aiApiError, setAiApiError] = useState<string | null>(null);
 
   // ==========================================
-  // 1. 动态日历与趋势 Context 获取区
+  // Fetch AI Recommendations from Backend
   // ==========================================
-  const getCurrentMarketTrends = () => {
-    const today = new Date();
-    const formattedDate = today.toISOString().split("T")[0];
-
-    return {
-      currentDate: formattedDate,
-      season: "Summer",
-      upcomingHolidaysAndEvents: [
-        {
-          name: "National Day / Merdeka Special",
-          category: "Holiday",
-          date: "Aug 31",
-        },
-        {
-          name: "School Holiday Season",
-          category: "Calendar",
-          date: "Aug - Sep",
-        },
-        {
-          name: "Football Finals Night (Live Screen)",
-          category: "Sports Trend",
-          date: "This Weekend",
-        },
-      ],
-    };
-  };
-
-  // ==========================================
-  // 2. 结合 Step 1/2 数据与实时 Trend 打包 Payload
-  // ==========================================
-  const getFullContextPayload = () => {
-    return {
-      market_trends: getCurrentMarketTrends(),
-      step1_merchant_metrics: {
-        avgRevenuePerCustomer: "$35",
-        monthlyProfitMargin: "22%",
-        targetAudience: "Young Families & Weekend Foodies",
-        topSellingItems: ["Truffle Burger", "Craft Beer", "Family Combo"],
-      },
-      step2_historical_promotions: [
-        {
-          title: "Summer Family Feast 15% OFF",
-          conversionRate: "24%",
-          roi: "3.2x",
-        },
-        {
-          title: "Buy 1 Get 1 Cocktail Happy Hour",
-          conversionRate: "31%",
-          roi: "4.1x",
-        },
-      ],
-    };
-  };
-
-  // ==========================================
-  // API 逻辑区
-  // ==========================================
-
-  // [方案 2] 全局生成：结合日历热点 + 商家 Step 1&2 数据
-  const handleRunAiAssistant = async (customPrompt?: string) => {
-    const activePrompt = customPrompt || aiPromptInput;
-    if (!activePrompt.trim()) return;
+  const handleFetchAiRecommendations = async (customPrompt?: string) => {
+    const activeInput =
+      customPrompt !== undefined ? customPrompt : aiPromptInput;
 
     setIsAiProcessing(true);
-    setAiGeneratedResult(null);
+    setAiApiError(null);
+    setAiRecommendations([]);
 
-    const fullContext = getFullContextPayload();
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/ai/recommendations",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_input: activeInput.trim() || null,
+          }),
+        },
+      );
 
-    const apiPayload = {
-      userIdea: activePrompt,
-      context: fullContext,
-    };
-
-    console.log("🚀 [AI Full Campaign Request Payload]:", apiPayload);
-
-    setTimeout(() => {
-      let mockResult = {
-        title: `🇲🇾 National Day Celebration: 31% OFF ${activePrompt}!`,
-        description: `Celebrate National Day with family & friends! Enjoy 31% OFF on our best-selling ${fullContext.step1_merchant_metrics.topSellingItems[0]} and family bundles. Valid through the holiday week!`,
-        imageUrl:
-          "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop",
-        eventTag: "National Day Special",
-      };
-
-      if (
-        activePrompt.toLowerCase().includes("football") ||
-        activePrompt.toLowerCase().includes("sports")
-      ) {
-        mockResult = {
-          title: `⚽ Match Night Craze: Live Screening & Beer Buckets!`,
-          description: `Catch the live football finals this weekend! Bring your crew to enjoy live screening along with our special Craft Beer Bucket Deals and Truffle Burgers. Limited seating available!`,
-          imageUrl:
-            "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop",
-          eventTag: "Live Sports Trend",
-        };
-      } else if (
-        activePrompt.toLowerCase().includes("school") ||
-        activePrompt.toLowerCase().includes("holiday") ||
-        activePrompt.toLowerCase().includes("family")
-      ) {
-        mockResult = {
-          title: `🎉 School Holiday Family Treat: Kids Eat Free!`,
-          description: `School's out, fun's in! Treat your family during this school break. Buy any 2 main courses from our special menu and get a Kid's Meal completely FREE!`,
-          imageUrl:
-            "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
-          eventTag: "School Break Trend",
-        };
+      if (!response.ok) {
+        throw new Error(
+          `Failed to generate recommendations (${response.status})`,
+        );
       }
 
-      setAiGeneratedResult(mockResult);
-      setIsAiProcessing(false);
-    }, 1500);
-  };
+      const result = await response.json();
 
-  // [方案 1] 改进版 Title 生成：基于现有文字保留主题变体 + 递增版本
-  const handleGenerateTitleOnly = async () => {
-    setIsGeneratingTitle(true);
-    const nextCount = titleGenCount + 1;
-    setTitleGenCount(nextCount);
-
-    const apiPayload = {
-      field: "title",
-      currentInputText: title.trim(), // 传入当前框内文本
-      iterationIndex: nextCount, // 传入生成的次数，提示后端生成不同变体
-      context: getFullContextPayload(),
-    };
-
-    console.log("🚀 [AI Regenerate Title Request]:", apiPayload);
-
-    setTimeout(() => {
-      if (title.trim()) {
-        // 当框内已有字时：保持原有主题进行变体生成 (Based on existing keyword)
-        const base = title.trim();
-        const Variations = [
-          `🇲🇾 ${base} Special: Buy 1 Free 1 Deal!`,
-          `🔥 Festive Promo: ${base} Bundle Offer`,
-          `🎉 Special Celebration: ${base} - Exclusive Discount!`,
-          `✨ Limited Time: ${base} (Weekend Only)`,
-        ];
-        // 循环取不同版本，保证每次按都不一样
-        setTitle(Variations[(nextCount - 1) % Variations.length]);
+      // Store the list of up to 3 promotions
+      if (result.promotions && Array.isArray(result.promotions)) {
+        setAiRecommendations(result.promotions);
       } else {
-        // 当框内为空时：结合当前最火 Trend 填充
-        const TrendTitles = [
-          "🇲🇾 Merdeka Day Special: 31% OFF Family Set",
-          "⚽ Weekend Match Night: Free Craft Beer with Burger",
-          "🎉 School Break Holiday Feast: Kids Eat Free",
-        ];
-        setTitle(TrendTitles[(nextCount - 1) % TrendTitles.length]);
+        setAiRecommendations([]);
       }
-
-      setIsGeneratingTitle(false);
-      setErrors((prev) => ({ ...prev, title: undefined }));
-    }, 1000);
+    } catch (err: any) {
+      console.error("Error fetching AI promotions:", err);
+      setAiApiError(err.message || "Failed to contact AI service.");
+    } finally {
+      setIsAiProcessing(false);
+    }
   };
 
-  // [方案 1] 改进版 Description 生成：基于现有文字优化 + 多轮不重复
-  const handleGenerateDescOnly = async () => {
-    setIsGeneratingDesc(true);
-    const nextCount = descGenCount + 1;
-    setDescGenCount(nextCount);
+  // ==========================================
+  // Apply Selected AI Recommendation to Form
+  // ==========================================
+  const handleApplyRecommendation = (rec: AIPromotionRecommendation) => {
+    setTitle(rec.title);
+    setDescription(rec.description);
+    if (rec.suggested_image_url) setImageUrl(rec.suggested_image_url);
+    if (rec.suggested_start_date) setStartDate(rec.suggested_start_date);
+    if (rec.suggested_end_date) setEndDate(rec.suggested_end_date);
 
-    const apiPayload = {
-      field: "description",
-      currentTitle: title.trim(),
-      currentInputText: description.trim(), // 传入当前框内文本
-      iterationIndex: nextCount, // 传入轮次，要求后端生成全新切入点
-      context: getFullContextPayload(),
-    };
+    setIsAllDay(rec.is_all_day);
+    if (!rec.is_all_day) {
+      if (rec.suggested_start_time) setStartTime(rec.suggested_start_time);
+      if (rec.suggested_end_time) setEndTime(rec.suggested_end_time);
+    } else {
+      setStartTime("");
+      setEndTime("");
+    }
 
-    console.log("🚀 [AI Regenerate Description Request]:", apiPayload);
-
-    setTimeout(() => {
-      const topic = title ? `for "${title}"` : "for your restaurant offer";
-      const fullContext = getFullContextPayload();
-      const topItem = fullContext.step1_merchant_metrics.topSellingItems[0];
-
-      // 提供多套不同切入点 (Angle) 的文案模板，每次点击生成下一版
-      const descVariations = [
-        `🔥 Exclusive Deal ${topic}! Indulge in our famous ${topItem} with special holiday pricing. Perfect for gathering with family & friends. Book your table now before slots run out!`,
-        `🎉 Limited-Time Offer ${topic}! Tailored specially for food lovers. Enjoy premium quality ingredients, handcrafted cocktails, and great ambiance. Available this week only!`,
-        `✨ Celebrate with us ${topic}! Claim your special discount on signature menu items. Bring your loved ones and experience an unforgettable meal. Order or reserve online today!`,
-        `🇲🇾 Season Special ${topic}! Don't miss out on our best-selling combo deals. High customer satisfaction guaranteed. T&C apply, offer valid while stocks last!`,
-      ];
-
-      // 每次点击递增选下一版，彻底杜绝重复
-      setDescription(descVariations[(nextCount - 1) % descVariations.length]);
-
-      setIsGeneratingDesc(false);
-      setErrors((prev) => ({ ...prev, description: undefined }));
-    }, 1000);
-  };
-
-  // 应用方案 2 的结果
-  const handleApplyAiResult = () => {
-    if (!aiGeneratedResult) return;
-    setTitle(aiGeneratedResult.title);
-    setDescription(aiGeneratedResult.description);
-    setImageUrl(aiGeneratedResult.imageUrl);
-
-    setErrors((prev) => ({
-      ...prev,
-      title: undefined,
-      description: undefined,
-      imageUrl: undefined,
-    }));
-
+    // Clear any validation errors and close modal
+    setErrors({});
     setIsAiModalOpen(false);
-    setAiPromptInput("");
-    setAiGeneratedResult(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,14 +452,16 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         websiteUrl: websiteUrl.trim(),
         startDate,
         endDate,
-        startTime: isAllDay ? null : (startTime || null),
-        endTime: isAllDay ? null : (endTime || null),
+        startTime: isAllDay ? null : startTime || null,
+        endTime: isAllDay ? null : endTime || null,
         isAllDay,
         status: "ACTIVE",
         ...(initialData?.promoId ? { promoId: initialData.promoId } : {}),
       };
 
-      const isEdit = Boolean(initialData && (initialData.id || initialData.promoId));
+      const isEdit = Boolean(
+        initialData && (initialData.id || initialData.promoId),
+      );
       const targetId = initialData?.id || initialData?.promoId;
       const url = isEdit
         ? `http://localhost:8000/promotions/${targetId}`
@@ -400,7 +481,9 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
       if (!response.ok) {
         const errorMsg = Array.isArray(resData.detail)
-          ? resData.detail.map((d: any) => `${d.loc?.join(".")}: ${d.msg}`).join(", ")
+          ? resData.detail
+              .map((d: any) => `${d.loc?.join(".")}: ${d.msg}`)
+              .join(", ")
           : resData.detail || "Failed to save promotion";
         throw new Error(errorMsg);
       }
@@ -437,7 +520,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     isAllDay,
   };
 
-  const marketTrends = getCurrentMarketTrends();
+  // const marketTrends = getCurrentMarketTrends();
 
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6 relative">
@@ -482,7 +565,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <label className="text-sm font-semibold text-bs-neutral-800">
                   Promotion Title <span className="text-red-500">*</span>
                 </label>
-                <button
+                {/* <button
                   type="button"
                   onClick={handleGenerateTitleOnly}
                   disabled={isGeneratingTitle}
@@ -496,13 +579,14 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   {title
                     ? `Rewrite Title (v${titleGenCount + 1})`
                     : "AI Generate Title"}
-                </button>
+                </button> */}
               </div>
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
-                  ${errors.title
-                    ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
-                    : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  ${
+                    errors.title
+                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
                   }`}
                 placeholder="e.g. merdeka with 10%"
                 value={title}
@@ -525,7 +609,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <label className="text-sm font-semibold text-bs-neutral-800">
                   Description <span className="text-red-500">*</span>
                 </label>
-                <button
+                {/* <button
                   type="button"
                   onClick={handleGenerateDescOnly}
                   disabled={isGeneratingDesc}
@@ -539,14 +623,15 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   {description
                     ? `Generate Next Idea (v${descGenCount + 1})`
                     : "AI Generate Copy"}
-                </button>
+                </button> */}
               </div>
               <textarea
                 rows={4}
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400 resize-none
-                  ${errors.description
-                    ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
-                    : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
+                  ${
+                    errors.description
+                      ? "border-red-500 focus:border-red-600 focus:ring-2 focus:ring-red-500/10"
+                      : "border-bs-neutral-300 hover:border-bs-neutral-400 focus:border-bs-gold focus:ring-2 focus:ring-bs-gold/20"
                   }`}
                 placeholder="Describe your special offer and any terms..."
                 value={description}
@@ -583,11 +668,12 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   document.getElementById("promo-image-upload")?.click()
                 }
                 className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-all duration-200
-                  ${imageUrl
-                    ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
-                    : errors.imageUrl
-                      ? "border-red-500 bg-red-50/30 hover:bg-red-50/50"
-                      : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
+                  ${
+                    imageUrl
+                      ? "border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : errors.imageUrl
+                        ? "border-red-500 bg-red-50/30 hover:bg-red-50/50"
+                        : "border-bs-neutral-300 hover:border-bs-gold bg-bs-neutral-50 hover:bg-bs-neutral-100/50"
                   }`}
               >
                 {imageUrl ? (
@@ -616,19 +702,21 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 ) : (
                   <div className="text-center space-y-2">
                     <div
-                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${errors.imageUrl
+                      className={`p-3 bg-white border rounded-xl inline-block shadow-sm ${
+                        errors.imageUrl
                           ? "text-red-500 border-red-200"
                           : "text-bs-neutral-500 border-bs-neutral-200"
-                        }`}
+                      }`}
                     >
                       <Upload size={22} />
                     </div>
                     <div>
                       <p
-                        className={`text-sm font-bold ${errors.imageUrl
+                        className={`text-sm font-bold ${
+                          errors.imageUrl
                             ? "text-red-700"
                             : "text-bs-neutral-800"
-                          }`}
+                        }`}
                       >
                         Click to upload promotion image
                       </p>
@@ -677,9 +765,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${errors.startDate
-                        ? "border-red-500 focus:border-red-600"
-                        : "border-bs-neutral-300 focus:border-bs-gold"
+                      ${
+                        errors.startDate
+                          ? "border-red-500 focus:border-red-600"
+                          : "border-bs-neutral-300 focus:border-bs-gold"
                       }`}
                     value={startDate}
                     onChange={(e) => {
@@ -705,9 +794,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   <input
                     type="date"
                     className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                      ${errors.endDate
-                        ? "border-red-500 focus:border-red-600"
-                        : "border-bs-neutral-300 focus:border-bs-gold"
+                      ${
+                        errors.endDate
+                          ? "border-red-500 focus:border-red-600"
+                          : "border-bs-neutral-300 focus:border-bs-gold"
                       }`}
                     value={endDate}
                     onChange={(e) => {
@@ -761,9 +851,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${errors.startTime
-                            ? "border-red-500 focus:border-red-600"
-                            : "border-bs-neutral-300 focus:border-bs-gold"
+                          ${
+                            errors.startTime
+                              ? "border-red-500 focus:border-red-600"
+                              : "border-bs-neutral-300 focus:border-bs-gold"
                           }`}
                         value={startTime}
                         onChange={(e) => {
@@ -790,9 +881,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                       <input
                         type="time"
                         className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all
-                          ${errors.endTime
-                            ? "border-red-500 focus:border-red-600"
-                            : "border-bs-neutral-300 focus:border-bs-gold"
+                          ${
+                            errors.endTime
+                              ? "border-red-500 focus:border-red-600"
+                              : "border-bs-neutral-300 focus:border-bs-gold"
                           }`}
                         value={endTime}
                         onChange={(e) => {
@@ -862,8 +954,8 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               <div className="p-2 bg-bs-neutral-200/40 rounded-3xl border border-bs-neutral-200 shadow-inner">
                 <PromotionCard
                   promotion={currentPromoState}
-                  onDelete={() => { }}
-                  onEdit={() => { }}
+                  onDelete={() => {}}
+                  onEdit={() => {}}
                 />
               </div>
 
@@ -879,10 +971,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         </form>
       </div>
 
-      {/* --- 方案 2：AI 策划师弹窗 --- */}
+      {/* --- AI Planner Modal --- */}
       {isAiModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-5">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-bs-neutral-200 space-y-5 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-bs-neutral-100">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
@@ -890,11 +983,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg text-bs-neutral-900">
-                    AI Trend & Calendar Campaign Planner
+                    AI Trend & Campaign Planner
                   </h3>
                   <p className="text-xs text-bs-neutral-500">
-                    Creates promotions timed with holidays, sports & local
-                    events.
+                    Powered by Gemini 2.5 Flash & live merchant analytics
                   </p>
                 </div>
               </div>
@@ -907,136 +999,116 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
               </button>
             </div>
 
-            <div className="flex items-center justify-between bg-purple-50 border border-purple-100 p-2.5 rounded-xl text-xs text-purple-700">
-              <div className="flex items-center gap-2">
-                <Database size={14} className="shrink-0" />
-                <span>
-                  <strong>Merchant Context & Real-Time Calendar Synced</strong>
-                </span>
-              </div>
-              <span className="text-[10px] font-bold bg-purple-200/60 px-2 py-0.5 rounded-full">
-                {marketTrends.currentDate}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center gap-1.5 text-xs font-bold text-bs-neutral-700 uppercase tracking-wider">
-                <TrendingUp size={14} className="text-purple-600" />
-                Upcoming Calendar Events & Trends:
+            {/* Input & Search Section */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-bs-neutral-700 uppercase tracking-wider">
+                Enter Promo Idea, Event, or Dish (Leave empty for general top
+                recommendations):
               </label>
-              <div className="flex flex-wrap gap-2">
-                {marketTrends.upcomingHolidaysAndEvents.map((event) => (
-                  <button
-                    key={event.name}
-                    type="button"
-                    onClick={() => {
-                      setAiPromptInput(event.name);
-                      handleRunAiAssistant(event.name);
-                    }}
-                    className="text-xs font-semibold bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 text-purple-800 hover:from-purple-100 hover:to-indigo-100 px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs"
-                  >
-                    <span>{event.name}</span>
-                    <span className="text-[10px] opacity-70 bg-purple-200/50 px-1.5 py-0.2 rounded-md">
-                      {event.date}
-                    </span>
-                  </button>
-                ))}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiPromptInput}
+                  onChange={(e) => setAiPromptInput(e.target.value)}
+                  placeholder="e.g., Weekend Football Match, Family Bundle, Truffle Burger..."
+                  className="flex-1 border border-bs-neutral-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 rounded-xl p-3 text-sm outline-none transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleFetchAiRecommendations()}
+                  disabled={isAiProcessing}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer shrink-0"
+                >
+                  {isAiProcessing ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : (
+                    <Wand2 size={16} />
+                  )}
+                  {isAiProcessing ? "Generating..." : "Generate Ideas"}
+                </button>
               </div>
             </div>
 
-            <div className="space-y-4 pt-1">
-              <div>
-                <label className="block text-xs font-bold text-bs-neutral-700 mb-1.5 uppercase tracking-wider">
-                  Or enter your own promo theme / dish:
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={aiPromptInput}
-                    onChange={(e) => setAiPromptInput(e.target.value)}
-                    placeholder="e.g. World Cup Finals, School Break Combo..."
-                    className="flex-1 border border-bs-neutral-300 focus:border-purple-600 focus:ring-2 focus:ring-purple-600/20 rounded-xl p-3 text-sm outline-none transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRunAiAssistant()}
-                    disabled={isAiProcessing || !aiPromptInput.trim()}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold px-5 rounded-xl text-sm transition-all flex items-center gap-2 cursor-pointer shrink-0"
-                  >
-                    {isAiProcessing ? (
-                      <RefreshCw size={16} className="animate-spin" />
-                    ) : (
-                      <Wand2 size={16} />
-                    )}
-                    Generate
-                  </button>
+            {/* Error Message Display */}
+            {aiApiError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs">
+                ⚠️ {aiApiError}
+              </div>
+            )}
+
+            {/* Loading Indicator */}
+            {isAiProcessing && (
+              <div className="py-12 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
+                <RefreshCw
+                  size={32}
+                  className="animate-spin text-purple-600 mx-auto"
+                />
+                <p className="text-sm font-semibold text-purple-700">
+                  Analyzing sales trends & generating top 3 recommendations...
+                </p>
+              </div>
+            )}
+
+            {/* Display 3 AI Recommendation Cards */}
+            {!isAiProcessing && aiRecommendations.length > 0 && (
+              <div className="space-y-4 pt-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-bs-neutral-500">
+                  Select a Strategy to Apply (Max 3):
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {aiRecommendations.map((rec, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border border-bs-neutral-200 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-3 relative group hover:border-purple-300"
+                    >
+                      <div className="space-y-2">
+                        {rec.event_tag && (
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800">
+                            {rec.event_tag}
+                          </span>
+                        )}
+
+                        <h5 className="font-bold text-sm text-bs-neutral-900 group-hover:text-purple-700 transition-colors">
+                          {rec.title}
+                        </h5>
+
+                        <p className="text-xs text-bs-neutral-600 line-clamp-3 leading-relaxed">
+                          {rec.description}
+                        </p>
+
+                        {/* Date & Time metadata */}
+                        <div className="pt-2 border-t border-bs-neutral-100 space-y-1 text-[11px] text-bs-neutral-500">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={12} className="text-purple-500" />
+                            <span>
+                              {rec.suggested_start_date} to{" "}
+                              {rec.suggested_end_date}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={12} className="text-purple-500" />
+                            <span>
+                              {rec.is_all_day
+                                ? "All Day"
+                                : `${rec.suggested_start_time} - ${rec.suggested_end_time}`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyRecommendation(rec)}
+                        className="w-full mt-2 py-2 bg-purple-50 hover:bg-purple-600 text-purple-700 hover:text-white font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-purple-200 hover:border-purple-600"
+                      >
+                        <Check size={14} /> Apply Strategy
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {isAiProcessing && (
-                <div className="py-8 text-center space-y-3 bg-purple-50/50 rounded-2xl border border-purple-100">
-                  <RefreshCw
-                    size={28}
-                    className="animate-spin text-purple-600 mx-auto"
-                  />
-                  <p className="text-xs font-semibold text-purple-700">
-                    AI is analyzing current events, holidays & merchant data...
-                  </p>
-                </div>
-              )}
-
-              {aiGeneratedResult && !isAiProcessing && (
-                <div className="space-y-3 p-4 bg-bs-neutral-50 rounded-2xl border border-bs-neutral-200 animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-700 uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles size={12} /> Campaign Strategy Ready
-                    </span>
-                    {aiGeneratedResult.eventTag && (
-                      <span className="text-[10px] font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-md">
-                        {aiGeneratedResult.eventTag}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
-                        Title
-                      </span>
-                      <p className="text-sm font-bold text-bs-neutral-900">
-                        {aiGeneratedResult.title}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
-                        Description
-                      </span>
-                      <p className="text-xs text-bs-neutral-600 line-clamp-2">
-                        {aiGeneratedResult.description}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-bs-neutral-400">
-                        Banner
-                      </span>
-                      <img
-                        src={aiGeneratedResult.imageUrl}
-                        alt="AI Banner"
-                        className="h-20 w-full object-cover rounded-lg mt-1"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleApplyAiResult}
-                    className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                  >
-                    <Check size={16} /> Apply All to Form
-                  </button>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}
