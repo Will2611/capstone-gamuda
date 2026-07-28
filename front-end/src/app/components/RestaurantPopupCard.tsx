@@ -483,7 +483,7 @@ export function RestaurantPopupCard({
 
                     <div className="space-y-3">
                       <div className="mt-1 text-sm text-bs-neutral-600">
-                        Complaint themes show the most frequent sentiment
+                        Complaints show the most frequent sentiment
                         signals from recent reviews.
                       </div>
                       {complaintThemeData.map((theme) => (

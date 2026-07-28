@@ -431,12 +431,12 @@ export default function MapInterface() {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-stretch">
                 {visibleSuggestions.map((restaurant) => (
                   <Card
                     key={restaurant.id}
                     hover
-                    className="overflow-hidden p-0"
+                    className="overflow-hidden p-0 h-full flex flex-col"
                   >
                     {restaurant.image && (
                       <div className="h-36 bg-bs-neutral-200 overflow-hidden">
@@ -447,49 +447,51 @@ export default function MapInterface() {
                         />
                       </div>
                     )}
-                    <div className="p-6">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <h4 className="text-lg font-semibold text-bs-neutral-900">
-                            {restaurant.name}
-                          </h4>
-                          <p className="text-sm text-bs-neutral-500">
-                            {restaurant.cuisine}
-                          </p>
+                    <div className="p-6 flex flex-1 flex-col">
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div>
+                            <h4 className="text-lg font-semibold text-bs-neutral-900">
+                              {restaurant.name}
+                            </h4>
+                            <p className="text-sm text-bs-neutral-500">
+                              {restaurant.cuisine}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center rounded-full bg-bs-gold/20 px-3 py-1 text-sm font-medium text-bs-neutral-900">
+                            {restaurant.rating.toFixed(1)} ★
+                          </span>
                         </div>
-                        <span className="inline-flex items-center rounded-full bg-bs-gold/20 px-3 py-1 text-sm font-medium text-bs-neutral-900">
-                          {restaurant.rating.toFixed(1)} ★
-                        </span>
+
+                        <p className="text-sm text-bs-neutral-700 mb-4">
+                          {restaurant.description}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2 text-xs text-bs-neutral-600 mb-4">
+                          <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
+                            {restaurant.distance}
+                          </span>
+                          <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
+                            {restaurant.dietary}
+                          </span>
+                          <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
+                            {restaurant.isOpen ? "Open now" : "Closed"}
+                          </span>
+                        </div>
                       </div>
 
-                      <p className="text-sm text-bs-neutral-700 mb-4">
-                        {restaurant.description}
-                      </p>
-
-                      <div className="flex flex-wrap gap-2 text-xs text-bs-neutral-600 mb-4">
-                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
-                          {restaurant.distance}
-                        </span>
-                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
-                          {restaurant.dietary}
-                        </span>
-                        <span className="rounded-full bg-bs-neutral-100 px-2.5 py-1">
-                          {restaurant.isOpen ? "Open now" : "Closed"}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
+                      <div className="mt-auto flex flex-col gap-2 sm:flex-row">
                         <button
                           type="button"
                           onClick={() => handleSuggestionSelect(restaurant)}
-                          className="flex-1 min-w-[120px] rounded-lg bg-bs-gold px-3 py-2 text-sm font-medium text-bs-neutral-900 transition-colors hover:bg-[#FFE44D]"
+                          className="flex-1 min-w-0 rounded-lg bg-bs-gold px-3 py-2 text-sm font-medium text-bs-neutral-900 transition-colors hover:bg-[#FFE44D]"
                         >
                           View on Map
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDirections(restaurant)}
-                          className="flex-1 min-w-[120px] rounded-lg border border-bs-neutral-200 bg-white px-3 py-2 text-sm font-medium text-bs-neutral-700 transition-colors hover:bg-bs-neutral-50"
+                          className="flex-1 min-w-0 rounded-lg border border-bs-neutral-200 bg-white px-3 py-2 text-sm font-medium text-bs-neutral-700 transition-colors hover:bg-bs-neutral-50"
                         >
                           Directions
                         </button>
