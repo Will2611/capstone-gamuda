@@ -1,149 +1,91 @@
-import json
 import os
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from dotenv import load_dotenv
+import json
+from typing import List
+from fastapi import APIRouter, HTTPException, status
 from google import genai
 from google.genai import types
-from pathlib import Path
 
-# 加载 .env 环境变量
-load_dotenv()
+from src.database.schemas.ai_recommendations import AIPromotionRequest, AIPromotionResponse
+from src.services.google_sheets import sheet_service
 
-app = FastAPI()
+router = APIRouter(prefix="/api/ai", tags=["AI Recommendations"])
 
-# 1. 初始化 Gemini 客户端
-# 确保在 .env 文件中设置了 GEMINI_API_KEY=your_gemini_api_key
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+# Initialize Gemini Client
+gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-JSON_FILE_PATH = Path(
-    r"C:\Users\User\visualstudioproject\capstone-project\capstone-project\back-end\src\database\data\pos_analytics_mock.json"
-)
-
-def load_pos_data():
-    """retrieve local POS Mock JSON data"""
-    if not os.path.exists(JSON_FILE_PATH):
-        raise FileNotFoundError(f"Cannot find POS mock file at {JSON_FILE_PATH}")
-    with open(JSON_FILE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-@app.post("/api/ai/recommendations")
-def get_ai_recommendations():
+async def fetch_mcp_trello_active_promos() -> List[str]:
+    """Retrieves active card titles from Trello/MCP to prevent duplicate promo recommendations."""
     try:
-        # 1. 读取 POS 数据
-        pos_data = load_pos_data()
+        # TODO: Replace with your actual MCP client call if active
+        return [
+            "Merdeka Family Bundle Deal",
+            "Weekend Football Finals Screening Special"
+        ]
+    except Exception as err:
+        print(f"⚠️ Warning: Could not fetch Trello promos: {err}")
+        return []
 
-        # 2. 构建 Prompt
-        system_prompt = """
-You are an AI Business Intelligence Assistant specializing in restaurant analytics.
+@router.post(
+    "/recommendations",
+    response_model=AIPromotionResponse,
+    status_code=status.HTTP_200_OK
+)
+async def generate_ai_promotions(payload: AIPromotionRequest):
+    try:
+        # 1. Fetch live metrics from Google Sheet service
+        sheet_data = sheet_service.fetch_dashboard_sheet_data()
+        
+        # 2. Fetch existing Trello promotions
+        existing_trello_promos = await fetch_mcp_trello_active_promos()
 
-Your responsibility is to analyze historical POS data and provide business insights for restaurant owners.
+        # 3. Formulate System Instructions
+        system_instruction = f"""
+You are an expert AI Promotion Generator for a restaurant owner.
+Analyze the provided merchant metrics and create creative, practical marketing promotions.
 
-The POS data may include:
-- Revenue reports
-- Sales trends
-- Best-selling items
-- Low-performing items
-- Peak and off-peak customer traffic
-- Historical promotion performance
-- Customer purchasing behavior
-- Upcoming holidays or seasonal events
-
-Your tasks are:
-1. Predict future business performance.
-2. Identify key business insights.
-3. Highlight business risks and opportunities.
-4. Recommend exactly TWO promotional campaigns that are practical and data-driven.
-
-Promotion recommendations should be realistic and based on the restaurant's historical data.
-
-Return ONLY valid JSON strictly following this schema:
-
-{
-  "performancePrediction": {
-    "summary": "Overall prediction of business performance.",
-    "confidence": "High",
-    "trend": "Increasing",
-    "expectedRevenueChange": "+8%",
-    "keyInsights": [
-      "Insight 1",
-      "Insight 2"
-    ]
-  },
-  "businessOpportunities": [
-    "Opportunity 1",
-    "Opportunity 2"
-  ],
-  "businessRisks": [
-    "Risk 1",
-    "Risk 2"
-  ],
-  "recommendedPromotions": [
-    {
-      "title": "",
-      "description": "",
-      "targetGoal": "",
-      "suggestedStartDate": "YYYY-MM-DD",
-      "suggestedEndDate": "YYYY-MM-DD",
-      "suggestedStartTime": "HH:MM",
-      "suggestedEndTime": "HH:MM",
-      "isAllDay": false,
-      "expectedRevenueImpact": "+15%"
-    },
-    {
-      "title": "",
-      "description": "",
-      "targetGoal": "",
-      "suggestedStartDate": "YYYY-MM-DD",
-      "suggestedEndDate": "YYYY-MM-DD",
-      "suggestedStartTime": "HH:MM",
-      "suggestedEndTime": "HH:MM",
-      "isAllDay": false,
-      "expectedRevenueImpact": "+12%"
-    }
-  ]
-}
-
-Do not return Markdown codeblock ```json.
-Do not explain anything.
-Return JSON only.
+CRITICAL GUARDRAILS:
+1. OUTPUT MUST BE VALID JSON conforming strictly to the requested schema.
+2. GENERATE A MAXIMUM OF 3 PROMOTIONS. NEVER EXCEED 3.
+3. DO NOT DUPLICATE or clone existing active cards from Trello:
+   Existing Active Promos: {json.dumps(existing_trello_promos)}
+4. IF USER INPUT IS EMPTY: Suggest 3 high-impact strategies tailored to top-selling items and customer segments from Google Sheets.
+5. IF USER INPUT IS PROVIDED: Tailor recommendations around the user's specific theme while avoiding duplicate ideas.
+6. Return recommended_start_date and recommended_end_date using format YYYY-MM-DD.
 """
 
-        user_prompt = f"""
-Below is the restaurant's historical POS data.
+        user_content = f"""
+Merchant Sheet Context:
+- Top Menu Items: {json.dumps(sheet_data.get('menu_items', []))}
+- Target Customer Segments: {json.dumps(sheet_data.get('customer_segments', []))}
+- Financial Overview: {json.dumps(sheet_data.get('financial_summary', []))}
 
-Please analyze the business performance, identify important trends, predict future performance, and recommend two promotional campaigns.
-
-POS Data:
-{json.dumps(pos_data, ensure_ascii=False, indent=2)}
+User Input / Topic: {payload.user_input if payload.user_input else "Generate top 3 overall growth ideas."}
 """
 
-        # 3. 调用 Gemini API (使用推荐的 gemini-2.5-flash 模型)
-        response = client.models.generate_content(
+        # 4. Call Gemini 2.5 Flash with structured JSON output
+        response = gemini_client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=user_prompt,
+            contents=user_content,
             config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                response_mime_type="application/json", # 强制 Gemini 输出 JSON 格式
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=AIPromotionResponse,
                 temperature=0.7,
             ),
         )
 
-        # 4. 获取 AI 返回内容并解析
-        raw_content = response.text
+        if not response.text:
+            raise HTTPException(status_code=500, detail="Gemini returned an empty response.")
 
-        if not raw_content:
-            raise HTTPException(status_code=500, detail="AI returned an empty response.")
+        # Parse & ensure max 3 safeguard
+        parsed_result = AIPromotionResponse.model_validate_json(response.text)
+        if len(parsed_result.promotions) > 3:
+            parsed_result.promotions = parsed_result.promotions[:3]
 
-        ai_result = json.loads(raw_content)
-
-        return {
-            "status": "success",
-            "data": ai_result
-        }
+        return parsed_result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )

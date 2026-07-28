@@ -11,6 +11,7 @@ from src.database.controllers.utils import CurrentUser
 import os
 # import src.routers as db_routers
 from src.routers.analytics import router as analytics_router
+from src.routers.ai_recommendations import router as ai_router
 
     
 app = FastAPI()
@@ -87,3 +88,4 @@ for router_file in routers:
 
 # app.include_router(db_routers)
 app.include_router(analytics_router)
+app.include_router(ai_router)
