@@ -13,14 +13,14 @@ class PromotionModel(KwOnlyMixin, Base):
     __tablename__ = "promotions"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default_factory=uuid.uuid4)
-    promo_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    promo_id: Mapped[str] = mapped_column(String, unique=True, nullable=False) # type: ignore
     restaurant_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("restaurants.id"), nullable=True, default=None)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    description: Mapped[str] = mapped_column(String, nullable=False)
-    image_url: Mapped[str] = mapped_column(String, nullable=False)
-    website_url: Mapped[str] = mapped_column(String, nullable=False)
-    start_date: Mapped[date] = mapped_column(Date, nullable=False)
-    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False) # type: ignore
+    description: Mapped[str] = mapped_column(String, nullable=False) # type: ignore
+    image_url: Mapped[str] = mapped_column(String, nullable=False) # type: ignore
+    website_url: Mapped[str] = mapped_column(String, nullable=False) # type: ignore
+    start_date: Mapped[date] = mapped_column(Date, nullable=False) # type: ignore
+    end_date: Mapped[date] = mapped_column(Date, nullable=False) # type: ignore
     start_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True, default=None)
     end_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True, default=None)
     is_all_day: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

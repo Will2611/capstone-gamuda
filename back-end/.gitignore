@@ -4,3 +4,4 @@ __pycache__/
 .env
 node_modules/
 data/sentiment_llm_cache.json
+credentials.json

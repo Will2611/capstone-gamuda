@@ -9,6 +9,8 @@ from src.llm.router import router as llm_router
 from src.services.jwt import ensure_default_cookie, CookieCustom, setCookie, getCookiePayload, default_session_generator
 from src.database.controllers.utils import CurrentUser
 import os
+# import src.routers as db_routers
+from src.routers.analytics import router as analytics_router
 
     
 app = FastAPI()
@@ -83,3 +85,5 @@ app.include_router(llm_router)
 for router_file in routers:
     app.include_router(router_file)
 
+# app.include_router(db_routers)
+app.include_router(analytics_router)

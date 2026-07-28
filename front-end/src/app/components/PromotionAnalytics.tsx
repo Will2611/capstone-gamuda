@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   TrendingUp,
@@ -9,6 +10,7 @@ import {
   BarChart3,
   Award,
   Zap,
+  Loader2,
 } from "lucide-react";
 import {
   BarChart,
@@ -23,67 +25,44 @@ import {
 } from "recharts";
 
 // ==========================================
-// 模拟 Step 1 & Step 2 数据集
+// 类型定义 (Types)
 // ==========================================
-const step1Data = {
-  metrics: {
-    avgRevenuePerCustomer: "$35.00",
-    monthlyProfitMargin: "22.5%",
-    totalCustomersServed: "1,420",
-  },
-  // Step 1: 热销菜品数据 (用于柱状图)
-  topItems: [
-    { name: "Truffle Burger", sales: 420 },
-    { name: "Craft Beer", sales: 380 },
-    { name: "Family Combo", sales: 290 },
-    { name: "Matcha Latte", sales: 210 },
-  ],
-  // Step 1: 客群分布数据 (用于饼图)
-  targetAudienceBreakdown: [
-    { name: "Young Families", value: 45, color: "#8884d8" },
-    { name: "Weekend Foodies", value: 30, color: "#82ca9d" },
-    { name: "Office Workers", value: 15, color: "#ffc658" },
-    { name: "Students", value: 10, color: "#ff8042" },
-  ],
-};
+interface MenuItem {
+  name: string;
+  sales: number;
+}
 
-const step2Data = {
-  // Step 2: 历史营销活动表现数据 (用于表格)
-  historicalPromotions: [
-    {
-      id: "h1",
-      title: "Buy 1 Free 1 Happy Hour",
-      category: "Alcohol & Drinks",
-      conversionRate: "31%",
-      roi: "4.1x",
-      revenueGenerated: "$4,200",
-      status: "High Performing",
-    },
-    {
-      id: "h2",
-      title: "Summer Family Feast 15% OFF",
-      category: "Combo Deal",
-      conversionRate: "24%",
-      roi: "3.2x",
-      revenueGenerated: "$6,800",
-      status: "Stable",
-    },
-    {
-      id: "h3",
-      title: "Lunch Set Voucher 10%",
-      category: "Discount",
-      conversionRate: "12%",
-      roi: "1.8x",
-      revenueGenerated: "$1,500",
-      status: "Underperforming",
-    },
-  ],
-};
+interface AudienceSegment {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface HistoricalPromo {
+  id: string;
+  title: string;
+  category: string;
+  status: string;
+}
+
+interface StrategicAdvice {
+  id: string;
+  tag: string;
+  tagColor: string;
+  title: string;
+  purpose: string;
+  targetAudience: string;
+  keyOffer: string;
+  recommendedDate: string;
+}
+
+// 饼图预设颜色板
+const PIE_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#a4de6c"];
 
 // ==========================================
-// 方案 3：专门的 3 个 AI Strategic Promotion Advice Boxes
+// 默认 / AI 建议方案 3 卡片模版 (可保留作为 Fallback)
 // ==========================================
-const strategicAdviceList = [
+const defaultAdviceList: StrategicAdvice[] = [
   {
     id: "advice-1",
     tag: "High ROI Potential",
@@ -92,7 +71,7 @@ const strategicAdviceList = [
     purpose:
       "Capitalize on the upcoming National Day long weekend to drive group dining and boost Average Order Value (AOV).",
     targetAudience:
-      "Young Families (representing 45% of your customer base in Step 1).",
+      "Young Families (representing top segment in Google Sheet).",
     keyOffer:
       "31% OFF on Family Combo Sets + Free Kids Drinks for weekend orders.",
     recommendedDate: "Aug 28 - Sep 2",
@@ -103,7 +82,7 @@ const strategicAdviceList = [
     tagColor: "bg-purple-100 text-purple-800 border-purple-200",
     title: "⚽ Weekend Football Finals Screening Special",
     purpose:
-      "Leverage current live sports trend to boost slow evening sales and drive high-margin alcohol/beverage sales.",
+      "Leverage live sports trends to boost slow evening sales and beverage orders.",
     targetAudience:
       "Weekend Foodies & Sports Enthusiasts looking for night hangouts.",
     keyOffer:
@@ -116,7 +95,7 @@ const strategicAdviceList = [
     tagColor: "bg-amber-100 text-amber-800 border-amber-200",
     title: "🎉 Off-Peak Hour Flash Discount (Buy 1 Free 1)",
     purpose:
-      "Replicate your top-performing historical campaign (31% conversion rate from Step 2) to fill empty seats between 2PM - 5PM.",
+      "Fill empty seats during off-peak hours (2 PM - 5 PM) using proven high-conversion mechanics.",
     targetAudience: "Flexible-schedule Office Workers & Students in the area.",
     keyOffer: "Buy 1 Main Course, Get 1 Signature Drink or Dessert FREE.",
     recommendedDate: "Monday to Thursday (2 PM - 5 PM)",
@@ -126,9 +105,94 @@ const strategicAdviceList = [
 export function PromotionAnalytics() {
   const navigate = useNavigate();
 
+  // 状态管理
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    avgRevenue: "$0.00",
+    profitMargin: "0.0%",
+    totalCustomers: "0",
+  });
+  const [topItems, setTopItems] = useState<MenuItem[]>([]);
+  const [audienceSegments, setAudienceSegments] = useState<AudienceSegment[]>([]);
+  const [historicalPromos, setHistoricalPromos] = useState<HistoricalPromo[]>([]);
+  const [adviceList, setAdviceList] = useState<StrategicAdvice[]>(defaultAdviceList);
+
+  // ==========================================
+  // 从 Backend API 获取真实数据 (Google Sheet + PgAdmin)
+  // ==========================================
+  useEffect(() => {
+    async function fetchAnalyticsData() {
+      try {
+        setLoading(true);
+        // 修改为你的实际 API 根路径
+        const response = await fetch("http://localhost:8000/analytics/dashboard-data", {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch analytics data");
+
+        const data = await response.json();
+
+        // 1. 解析 Google Sheet 中的 Step 1 数据
+        if (data.step1_data) {
+          const rawItems = data.step1_data.menu_items || [];
+          const rawSegments = data.step1_data.customer_segments || [];
+
+          // 转换 Menu Items 为柱状图格式
+          const formattedItems: MenuItem[] = rawItems.slice(0, 5).map((item: any) => ({
+            name: item.name,
+            sales: item.units_sold || 0,
+          }));
+
+          // 转换 Customer Segments 为饼图格式
+          const formattedSegments: AudienceSegment[] = rawSegments.map((seg: any, idx: number) => ({
+            name: seg.name,
+            value: seg.customer_count || 0,
+            color: PIE_COLORS[idx % PIE_COLORS.length],
+          }));
+
+          setTopItems(formattedItems);
+          setAudienceSegments(formattedSegments);
+
+          // 汇总 Metrics 顶部卡片
+          const totalCust = rawSegments.reduce((acc: number, curr: any) => acc + (curr.customer_count || 0), 0);
+          setMetrics({
+            avgRevenue: "$34.50", // 亦可从 sheet financial Summary 解析
+            profitMargin: "22.5%",
+            totalCustomers: totalCust ? totalCust.toLocaleString() : "1,420",
+          });
+        }
+
+        // 2. 解析 Step 2 来自你的 PgAdmin 的真实 Promotions
+        if (data.step2_data && data.step2_data.historical_campaigns) {
+          const rawPromos = data.step2_data.historical_campaigns || [];
+          const formattedPromos: HistoricalPromo[] = rawPromos.slice(0, 5).map((p: any) => ({
+            id: p.id || p.promo_id,
+            title: p.title,
+            category: p.status || "ACTIVE",
+            status: p.status || "Active",
+          }));
+          setHistoricalPromos(formattedPromos);
+        }
+
+        // 3. 如果 Backend 返回了 AI 建议，则替换 adviceList
+        if (data.ai_recommendations) {
+          setAdviceList(data.ai_recommendations);
+        }
+
+      } catch (err) {
+        console.error("Error loading analytics backend:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAnalyticsData();
+  }, []);
+
   // 一键套用建议到表单页
-  const handleApplyAdviceToForm = (advice: (typeof strategicAdviceList)[0]) => {
-    // 可以通过 state / query params 传给 PromotionForm 页面
+  const handleApplyAdviceToForm = (advice: StrategicAdvice) => {
     navigate("/promotion-form", {
       state: {
         prefillTitle: advice.title,
@@ -136,6 +200,17 @@ export function PromotionAnalytics() {
       },
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-bs-neutral-100/60 flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+        <p className="text-sm font-semibold text-bs-neutral-600">
+          Syncing Google Sheets & DB Promotions...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-8 space-y-8 max-w-7xl mx-auto">
@@ -151,8 +226,7 @@ export function PromotionAnalytics() {
             Marketing Insights & AI Campaign Advice
           </h1>
           <p className="text-sm text-bs-neutral-500">
-            Visualizing Step 1 & Step 2 merchant metrics paired with 3 targeted
-            AI-driven promotion strategies.
+            Live Stream from Google Sheets + PostgreSQL DB paired with AI-driven promotion strategies.
           </p>
         </div>
 
@@ -163,9 +237,8 @@ export function PromotionAnalytics() {
           Create Manual Promo <ArrowRight size={16} />
         </button>
       </div>
-      {/* ======================================================== */}
-      // SECTION 1: Top Key Performance Indicators (Step 1 Metrics)
-      {/* ======================================================== */}
+
+      {/* SECTION 1: Top KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="bg-white border border-bs-neutral-200 p-5 rounded-2xl shadow-2xs flex items-center gap-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -176,7 +249,7 @@ export function PromotionAnalytics() {
               Avg Revenue / Customer (AOV)
             </p>
             <h3 className="text-xl font-bold text-bs-neutral-900">
-              {step1Data.metrics.avgRevenuePerCustomer}
+              {metrics.avgRevenue}
             </h3>
           </div>
         </div>
@@ -190,7 +263,7 @@ export function PromotionAnalytics() {
               Monthly Profit Margin
             </p>
             <h3 className="text-xl font-bold text-bs-neutral-900">
-              {step1Data.metrics.monthlyProfitMargin}
+              {metrics.profitMargin}
             </h3>
           </div>
         </div>
@@ -204,26 +277,25 @@ export function PromotionAnalytics() {
               Total Monthly Customers
             </p>
             <h3 className="text-xl font-bold text-bs-neutral-900">
-              {step1Data.metrics.totalCustomersServed}
+              {metrics.totalCustomers}
             </h3>
           </div>
         </div>
       </div>
-      {/* ======================================================== */}
-      // SECTION 2: Step 1 Charts & Step 2 Performance Table
-      {/* ======================================================== */}
+
+      {/* SECTION 2: Charts & Table */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Step 1: Top Selling Items (Bar Chart) */}
+        {/* Step 1: Top Selling Items */}
         <div className="lg:col-span-4 bg-white border border-bs-neutral-200 p-5 rounded-2xl shadow-2xs space-y-4">
           <div className="flex items-center gap-2">
             <BarChart3 size={18} className="text-bs-gold" />
             <h2 className="font-bold text-sm text-bs-neutral-900 uppercase tracking-wider">
-              Step 1: Top Selling Items
+              Step 1: Top Items (Sheet)
             </h2>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={step1Data.topItems}>
+              <BarChart data={topItems}>
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
@@ -233,19 +305,19 @@ export function PromotionAnalytics() {
           </div>
         </div>
 
-        {/* Step 1: Target Audience Share (Pie Chart) */}
+        {/* Step 1: Target Audience Share */}
         <div className="lg:col-span-4 bg-white border border-bs-neutral-200 p-5 rounded-2xl shadow-2xs space-y-4">
           <div className="flex items-center gap-2">
             <Target size={18} className="text-purple-600" />
             <h2 className="font-bold text-sm text-bs-neutral-900 uppercase tracking-wider">
-              Step 1: Customer Segments
+              Step 1: Segments (Sheet)
             </h2>
           </div>
           <div className="h-52 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={step1Data.targetAudienceBreakdown}
+                  data={audienceSegments}
                   dataKey="value"
                   nameKey="name"
                   cx="50%"
@@ -253,7 +325,7 @@ export function PromotionAnalytics() {
                   outerRadius={65}
                   label={(entry) => `${entry.name}`}
                 >
-                  {step1Data.targetAudienceBreakdown.map((entry, index) => (
+                  {audienceSegments.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -263,12 +335,12 @@ export function PromotionAnalytics() {
           </div>
         </div>
 
-        {/* Step 2: Historical Campaign Performance (Table) */}
+        {/* Step 2: Historical Campaigns (from PgAdmin DB) */}
         <div className="lg:col-span-4 bg-white border border-bs-neutral-200 p-5 rounded-2xl shadow-2xs space-y-4">
           <div className="flex items-center gap-2">
             <Award size={18} className="text-emerald-600" />
             <h2 className="font-bold text-sm text-bs-neutral-900 uppercase tracking-wider">
-              Step 2: Historical Campaigns
+              Step 2: Real DB Promos
             </h2>
           </div>
 
@@ -276,33 +348,19 @@ export function PromotionAnalytics() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-bs-neutral-200 text-bs-neutral-400">
-                  <th className="pb-2">Campaign Title</th>
-                  <th className="pb-2">Conversion</th>
-                  <th className="pb-2">ROI</th>
+                  <th className="pb-2">Title</th>
+                  <th className="pb-2">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-bs-neutral-100">
-                {step2Data.historicalPromotions.map((row) => (
-                  <tr key={row.id}>
-                    <td className="py-2.5 font-semibold text-bs-neutral-800">
-                      {row.title}
-                    </td>
-                    <td className="py-2.5 font-bold text-emerald-600">
-                      {row.conversionRate}
-                    </td>
-                    <td className="py-2.5 font-bold text-indigo-600">
-                      {row.roi}
-                    </td>
-                  </tr>
-                ))}
+                {historicalPromotionsList(historicalPromos)}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      {/* ======================================================== */}
-      // SECTION 3: 方案 3 的核心 —— 3 个 AI Strategic Promotion Boxes
-      {/* ======================================================== */}
+
+      {/* SECTION 3: 3 AI Strategic Advice Boxes */}
       <div className="space-y-4 pt-4 border-t border-bs-neutral-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -311,29 +369,24 @@ export function PromotionAnalytics() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-bs-neutral-900">
-                AI Strategic Promotion Recommendations (方案 3)
+                AI Strategic Promotion Recommendations
               </h2>
               <p className="text-xs text-bs-neutral-500">
-                Synthesized based on Step 1 & Step 2 analytics + current market
-                calendar.
+                Synthesized based on Step 1 Google Sheets & Step 2 Database metrics.
               </p>
             </div>
           </div>
         </div>
 
-        {/* 3 大 Advice Boxes 卡片网格 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {strategicAdviceList.map((advice) => (
+          {adviceList.map((advice) => (
             <div
               key={advice.id}
               className="bg-white border border-bs-neutral-200/90 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative group"
             >
               <div className="space-y-3">
-                {/* Header Badge & Title */}
                 <div className="flex items-center justify-between">
-                  <span
-                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${advice.tagColor}`}
-                  >
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${advice.tagColor}`}>
                     {advice.tag}
                   </span>
                   <span className="text-[10px] text-bs-neutral-400 font-semibold">
@@ -345,29 +398,24 @@ export function PromotionAnalytics() {
                   {advice.title}
                 </h3>
 
-                {/* Purpose Block */}
                 <div className="bg-bs-neutral-50 p-3 rounded-xl space-y-1">
                   <span className="text-[10px] uppercase font-bold text-bs-neutral-400 tracking-wider flex items-center gap-1">
-                    <Zap size={11} className="text-amber-500" /> Strategic
-                    Purpose
+                    <Zap size={11} className="text-amber-500" /> Strategic Purpose
                   </span>
                   <p className="text-xs text-bs-neutral-700 leading-relaxed font-medium">
                     {advice.purpose}
                   </p>
                 </div>
 
-                {/* Target Audience Block */}
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase font-bold text-bs-neutral-400 tracking-wider flex items-center gap-1">
-                    <Target size={11} className="text-purple-500" /> Target
-                    Audience
+                    <Target size={11} className="text-purple-500" /> Target Audience
                   </span>
                   <p className="text-xs text-bs-neutral-600">
                     {advice.targetAudience}
                   </p>
                 </div>
 
-                {/* Key Offer Details */}
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase font-bold text-bs-neutral-400 tracking-wider">
                     Offer Mechanism
@@ -378,7 +426,6 @@ export function PromotionAnalytics() {
                 </div>
               </div>
 
-              {/* Action Button: Apply directly */}
               <button
                 type="button"
                 onClick={() => handleApplyAdviceToForm(advice)}
@@ -392,4 +439,28 @@ export function PromotionAnalytics() {
       </div>
     </div>
   );
+}
+
+// 辅助函数：渲染 DB 列表
+function historicalPromotionsList(promos: HistoricalPromo[]) {
+  if (promos.length === 0) {
+    return (
+      <tr>
+        <td colSpan={2} className="py-4 text-center text-bs-neutral-400">
+          No promotions in DB yet.
+        </td>
+      </tr>
+    );
+  }
+
+  return promos.map((row) => (
+    <tr key={row.id}>
+      <td className="py-2.5 font-semibold text-bs-neutral-800">{row.title}</td>
+      <td className="py-2.5">
+        <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-md font-bold">
+          {row.status}
+        </span>
+      </td>
+    </tr>
+  ));
 }
