@@ -22,3 +22,12 @@ class AIPromotionResponse(BaseModel):
 class AIPromotionRequest(BaseModel):
     user_input: Optional[str] = Field(None, description="User promo topic, dish, or null.")
     context_override: Optional[dict] = Field(None, description="Optional extra merchant context.")
+
+class AIRewriteRequest(BaseModel):
+    field: str = Field(..., description="Target field to generate: 'title' or 'description'")
+    current_title: Optional[str] = Field(None, description="Current title in form (useful context when generating description)")
+    current_text: Optional[str] = Field(None, description="Existing text in the input box for variation context")
+    iteration_index: int = Field(1, description="Counter tracking how many times the user clicked rewrite")
+
+class AIRewriteResponse(BaseModel):
+    generated_text: str = Field(..., description="The rewritten title or description text")

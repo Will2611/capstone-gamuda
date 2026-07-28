@@ -83,10 +83,10 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   // } | null>(null);
 
   // // --- 方案 1：独立字段 AI 生成状态与多轮生成计数器 ---
-  // const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
-  // const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-  // const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
-  // const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
+  const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
 
   // // ==========================================
   // // 1. 动态日历与趋势 Context 获取区
@@ -522,6 +522,69 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
 
   // const marketTrends = getCurrentMarketTrends();
 
+  // 1. Handle Inline Title Rewrite Call
+  const handleGenerateTitleOnly = async () => {
+    setIsGeneratingTitle(true);
+    const nextCount = titleGenCount + 1;
+    setTitleGenCount(nextCount);
+
+    try {
+      const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field: "title",
+          current_text: title.trim(),
+          iteration_index: nextCount,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to rewrite title");
+
+      const data = await res.json();
+      if (data.generated_text) {
+        setTitle(data.generated_text);
+        setErrors((prev) => ({ ...prev, title: undefined }));
+      }
+    } catch (err) {
+      console.error("Error generating title:", err);
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  };
+
+  // 2. Handle Inline Description Rewrite Call
+  const handleGenerateDescOnly = async () => {
+    setIsGeneratingDesc(true);
+    const nextCount = descGenCount + 1;
+    setDescGenCount(nextCount);
+
+    try {
+      const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field: "description",
+          current_title: title.trim(),
+          current_text: description.trim(),
+          iteration_index: nextCount,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to rewrite description");
+
+      const data = await res.json();
+      if (data.generated_text) {
+        setDescription(data.generated_text);
+        setErrors((prev) => ({ ...prev, description: undefined }));
+      }
+    } catch (err) {
+      console.error("Error generating description:", err);
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bs-neutral-100/60 py-10 px-4 md:px-6 relative">
       <div className="max-w-6xl mx-auto">
@@ -565,7 +628,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <label className="text-sm font-semibold text-bs-neutral-800">
                   Promotion Title <span className="text-red-500">*</span>
                 </label>
-                {/* <button
+                <button
                   type="button"
                   onClick={handleGenerateTitleOnly}
                   disabled={isGeneratingTitle}
@@ -579,7 +642,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   {title
                     ? `Rewrite Title (v${titleGenCount + 1})`
                     : "AI Generate Title"}
-                </button> */}
+                </button>
               </div>
               <input
                 className={`w-full border rounded-xl p-3 outline-none text-bs-neutral-800 transition-all placeholder:text-bs-neutral-400
@@ -609,7 +672,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                 <label className="text-sm font-semibold text-bs-neutral-800">
                   Description <span className="text-red-500">*</span>
                 </label>
-                {/* <button
+                <button
                   type="button"
                   onClick={handleGenerateDescOnly}
                   disabled={isGeneratingDesc}
@@ -623,7 +686,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   {description
                     ? `Generate Next Idea (v${descGenCount + 1})`
                     : "AI Generate Copy"}
-                </button> */}
+                </button>
               </div>
               <textarea
                 rows={4}
