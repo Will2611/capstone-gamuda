@@ -14,8 +14,6 @@ import {
   RefreshCw,
   X,
   Check,
-  Database,
-  TrendingUp,
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
@@ -42,10 +40,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     prefillTitle?: string;
     prefillDescription?: string;
   } | null;
-  // const [title, setTitle] = useState(initialData?.title ?? "");
-  // const [description, setDescription] = useState(
-  //   initialData?.description ?? "",
-  // );
+
   const [title, setTitle] = useState(
     prefilled?.prefillTitle ?? initialData?.title ?? "",
   );
@@ -71,237 +66,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // --- 方案 2：全量 AI 助手弹窗状态 ---
-  // const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  // const [aiPromptInput, setAiPromptInput] = useState("");
-  // const [isAiProcessing, setIsAiProcessing] = useState(false);
-  // const [aiGeneratedResult, setAiGeneratedResult] = useState<{
-  //   title: string;
-  //   description: string;
-  //   imageUrl: string;
-  //   eventTag?: string;
-  // } | null>(null);
-
   // // --- 方案 1：独立字段 AI 生成状态与多轮生成计数器 ---
   const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [titleGenCount, setTitleGenCount] = useState(0); // 记录 Title 重写次数
   const [descGenCount, setDescGenCount] = useState(0); // 记录 Desc 重写次数
-
-  // // ==========================================
-  // // 1. 动态日历与趋势 Context 获取区
-  // // ==========================================
-  // const getCurrentMarketTrends = () => {
-  //   const today = new Date();
-  //   const formattedDate = today.toISOString().split("T")[0];
-
-  //   return {
-  //     currentDate: formattedDate,
-  //     season: "Summer",
-  //     upcomingHolidaysAndEvents: [
-  //       {
-  //         name: "National Day / Merdeka Special",
-  //         category: "Holiday",
-  //         date: "Aug 31",
-  //       },
-  //       {
-  //         name: "School Holiday Season",
-  //         category: "Calendar",
-  //         date: "Aug - Sep",
-  //       },
-  //       {
-  //         name: "Football Finals Night (Live Screen)",
-  //         category: "Sports Trend",
-  //         date: "This Weekend",
-  //       },
-  //     ],
-  //   };
-  // };
-
-  // // ==========================================
-  // // 2. 结合 Step 1/2 数据与实时 Trend 打包 Payload
-  // // ==========================================
-  // const getFullContextPayload = () => {
-  //   return {
-  //     market_trends: getCurrentMarketTrends(),
-  //     step1_merchant_metrics: {
-  //       avgRevenuePerCustomer: "$35",
-  //       monthlyProfitMargin: "22%",
-  //       targetAudience: "Young Families & Weekend Foodies",
-  //       topSellingItems: ["Truffle Burger", "Craft Beer", "Family Combo"],
-  //     },
-  //     step2_historical_promotions: [
-  //       {
-  //         title: "Summer Family Feast 15% OFF",
-  //         conversionRate: "24%",
-  //         roi: "3.2x",
-  //       },
-  //       {
-  //         title: "Buy 1 Get 1 Cocktail Happy Hour",
-  //         conversionRate: "31%",
-  //         roi: "4.1x",
-  //       },
-  //     ],
-  //   };
-  // };
-
-  // // ==========================================
-  // // API 逻辑区
-  // // ==========================================
-
-  // // [方案 2] 全局生成：结合日历热点 + 商家 Step 1&2 数据
-  // const handleRunAiAssistant = async (customPrompt?: string) => {
-  //   const activePrompt = customPrompt || aiPromptInput;
-  //   if (!activePrompt.trim()) return;
-
-  //   setIsAiProcessing(true);
-  //   setAiGeneratedResult(null);
-
-  //   const fullContext = getFullContextPayload();
-
-  //   const apiPayload = {
-  //     userIdea: activePrompt,
-  //     context: fullContext,
-  //   };
-
-  //   console.log("🚀 [AI Full Campaign Request Payload]:", apiPayload);
-
-  //   setTimeout(() => {
-  //     let mockResult = {
-  //       title: `🇲🇾 National Day Celebration: 31% OFF ${activePrompt}!`,
-  //       description: `Celebrate National Day with family & friends! Enjoy 31% OFF on our best-selling ${fullContext.step1_merchant_metrics.topSellingItems[0]} and family bundles. Valid through the holiday week!`,
-  //       imageUrl:
-  //         "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop",
-  //       eventTag: "National Day Special",
-  //     };
-
-  //     if (
-  //       activePrompt.toLowerCase().includes("football") ||
-  //       activePrompt.toLowerCase().includes("sports")
-  //     ) {
-  //       mockResult = {
-  //         title: `⚽ Match Night Craze: Live Screening & Beer Buckets!`,
-  //         description: `Catch the live football finals this weekend! Bring your crew to enjoy live screening along with our special Craft Beer Bucket Deals and Truffle Burgers. Limited seating available!`,
-  //         imageUrl:
-  //           "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop",
-  //         eventTag: "Live Sports Trend",
-  //       };
-  //     } else if (
-  //       activePrompt.toLowerCase().includes("school") ||
-  //       activePrompt.toLowerCase().includes("holiday") ||
-  //       activePrompt.toLowerCase().includes("family")
-  //     ) {
-  //       mockResult = {
-  //         title: `🎉 School Holiday Family Treat: Kids Eat Free!`,
-  //         description: `School's out, fun's in! Treat your family during this school break. Buy any 2 main courses from our special menu and get a Kid's Meal completely FREE!`,
-  //         imageUrl:
-  //           "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&auto=format&fit=crop",
-  //         eventTag: "School Break Trend",
-  //       };
-  //     }
-
-  //     setAiGeneratedResult(mockResult);
-  //     setIsAiProcessing(false);
-  //   }, 1500);
-  // };
-
-  // // [方案 1] 改进版 Title 生成：基于现有文字保留主题变体 + 递增版本
-  // const handleGenerateTitleOnly = async () => {
-  //   setIsGeneratingTitle(true);
-  //   const nextCount = titleGenCount + 1;
-  //   setTitleGenCount(nextCount);
-
-  //   const apiPayload = {
-  //     field: "title",
-  //     currentInputText: title.trim(), // 传入当前框内文本
-  //     iterationIndex: nextCount, // 传入生成的次数，提示后端生成不同变体
-  //     context: getFullContextPayload(),
-  //   };
-
-  //   console.log("🚀 [AI Regenerate Title Request]:", apiPayload);
-
-  //   setTimeout(() => {
-  //     if (title.trim()) {
-  //       // 当框内已有字时：保持原有主题进行变体生成 (Based on existing keyword)
-  //       const base = title.trim();
-  //       const Variations = [
-  //         `🇲🇾 ${base} Special: Buy 1 Free 1 Deal!`,
-  //         `🔥 Festive Promo: ${base} Bundle Offer`,
-  //         `🎉 Special Celebration: ${base} - Exclusive Discount!`,
-  //         `✨ Limited Time: ${base} (Weekend Only)`,
-  //       ];
-  //       // 循环取不同版本，保证每次按都不一样
-  //       setTitle(Variations[(nextCount - 1) % Variations.length]);
-  //     } else {
-  //       // 当框内为空时：结合当前最火 Trend 填充
-  //       const TrendTitles = [
-  //         "🇲🇾 Merdeka Day Special: 31% OFF Family Set",
-  //         "⚽ Weekend Match Night: Free Craft Beer with Burger",
-  //         "🎉 School Break Holiday Feast: Kids Eat Free",
-  //       ];
-  //       setTitle(TrendTitles[(nextCount - 1) % TrendTitles.length]);
-  //     }
-
-  //     setIsGeneratingTitle(false);
-  //     setErrors((prev) => ({ ...prev, title: undefined }));
-  //   }, 1000);
-  // };
-
-  // // [方案 1] 改进版 Description 生成：基于现有文字优化 + 多轮不重复
-  // const handleGenerateDescOnly = async () => {
-  //   setIsGeneratingDesc(true);
-  //   const nextCount = descGenCount + 1;
-  //   setDescGenCount(nextCount);
-
-  //   const apiPayload = {
-  //     field: "description",
-  //     currentTitle: title.trim(),
-  //     currentInputText: description.trim(), // 传入当前框内文本
-  //     iterationIndex: nextCount, // 传入轮次，要求后端生成全新切入点
-  //     context: getFullContextPayload(),
-  //   };
-
-  //   console.log("🚀 [AI Regenerate Description Request]:", apiPayload);
-
-  //   setTimeout(() => {
-  //     const topic = title ? `for "${title}"` : "for your restaurant offer";
-  //     const fullContext = getFullContextPayload();
-  //     const topItem = fullContext.step1_merchant_metrics.topSellingItems[0];
-
-  //     // 提供多套不同切入点 (Angle) 的文案模板，每次点击生成下一版
-  //     const descVariations = [
-  //       `🔥 Exclusive Deal ${topic}! Indulge in our famous ${topItem} with special holiday pricing. Perfect for gathering with family & friends. Book your table now before slots run out!`,
-  //       `🎉 Limited-Time Offer ${topic}! Tailored specially for food lovers. Enjoy premium quality ingredients, handcrafted cocktails, and great ambiance. Available this week only!`,
-  //       `✨ Celebrate with us ${topic}! Claim your special discount on signature menu items. Bring your loved ones and experience an unforgettable meal. Order or reserve online today!`,
-  //       `🇲🇾 Season Special ${topic}! Don't miss out on our best-selling combo deals. High customer satisfaction guaranteed. T&C apply, offer valid while stocks last!`,
-  //     ];
-
-  //     // 每次点击递增选下一版，彻底杜绝重复
-  //     setDescription(descVariations[(nextCount - 1) % descVariations.length]);
-
-  //     setIsGeneratingDesc(false);
-  //     setErrors((prev) => ({ ...prev, description: undefined }));
-  //   }, 1000);
-  // };
-
-  // // 应用方案 2 的结果
-  // const handleApplyAiResult = () => {
-  //   if (!aiGeneratedResult) return;
-  //   setTitle(aiGeneratedResult.title);
-  //   setDescription(aiGeneratedResult.description);
-  //   setImageUrl(aiGeneratedResult.imageUrl);
-
-  //   setErrors((prev) => ({
-  //     ...prev,
-  //     title: undefined,
-  //     description: undefined,
-  //     imageUrl: undefined,
-  //   }));
-
-  //   setIsAiModalOpen(false);
-  //   setAiPromptInput("");
-  //   setAiGeneratedResult(null);
-  // };
 
   // --- AI Modal State ---
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);

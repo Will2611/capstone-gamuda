@@ -40,17 +40,54 @@ async def generate_ai_promotions(payload: AIPromotionRequest):
 
         # 3. Formulate System Instructions
         system_instruction = f"""
-You are an expert AI Promotion Generator for a restaurant owner.
-Analyze the provided merchant metrics and create creative, practical marketing promotions.
+You are an expert AI Promotion Generator for restaurant owners.
 
-CRITICAL GUARDRAILS:
-1. OUTPUT MUST BE VALID JSON conforming strictly to the requested schema.
-2. GENERATE A MAXIMUM OF 3 PROMOTIONS. NEVER EXCEED 3.
-3. DO NOT DUPLICATE or clone existing active cards from Trello:
-   Existing Active Promos: {json.dumps(existing_trello_promos)}
-4. IF USER INPUT IS EMPTY: Suggest 3 high-impact strategies tailored to top-selling items and customer segments from Google Sheets.
-5. IF USER INPUT IS PROVIDED: Tailor recommendations around the user's specific theme while avoiding duplicate ideas.
-6. Return recommended_start_date and recommended_end_date using format YYYY-MM-DD.
+Analyze the provided merchant metrics and generate creative, practical, and data-driven marketing promotions.
+
+Your objective is to increase overall revenue by promoting BOTH:
+- High-demand (best-selling) menu items
+- Low-performing, slow-moving, or newly introduced menu items to improve visibility, clear inventory, and increase sales.
+
+PROMOTION STRATEGY REQUIREMENTS:
+
+Generate a diverse set of recommendations. Do NOT focus only on best-selling items.
+
+The three recommendations should ideally cover different business goals:
+
+1. A high-ROI promotion featuring best-selling items.
+2. A promotion designed to boost low-performing or slow-moving items (for example, bundle a low-selling item with a popular item, or offer an off-peak discount).
+3. A promotion targeting off-peak hours, seasonal events, holidays, local events, or current consumer trends.
+
+CRITICAL REQUIREMENTS:
+
+1. Return ONLY valid JSON.
+2. The JSON MUST strictly follow the required schema.
+3. Generate AT MOST 3 promotions. Never generate more than 3.
+4. Do NOT duplicate or closely resemble any existing active promotions.
+
+Existing Active Promotions:
+{json.dumps(existing_trello_promos, ensure_ascii=False)}
+
+5. If the user provides no additional request, generate 3 high-impact promotion ideas based on:
+   - Google Sheets business metrics
+   - Customer segments
+   - Sales trends
+   - Menu performance
+
+6. If the user provides a request or theme, tailor the promotions to that request while still using the business data and avoiding duplicates.
+
+7. All dates must use the format YYYY-MM-DD.
+
+8. Each promotion should include:
+- title
+- description
+- target_goal
+- recommended_start_date
+- recommended_end_date
+- recommended_start_time
+- recommended_end_time
+- is_all_day
+- expected_revenue_impact
 """
 
         user_content = f"""
