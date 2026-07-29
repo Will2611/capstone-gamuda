@@ -39,6 +39,9 @@ import { SentimentTab } from "../components/visibility-dashboard/SentimentTab";
 import { DemographicsTab } from "../components/visibility-dashboard/DemographicsTab";
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 
+/** Set true to show restaurant picker; false shows selected name only (demo). */
+const SHOW_RESTAURANT_DROPDOWN = false;
+
 export default function SocialVisibilityDashboard() {
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("metrics");
@@ -280,19 +283,32 @@ export default function SocialVisibilityDashboard() {
                 Understand your traffic and visibility with actionable insights
               </p>
             </div>
-            {restaurants.length > 0 && (
-              <select
-                className="border-2 border-bs-neutral-200 rounded-lg px-4 py-2 text-sm bg-white max-w-xs"
-                value={selectedRestaurantId ?? ""}
-                onChange={(e) => setSelectedRestaurantId(e.target.value)}
-              >
-                {restaurants.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.name} &middot; {r.cuisines}
-                  </option>
-                ))}
-              </select>
-            )}
+            {restaurants.length > 0 &&
+              (SHOW_RESTAURANT_DROPDOWN ? (
+                <select
+                  className="border-2 border-bs-neutral-200 rounded-lg px-4 py-2 text-sm bg-white max-w-xs"
+                  value={selectedRestaurantId ?? ""}
+                  onChange={(e) => setSelectedRestaurantId(e.target.value)}
+                >
+                  {restaurants.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} &middot; {r.cuisines}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                selectedRestaurantId && (
+                  <div className="text-right">
+                    <p className="text-xs uppercase tracking-wide text-bs-neutral-500">
+                      Restaurant
+                    </p>
+                    <p className="text-sm font-semibold text-bs-neutral-900">
+                      {restaurants.find((r) => r.id === selectedRestaurantId)
+                        ?.name ?? restaurants[0].name}
+                    </p>
+                  </div>
+                )
+              ))}
           </div>
         </div>
       </div>
