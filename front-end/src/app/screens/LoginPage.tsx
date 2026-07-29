@@ -14,25 +14,18 @@ export default function LoginPage() {
     setLoading(true);
     const result = await login(email, password);
 
+    setLoading(false);
     if (result.success) {
       // 💡 Check the role returned from your Auth Context / Backend payload
       if (result.role === "owner") {
         // navigate("/social-visibility", { replace: true }); // Send owners to management
-        setTimeout(() => {
-          navigate("/social-visibility", { replace: true }); // Send owners to management
-        });
-        setLoading(false);
+        navigate("/social-visibility", { replace: true }); // Send owners to management
       } else {
         // navigate("/map", { replace: true });
         navigate("/map", { replace: true });
-        setTimeout(() => {
-          setLoading(false);
-        }); // Send clients to the food map
+        // Send clients to the food map
       }
     }
-    if (!result.success) {
-    setLoading(false);
-}
 
     return result;
   };
