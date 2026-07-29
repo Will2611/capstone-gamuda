@@ -160,7 +160,8 @@ export default function FoodMatch() {
 
   const handlePushEventMatch = (ev: MessageEvent<PushEventMessage>) => {
     const { type, payload } = ev.data;
-    if (type === "PUSHED_RECEIVED") {
+
+    if (type === "PUSH_RECEIVED") {
       const { isMatched } = payload;
       if (isMatched) {
         refreshNearby();

@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
         // For destroying the serviceWorker and later replacement
         // selfDestroying: true,
         // Ensures assets are in the src/asset folder
-        srcDir: "src/sw",
+        srcDir: "sw",
         // strategies: "generateSW",
         strategies: "injectManifest",
         filename: "sample-sw.ts",

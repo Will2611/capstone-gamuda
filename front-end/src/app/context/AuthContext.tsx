@@ -27,7 +27,8 @@ interface AuthContextValue {
     password: string,
     rememberMe?: boolean,
   ) => Promise<{ success: boolean; error?: string; role?: string }>;
-  logout: (url?: NotificationSubscription) => void;
+  logout: (url?: NotificationSubscription | null) => void;
+  addNotification: (payload: NotificationSubscription) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -86,9 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(
-    async (subscription?: NotificationSubscription) => {
+    async (subscription?: NotificationSubscription | null) => {
       try {
-        await bitescoutApi.post(`/user/logout`, subscription);
+        await bitescoutApi.post(
+          `/user/logout`,
+          subscription ? subscription : undefined,
+        );
         setUser(null);
       } catch {
         setUser(null);
@@ -97,12 +101,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const addNotification = useCallback(
+    async (payload: NotificationSubscription) => {
+      if (!user) return;
+      await bitescoutApi.post("/user/add-notification", { ...payload });
+    },
+    [user],
+  );
+
   const value = useMemo(
     () => ({
       user,
       isAuthenticated: !!user,
       login,
       logout: withLoading(logout),
+      addNotification,
     }),
     [user, login, logout],
   );

@@ -98,7 +98,7 @@ async def user_notifications(resp:Response, cookie:CookieCustom, db:db_dependenc
     
     old_notifications = current_user.user_notifications or []
     old_endpoints = set([r.endpoint for r in old_notifications])
-    if subscription.endpoint in old_endpoints:
+    if not subscription.endpoint in old_endpoints:
         current_user.user_notifications = [*old_notifications, subscription ]
         db.commit()
     

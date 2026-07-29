@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router";
-import { lazy, type ReactNode } from "react";
+import { lazy, useEffect, type ReactNode } from "react";
 import { Navigation } from "./components/Navigation";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { UserProvider } from "./context/UserContext";
@@ -30,7 +30,7 @@ const FoodMatch = lazy(() => import("./screens/FoodMatch"));
 const SocialVisibilityDashboard = lazy(
   () => import("./screens/SocialVisibilityDashboard"),
 );
-import PWABadge from "./PWABadge";
+import PWABadge, { useNotification } from "./PWABadge";
 import PromotionManagement from "./screens/PromotionManagement";
 import PromotionFormPage from "./screens/PromotionFormPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -51,8 +51,15 @@ function ContextNest({ children }: { children: ReactNode }) {
   );
 }
 function RoutesCompiled() {
-  const { user } = useAuth();
+  const { user, addNotification } = useAuth();
+  const { notification } = useNotification();
   const { isLoading } = useLoading();
+
+  useEffect(() => {
+    if (user && notification) {
+      addNotification(notification);
+    }
+  }, [user, addNotification, notification]);
 
   return (
     <BrowserRouter>

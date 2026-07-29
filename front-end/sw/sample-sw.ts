@@ -49,15 +49,25 @@ async function onPush(event: PushEvent) {
   const data = event.data.json();
   const { title, ...rest } = data;
 
-  // Send the push data to the application
-  const clients = await self.clients.matchAll();
-  clients.forEach((client) => client.postMessage(data));
-
   event.waitUntil(
     self.registration.showNotification(title || "New Notification", {
       ...rest,
       ...options,
     }),
+  );
+  // Send the push data to the application
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({
+            type: "PUSH_RECEIVED",
+            payload: data,
+            timestamp: Date.now(),
+          });
+        });
+      }),
   );
 }
 
