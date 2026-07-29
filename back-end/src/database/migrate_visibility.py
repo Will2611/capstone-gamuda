@@ -91,7 +91,7 @@ def restaurants_update(conn:Connection, inspector: Inspector):
 def users_update(conn:Connection, inspector: Inspector):
     existing_cols = inspector.get_columns('users')
     existing_index_names = set([col['name'] for col in existing_cols])
-    if 'user_notifications' in existing_index_names:
+    if 'user_notifications' not in existing_index_names:
         conn.execute(text("ALTER TABLE users ADD COLUMN user_notifications JSON"))
     return
 
