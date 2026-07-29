@@ -29,6 +29,8 @@ def ensure_visibility_schema(engine: Engine) -> None:
         if inspector.has_table('restaurants'):
             restaurants_update(conn=conn, inspector=inspector)
 
+        if inspector.has_table('users'):
+            users_update(conn=conn, inspector=inspector)
         # Foot traffic is hourly-only; drop legacy daily table if present
         if inspector.has_table("foot_traffic_daily"):
             conn.execute(text("DROP TABLE IF EXISTS foot_traffic_daily CASCADE"))
@@ -85,6 +87,12 @@ def restaurants_update(conn:Connection, inspector: Inspector):
     existing_index_names = set([index['name'] for index in existing_indexes])
     if 'ix_restaurants_geohash' in existing_index_names:
         conn.execute(text("DROP INDEX IF EXISTS ix_restaurants_geohash"))
+    return
+def users_update(conn:Connection, inspector: Inspector):
+    existing_cols = inspector.get_columns('users')
+    existing_index_names = set([col['name'] for col in existing_cols])
+    if 'user_notifications' in existing_index_names:
+        conn.execute(text("ALTER TABLE users ADD COLUMN user_notifications JSON"))
     return
 
 def drop_tables(conn:Connection, inspector:Inspector, table_names:list[str]):
