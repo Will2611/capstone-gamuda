@@ -24,21 +24,39 @@ export function DemographicsTab({
   demographics,
   footTraffic,
 }: DemographicsTabProps) {
-  const monthlyDemographics = useMemo(() => {
-    return buildMonthlyDemographicsFromTraffic(footTraffic, demographics);
+  const { display, usingTrackerData } = useMemo(() => {
+    if (demographics.totalVisitors > 0) {
+      return { display: demographics, usingTrackerData: true };
+    }
+    return {
+      display: buildMonthlyDemographicsFromTraffic(footTraffic, demographics),
+      usingTrackerData: false,
+    };
   }, [demographics, footTraffic]);
 
-  const ageData = monthlyDemographics.ageGroups.map((group) => ({
+  const ageData = display.ageGroups.map((group) => ({
     name: group.ageRange,
     value: group.count,
     fill: group.color,
   }));
 
-  const genderData = monthlyDemographics.genderBreakdown.map((group) => ({
+  const genderData = display.genderBreakdown.map((group) => ({
     name: group.gender,
     value: group.count,
     fill: group.color,
   }));
+
+  const subtitle = usingTrackerData
+    ? "From guests who clicked Get Directions (Visit trackers, client profiles)."
+    : "Estimated mix from foot-traffic totals until direction-click profiles are available.";
+
+  const ageCaption = usingTrackerData
+    ? "Unique visitors from direction clicks"
+    : "Estimated from current foot traffic week";
+
+  const snapshotCaption = usingTrackerData
+    ? "Unique guests with profile who requested directions"
+    : "Estimated guests across age and gender groups";
 
   return (
     <section aria-labelledby="customer-demographics">
@@ -46,9 +64,7 @@ export function DemographicsTab({
         <h2 id="customer-demographics" className="mb-1">
           Customer Demographics
         </h2>
-        <p className="text-sm text-bs-neutral-500">
-          Know the age and gender mix of visitors to your restaurant.
-        </p>
+        <p className="text-sm text-bs-neutral-500">{subtitle}</p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -58,16 +74,14 @@ export function DemographicsTab({
               <h3 className="text-lg font-semibold text-bs-neutral-900">
                 Age Group Breakdown
               </h3>
-              <p className="text-sm text-bs-neutral-500">
-                Monthly estimate from current foot traffic totals
-              </p>
+              <p className="text-sm text-bs-neutral-500">{ageCaption}</p>
             </div>
             <div className="rounded-2xl bg-bs-neutral-100 px-4 py-3 text-center">
               <p className="text-xs uppercase tracking-[0.2em] text-bs-neutral-500">
                 Total visitors
               </p>
               <p className="mt-1 text-3xl font-semibold text-bs-neutral-900">
-                {monthlyDemographics.totalVisitors.toLocaleString()}
+                {display.totalVisitors.toLocaleString()}
               </p>
             </div>
           </div>
@@ -106,7 +120,7 @@ export function DemographicsTab({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              {monthlyDemographics.ageGroups.map((group) => (
+              {display.ageGroups.map((group) => (
                 <div
                   key={group.ageRange}
                   className="rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 p-4"
@@ -150,7 +164,7 @@ export function DemographicsTab({
               </ResponsiveContainer>
             </div>
             <div className="grid gap-3">
-              {monthlyDemographics.genderBreakdown.map((group) => (
+              {display.genderBreakdown.map((group) => (
                 <div
                   key={group.gender}
                   className="flex items-center justify-between rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 px-4 py-3"
@@ -177,11 +191,9 @@ export function DemographicsTab({
               Visitor mix snapshot
             </p>
             <p className="mt-4 text-5xl font-bold text-bs-neutral-900">
-              {monthlyDemographics.totalVisitors.toLocaleString()}
+              {display.totalVisitors.toLocaleString()}
             </p>
-            <p className="mt-2 text-sm text-bs-neutral-500">
-              Total guests across all age and gender groups
-            </p>
+            <p className="mt-2 text-sm text-bs-neutral-500">{snapshotCaption}</p>
           </div>
         </div>
       </div>

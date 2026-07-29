@@ -99,9 +99,9 @@ Merchant Sheet Context:
 User Input / Topic: {payload.user_input if payload.user_input else "Generate top 3 overall growth ideas."}
 """
 
-        # 4. Call Gemini 2.5 Flash with structured JSON output
+        # 4. Call Gemini 3.5 Flash with structured JSON output
         response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.1-flash-lite",
             contents=user_content,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,

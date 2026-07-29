@@ -26,7 +26,8 @@ async def create_tracker(
     """
     Record a user→restaurant interaction.
 
-    Visit rows feed the nightly foot-traffic job → foot_traffic_hourly → dashboard chart.
+    Visit rows feed the nightly foot-traffic job → foot_traffic_hourly → dashboard chart,
+    and getDemographics (unique clients who requested directions).
     Impression / Click are stored for funnel use later.
     """
     restaurant = (

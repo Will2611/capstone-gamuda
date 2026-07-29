@@ -14,6 +14,7 @@ from src.database.models.visibility import (
 from src.database.models.reviews import (
     ReviewModel
 )
+from src.database.models.trackers import TrackerModel
 from src.database.models.user import (
     ClientModel,
 )
@@ -344,12 +345,16 @@ def _age_bucket(age: int) -> str:
 
 @router.get("/getDemographics", response_model=DemographicsResponse)
 async def get_demographics(db: db_dependency, restaurantId: uuid.UUID = Query(...)):
+    """
+    Demographics from clients who clicked Get Directions (trackers.Visit).
+    Same Visit events that feed foot traffic — unique clients with profiles.
+    """
     rows = (
         db.query(ClientModel.gender, ClientModel.birth_date)
-        .join(ReviewModel, ReviewModel.reviewer_id == ClientModel.id)
+        .join(TrackerModel, TrackerModel.user_id == ClientModel.id)
         .filter(
-            ReviewModel.restaurant_id == restaurantId,
-            ReviewModel.reviewer_id != None,
+            TrackerModel.restaurant_id == restaurantId,
+            TrackerModel.tracked_type == "Visit",
         )
         .group_by(ClientModel.id, ClientModel.gender, ClientModel.birth_date)
         .all()
