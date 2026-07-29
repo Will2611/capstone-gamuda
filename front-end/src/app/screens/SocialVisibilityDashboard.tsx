@@ -40,7 +40,7 @@ import { DemographicsTab } from "../components/visibility-dashboard/Demographics
 import { TrafficTab } from "../components/visibility-dashboard/TrafficTab";
 
 /** Set true to show restaurant picker; false shows selected name only (demo). */
-const SHOW_RESTAURANT_DROPDOWN = false;
+const SHOW_RESTAURANT_DROPDOWN = true;
 
 export default function SocialVisibilityDashboard() {
   const [selectedModal, setSelectedModal] = useState<string | null>(null);
