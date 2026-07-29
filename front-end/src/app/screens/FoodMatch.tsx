@@ -532,6 +532,33 @@ export default function FoodMatch() {
     };
   }, [activeChat, chatMessages, user?.id, userProfile.displayName, socketUrl]);
 
+  useEffect(() => {
+    if (userProfile && !profile.profileComplete) {
+      const { savedPreferences, personalities } = userProfile;
+
+      const halal =
+        (savedPreferences?.dietary &&
+          savedPreferences.dietary.findIndex((v) => v === "halal") > 0) ||
+        false;
+      const vegetarian =
+        (savedPreferences?.dietary &&
+          savedPreferences.dietary.findIndex(
+            (v) => v === "vegetarian" || v === "vegan",
+          ) >= 0) ||
+        false;
+      updateProfile({
+        favoriteFoods: [],
+        personalityTags: personalities,
+        // ...(userProfile.savedPreferences?.priceRange
+        //   ? { budgetRange: [userProfile.savedPreferences?.priceRange] }
+        //   : {}),
+        halal,
+        vegetarian,
+        preferredDiningTime: savedPreferences?.time,
+      });
+    }
+  }, [userProfile]);
+
   if (!profile.profileComplete) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-bs-neutral-100 via-white to-bs-gold/10 py-12 px-4">

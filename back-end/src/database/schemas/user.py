@@ -56,6 +56,8 @@ class ClientRegisterRequest(UserRequest):
     personalities: List[str] = Field(default=[])
     preferences: ClientPreferencesSchema
     profile_image: Optional[str] = Field(None)
+    # profile_image: Optional[str] = Field(None)
+    avatar_url: Optional[str] = Field(None)
 
 class ClientResponse(BaseModel):
     model_config = ConfigDict(
@@ -87,4 +89,4 @@ class SubscriptionKeys(BaseModel):
     auth:str
 class UserSubscription(BaseModel):
     endpoint:str
-    key:SubscriptionKeys
+    keys:SubscriptionKeys

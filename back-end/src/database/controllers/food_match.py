@@ -307,9 +307,8 @@ async def discover_nearby(
         message=None if users else "No food buddies nearby right now. Try again later.",
     )
 
-from pywebpush import webpush_async, Response as pushResponse
-import json
-from typing import cast
+
+from src.services.webpush import webpush_list
 import asyncio
 @router.post("/like", response_model=LikeResponse)
 async def like_user(
@@ -354,13 +353,8 @@ async def like_user(
     
     match, chat_room_id, is_new = _create_or_get_connected_match(db, me, partner)
     if is_new and partner.user_notifications:
-        allPromises = (webpush_async(
-            subscription_info=cast(dict,e),
-            data=json.dumps({"title": "Food Buddy Found!", "body": f"{me.display_name} has matched with you", 'isMatch':'True'}),
-            vapid_private_key=os.getenv("VAPID_PRIVATE_KEY",''),
-            vapid_claims={'sub':"mailto:william.ongjiajiang@gmail.com"}
-            ) for e in partner.user_notifications)
-        await asyncio.gather(*allPromises, return_exceptions=True)
+        await webpush_list(partner.user_notifications,payload={"title": "Food Buddy Found!", "body": f"{me.display_name} has matched with you", 'isMatch':'True'})
+        
         
     return LikeResponse(
         matched=True,
