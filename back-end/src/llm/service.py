@@ -122,31 +122,37 @@ def query_restaurants_by_proximity_and_cuisine(
     price_level: int | None = None,
     dietary: list[str] = [],
 ) -> list:
-    # 1. Encode user location into nearby geohashes (precision 5)
-    #   (maximum X axis error, in km)     
-    # 1   5,009.4km x 4,992.6km
-    # 2   1,252.3km x 624.1km
-    # 3   156.5km x 156km
-    # 4   39.1km x 19.5km
-    # 5   4.9km x 4.9km
-    # 6   1.2km x 609.4m, good for raddius >10 km, with max MoErr of 1 km (10%)
-    # 7   152.9m x 152.4m good for raddius 1-5, with max MoErr of 200m (20% - 5% respectively)
-    # 8   38.2m x 19m
-    # 9   4.8m x 4.8m
-    # 10  1.2m x 59.5cm
-    # 11  14.9cm x 14.9cm
-    # 12  3.7cm x 1.9cm 
-    import pygeohash as gh
-    # Allow for caching?
-    lat,long =gh.decode(gh.encode(latitude,longitude,7))
-    hashes_str = proximityhash.create_geohash(latitude, longitude, radius_km * 1000, 7, georaptor_flag=True)
-    
-    geohash_list = hashes_str.split(',')
-    
+    # 1. Encode user location into nearby geohashes (precision 5 ≈ 4.9km cells).
+    # Must match the substr(..., 1, 5) filter / idx_geo_5 index below.
+    # Georaptor may return shorter parent prefixes; handle those separately.
+    from sqlalchemy import or_
+
+    GEO_PRECISION = 5
+    hashes_str = proximityhash.create_geohash(
+        latitude, longitude, radius_km * 1000, GEO_PRECISION, georaptor_flag=True
+    )
+    raw_hashes = [h.strip() for h in hashes_str.split(",") if h.strip()]
+    if not raw_hashes:
+        return []
+
+    # Normalize: precision-5 cells use the indexed substr filter; shorter
+    # georaptor prefixes use startswith so we don't miss coverage.
+    p5_hashes = list({h[:GEO_PRECISION] for h in raw_hashes if len(h) >= GEO_PRECISION})
+    short_prefixes = list({h for h in raw_hashes if len(h) < GEO_PRECISION})
+
+    conditions = []
+    if p5_hashes:
+        conditions.append(func.substr(RestaurantModel.geohash, 1, GEO_PRECISION).in_(p5_hashes))
+    for prefix in short_prefixes:
+        conditions.append(RestaurantModel.geohash.startswith(prefix))
+
+    if not conditions:
+        return []
+
     # 2. Query candidates from DB that are in those geohash cells (prefix check)
     candidates = (
         db.query(RestaurantModel)
-        .filter(func.substr(RestaurantModel.geohash, 1, 5).in_(geohash_list))
+        .filter(or_(*conditions))
         .all()
     )
     
@@ -301,19 +307,18 @@ def _merge_unique(primary: list[tuple], extra: list[tuple], limit: int = RESULT_
 
 def _fresh_external_slice(
     external_results: list[NormalisedExternalRestaurant],
-    db_results: list[tuple],
+    existing_place_ids: set[str],
+    existing_names: set[str],
     needed: int,
 ) -> list[NormalisedExternalRestaurant]:
     """Keep only places not already in DB, capped at the gap size."""
     if needed <= 0:
         return []
-    existing_place_ids = {r.google_place_id for r, _ in db_results if r.google_place_id}
-    existing_names = {r.name.lower().strip() for r, _ in db_results}
     fresh: list[NormalisedExternalRestaurant] = []
     for r in external_results:
         p_id = r.get("google_place_id")
         name = (r.get("name") or "").lower().strip()
-        if p_id in existing_place_ids or name in existing_names:
+        if (p_id and p_id in existing_place_ids) or (name and name in existing_names):
             continue
         fresh.append(r)
         if len(fresh) >= needed:
@@ -342,20 +347,40 @@ async def _gap_fill_external(
     external_results = await _fetch_external(
         loop, cuisines, latitude, longitude, radius_km
     )
+    if not external_results:
+        return selected
 
-    # Known rows before upsert (used to skip duplicates)
-    prior_db = query_restaurants_by_proximity_and_cuisine(
-        db, cuisines, latitude, longitude,
-        radius_km=radius_km,
-        price_level=price_level,
-        dietary=dietary or [],
+    # Dedupe against known place ids / names in DB (global), not just proximity hits
+    place_ids = [r.get("google_place_id") for r in external_results if r.get("google_place_id")]
+    names = [r.get("name") for r in external_results if r.get("name")]
+    existing_place_ids: set[str] = set()
+    existing_names: set[str] = set()
+    if place_ids:
+        existing_place_ids = {
+            row[0]
+            for row in db.query(RestaurantModel.google_place_id)
+            .filter(RestaurantModel.google_place_id.in_(place_ids))
+            .all()
+            if row[0]
+        }
+    if names:
+        existing_names = {
+            (row[0] or "").lower().strip()
+            for row in db.query(RestaurantModel.name)
+            .filter(RestaurantModel.name.in_(names))
+            .all()
+            if row[0]
+        }
+
+    fresh = _fresh_external_slice(
+        external_results, existing_place_ids, existing_names, needed
     )
-    fresh = _fresh_external_slice(external_results, prior_db, needed)
     if not fresh:
         return selected
 
     _upsert_deduped(db, fresh)
 
+    # Re-query local DB; relax dietary if external rows lack dietary tags
     db_results = query_restaurants_by_proximity_and_cuisine(
         db, cuisines, latitude, longitude,
         radius_km=radius_km,
@@ -363,7 +388,16 @@ async def _gap_fill_external(
         dietary=dietary or [],
     )
     available = _exclude_shown(db_results, exclude_ids)
-    return _merge_unique(selected, available, RESULT_LIMIT)
+    merged = _merge_unique(selected, available, RESULT_LIMIT)
+    if len(merged) < RESULT_LIMIT and dietary:
+        relaxed = query_restaurants_by_proximity_and_cuisine(
+            db, cuisines, latitude, longitude,
+            radius_km=radius_km,
+            price_level=price_level,
+            dietary=[],
+        )
+        merged = _merge_unique(merged, _exclude_shown(relaxed, exclude_ids), RESULT_LIMIT)
+    return merged
 
 
 async def chat_with_restaurant_search(

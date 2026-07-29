@@ -79,7 +79,12 @@ def search_external_restaurants(cuisine: str, latitude: float, longitude: float,
             print(f"SerpAPI search failed: {e}. Falling back to Google Places if available.")
             if google_key:
                 return search_google_places(cuisine, latitude, longitude, radius, google_key)
-    
+    else:
+        print(
+            "External restaurant search skipped: set SERPAPI_API_KEY and/or "
+            "GOOGLE_PLACES_API_KEY (and PLACES_PROVIDER=serpapi|google) in .env"
+        )
+
     # If no providers configured or both failed, return empty list
     return []
     
