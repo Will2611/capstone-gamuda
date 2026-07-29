@@ -126,8 +126,22 @@ def query_restaurants_by_proximity_and_cuisine(
     # Must match the substr(..., 1, 5) filter / idx_geo_5 index below.
     # Georaptor may return shorter parent prefixes; handle those separately.
     from sqlalchemy import or_
-
+        # 1. Encode user location into nearby geohashes (precision 5)
+    #   (maximum X axis error, in km)     
+    # 1   5,009.4km x 4,992.6km
+    # 2   1,252.3km x 624.1km
+    # 3   156.5km x 156km
+    # 4   39.1km x 19.5km
+    # 5   4.9km x 4.9km
+    # 6   1.2km x 609.4m, good for raddius >10 km, with max MoErr of 1 km (10%)
+    # 7   152.9m x 152.4m good for raddius 1-5, with max MoErr of 200m (20% - 5% respectively)
+    # 8   38.2m x 19m
+    # 9   4.8m x 4.8m
+    # 10  1.2m x 59.5cm
+    # 11  14.9cm x 14.9cm
+    # 12  3.7cm x 1.9cm 
     GEO_PRECISION = 5
+
     hashes_str = proximityhash.create_geohash(
         latitude, longitude, radius_km * 1000, GEO_PRECISION, georaptor_flag=True
     )
