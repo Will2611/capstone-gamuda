@@ -118,36 +118,3 @@ router = APIRouter(prefix='/user')
 router.include_router(aggregate_router)
 
 
-import time
-from fastapi import HTTPException, status
-# Pydantic Schemas for Validation
-
-
-#  Step 1 & 2: Generate a secure endpoint for the browser to upload into
-
-
-from src.services.image_bucket import get_upload_url, UploadRequest
-
-@user_router.post("/api/get-upload-url")
-async def get_profile_upload_url(payload: UploadRequest) -> dict[str, str]:
-    # Enforce correct image mime types
-    allowed_types = ["image/jpeg", "image/png", "image/webp"]
-    if payload.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Invalid image format. Only JPEG, PNG, and WebP are allowed."
-        )
-
-    # Establish keys and naming
-    file_extension = payload.content_type.split("/")[-1]
-    file_key = f"image/avatars/{payload.user_id}-{int(time.time())}.{file_extension}"
-    try:
-        return await get_upload_url(payload, file_key)
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate presigned URL: {str(e)}"
-        )
-
-    # Your public tracking domain configured in Cloudflare Dashboard
