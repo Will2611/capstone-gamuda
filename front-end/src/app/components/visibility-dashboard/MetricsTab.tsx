@@ -28,6 +28,7 @@ import {
   type Sentiment,
   type FootTrafficResponse,
 } from "../../services/visibilityApi";
+import { bitescoutApi } from "../../services/baseApi";
 
 interface MetricsTabProps {
   summary: SummaryMetrics;
@@ -103,12 +104,13 @@ export function MetricsTab({
   useEffect(() => {
     async function fetchSheetAnalytics() {
       try {
-        const response = await fetch(
-          "http://localhost:8000/analytics/dashboard-data",
-        );
-        if (!response.ok) return;
+        // const response = await fetch(
+        //   "http://localhost:8000/analytics/dashboard-data",
+        // );
+        // if (!response.ok) return;
 
-        const data = await response.json();
+        // const data = await response.json();
+        const { data } = await bitescoutApi.get("/analytics/dashboard-data");
         if (data.step1_data) {
           // Food data sorting
           const rawItems = data.step1_data.menu_items || [];

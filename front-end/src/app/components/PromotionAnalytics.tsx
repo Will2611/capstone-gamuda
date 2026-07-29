@@ -23,6 +23,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { bitescoutApi } from "../services/baseApi";
 
 // ==========================================
 // 类型定义 (Types)
@@ -113,9 +114,14 @@ export function PromotionAnalytics() {
     totalCustomers: "0",
   });
   const [topItems, setTopItems] = useState<MenuItem[]>([]);
-  const [audienceSegments, setAudienceSegments] = useState<AudienceSegment[]>([]);
-  const [historicalPromos, setHistoricalPromos] = useState<HistoricalPromo[]>([]);
-  const [adviceList, setAdviceList] = useState<StrategicAdvice[]>(defaultAdviceList);
+  const [audienceSegments, setAudienceSegments] = useState<AudienceSegment[]>(
+    [],
+  );
+  const [historicalPromos, setHistoricalPromos] = useState<HistoricalPromo[]>(
+    [],
+  );
+  const [adviceList, setAdviceList] =
+    useState<StrategicAdvice[]>(defaultAdviceList);
 
   // ==========================================
   // 从 Backend API 获取真实数据 (Google Sheet + PgAdmin)
@@ -125,14 +131,15 @@ export function PromotionAnalytics() {
       try {
         setLoading(true);
         // 修改为你的实际 API 根路径
-        const response = await fetch("http://localhost:8000/analytics/dashboard-data", {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
+        const { data } = await bitescoutApi.get("/analytics/dashboard-data");
+        // const response = await fetch("http://localhost:8000/analytics/dashboard-data", {
+        //   method: "GET",
+        //   headers: { "Content-Type": "application/json" },
+        // });
 
-        if (!response.ok) throw new Error("Failed to fetch analytics data");
+        // if (!response.ok) throw new Error("Failed to fetch analytics data");
 
-        const data = await response.json();
+        // const data = await response.json();
 
         // 1. 解析 Google Sheet 中的 Step 1 数据
         if (data.step1_data) {
@@ -140,23 +147,30 @@ export function PromotionAnalytics() {
           const rawSegments = data.step1_data.customer_segments || [];
 
           // 转换 Menu Items 为柱状图格式
-          const formattedItems: MenuItem[] = rawItems.slice(0, 5).map((item: any) => ({
-            name: item.name,
-            sales: item.units_sold || 0,
-          }));
+          const formattedItems: MenuItem[] = rawItems
+            .slice(0, 5)
+            .map((item: any) => ({
+              name: item.name,
+              sales: item.units_sold || 0,
+            }));
 
           // 转换 Customer Segments 为饼图格式
-          const formattedSegments: AudienceSegment[] = rawSegments.map((seg: any, idx: number) => ({
-            name: seg.name,
-            value: seg.customer_count || 0,
-            color: PIE_COLORS[idx % PIE_COLORS.length],
-          }));
+          const formattedSegments: AudienceSegment[] = rawSegments.map(
+            (seg: any, idx: number) => ({
+              name: seg.name,
+              value: seg.customer_count || 0,
+              color: PIE_COLORS[idx % PIE_COLORS.length],
+            }),
+          );
 
           setTopItems(formattedItems);
           setAudienceSegments(formattedSegments);
 
           // 汇总 Metrics 顶部卡片
-          const totalCust = rawSegments.reduce((acc: number, curr: any) => acc + (curr.customer_count || 0), 0);
+          const totalCust = rawSegments.reduce(
+            (acc: number, curr: any) => acc + (curr.customer_count || 0),
+            0,
+          );
           setMetrics({
             avgRevenue: "$34.50", // 亦可从 sheet financial Summary 解析
             profitMargin: "22.5%",
@@ -167,12 +181,14 @@ export function PromotionAnalytics() {
         // 2. 解析 Step 2 来自你的 PgAdmin 的真实 Promotions
         if (data.step2_data && data.step2_data.historical_campaigns) {
           const rawPromos = data.step2_data.historical_campaigns || [];
-          const formattedPromos: HistoricalPromo[] = rawPromos.slice(0, 5).map((p: any) => ({
-            id: p.id || p.promo_id,
-            title: p.title,
-            category: p.status || "ACTIVE",
-            status: p.status || "Active",
-          }));
+          const formattedPromos: HistoricalPromo[] = rawPromos
+            .slice(0, 5)
+            .map((p: any) => ({
+              id: p.id || p.promo_id,
+              title: p.title,
+              category: p.status || "ACTIVE",
+              status: p.status || "Active",
+            }));
           setHistoricalPromos(formattedPromos);
         }
 
@@ -180,7 +196,6 @@ export function PromotionAnalytics() {
         if (data.ai_recommendations) {
           setAdviceList(data.ai_recommendations);
         }
-
       } catch (err) {
         console.error("Error loading analytics backend:", err);
       } finally {
@@ -226,7 +241,8 @@ export function PromotionAnalytics() {
             Marketing Insights & AI Campaign Advice
           </h1>
           <p className="text-sm text-bs-neutral-500">
-            Live Stream from Google Sheets + PostgreSQL DB paired with AI-driven promotion strategies.
+            Live Stream from Google Sheets + PostgreSQL DB paired with AI-driven
+            promotion strategies.
           </p>
         </div>
 
@@ -372,7 +388,8 @@ export function PromotionAnalytics() {
                 AI Strategic Promotion Recommendations
               </h2>
               <p className="text-xs text-bs-neutral-500">
-                Synthesized based on Step 1 Google Sheets & Step 2 Database metrics.
+                Synthesized based on Step 1 Google Sheets & Step 2 Database
+                metrics.
               </p>
             </div>
           </div>
@@ -386,7 +403,9 @@ export function PromotionAnalytics() {
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${advice.tagColor}`}>
+                  <span
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${advice.tagColor}`}
+                  >
                     {advice.tag}
                   </span>
                   <span className="text-[10px] text-bs-neutral-400 font-semibold">
@@ -400,7 +419,8 @@ export function PromotionAnalytics() {
 
                 <div className="bg-bs-neutral-50 p-3 rounded-xl space-y-1">
                   <span className="text-[10px] uppercase font-bold text-bs-neutral-400 tracking-wider flex items-center gap-1">
-                    <Zap size={11} className="text-amber-500" /> Strategic Purpose
+                    <Zap size={11} className="text-amber-500" /> Strategic
+                    Purpose
                   </span>
                   <p className="text-xs text-bs-neutral-700 leading-relaxed font-medium">
                     {advice.purpose}
@@ -409,7 +429,8 @@ export function PromotionAnalytics() {
 
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase font-bold text-bs-neutral-400 tracking-wider flex items-center gap-1">
-                    <Target size={11} className="text-purple-500" /> Target Audience
+                    <Target size={11} className="text-purple-500" /> Target
+                    Audience
                   </span>
                   <p className="text-xs text-bs-neutral-600">
                     {advice.targetAudience}

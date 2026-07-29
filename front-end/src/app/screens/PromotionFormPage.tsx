@@ -4,6 +4,7 @@ import { PromotionForm } from "../components/PromotionForm";
 import type { Promotion } from "../types/promotion";
 import { mockPromotions } from "../data/mockPromotions";
 import { Loader2 } from "lucide-react";
+import { bitescoutApi } from "../services/baseApi";
 
 export default function PromotionFormPage() {
   const { promoId } = useParams();
@@ -19,28 +20,30 @@ export default function PromotionFormPage() {
     const fetchPromotion = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("bitescouts_token");
-        const response = await fetch(`http://localhost:8000/promotions/${promoId}`, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-        });
+        // const token = localStorage.getItem("bitescouts_token");
+        // const response = await fetch(`http://localhost:8000/promotions/${promoId}`, {
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //     Authorization: token ? `Bearer ${token}` : "",
+        //   },
+        // });
 
-        if (response.ok) {
-          const data = await response.json();
-          setPromotion(data);
-        } else {
-          // Fallback to mock data if API call returns 404 or fails
-          const mockMatch = mockPromotions.find(
-            (p) => p.promoId === promoId || p.id === promoId
-          );
-          setPromotion(mockMatch);
-        }
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   setPromotion(data);
+        // } else {
+        //   // Fallback to mock data if API call returns 404 or fails
+        //   const mockMatch = mockPromotions.find(
+        //     (p) => p.promoId === promoId || p.id === promoId
+        //   );
+        //   setPromotion(mockMatch);
+        // }
+        const { data } = await bitescoutApi.get(`/promotions/${promoId}`);
+        setPromotion(data);
       } catch (err) {
         console.error("Error fetching promotion for edit:", err);
         const mockMatch = mockPromotions.find(
-          (p) => p.promoId === promoId || p.id === promoId
+          (p) => p.promoId === promoId || p.id === promoId,
         );
         setPromotion(mockMatch);
       } finally {
@@ -64,4 +67,3 @@ export default function PromotionFormPage() {
 
   return <PromotionForm initialData={promotion} />;
 }
-

@@ -94,24 +94,28 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     setAiRecommendations([]);
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/api/ai/recommendations",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_input: activeInput.trim() || null,
-          }),
-        },
+      const { data: result } = await bitescoutApi.post(
+        "/api/ai/recommendations",
+        { user_input: activeInput.trim() || null },
       );
+      // const response = await fetch(
+      //   "http://localhost:8000/api/ai/recommendations",
+      //   {
+      //     method: "POST",
+      //     headers: { "Content-Type": "application/json" },
+      //     body: JSON.stringify({
+      //       user_input: activeInput.trim() || null,
+      //     }),
+      //   },
+      // );
 
-      if (!response.ok) {
-        throw new Error(
-          `Failed to generate recommendations (${response.status})`,
-        );
-      }
+      // if (!response.ok) {
+      //   throw new Error(
+      //     `Failed to generate recommendations (${response.status})`,
+      //   );
+      // }
 
-      const result = await response.json();
+      // const result = await response.json();
 
       // Store the list of up to 3 promotions
       if (result.promotions && Array.isArray(result.promotions)) {
@@ -121,7 +125,11 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       }
     } catch (err: any) {
       console.error("Error fetching AI promotions:", err);
-      setAiApiError(err.message || "Failed to contact AI service.");
+      setAiApiError(
+        err?.response?.data?.detail ||
+          err.message ||
+          "Failed to contact AI service.",
+      );
     } finally {
       setIsAiProcessing(false);
     }
@@ -282,19 +290,24 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     setTitleGenCount(nextCount);
 
     try {
-      const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          field: "title",
-          current_text: title.trim(),
-          iteration_index: nextCount,
-        }),
+      // const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     field: "title",
+      //     current_text: title.trim(),
+      //     iteration_index: nextCount,
+      //   }),
+      // });
+
+      // if (!res.ok) throw new Error("Failed to rewrite title");
+
+      // const data = await res.json();
+      const { data } = await bitescoutApi.post("/api/ai/rewrite-field", {
+        field: "title",
+        current_text: title.trim(),
+        iteration_index: nextCount,
       });
-
-      if (!res.ok) throw new Error("Failed to rewrite title");
-
-      const data = await res.json();
       if (data.generated_text) {
         setTitle(data.generated_text);
         setErrors((prev) => ({ ...prev, title: undefined }));
@@ -313,20 +326,26 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
     setDescGenCount(nextCount);
 
     try {
-      const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          field: "description",
-          current_title: title.trim(),
-          current_text: description.trim(),
-          iteration_index: nextCount,
-        }),
+      // const res = await fetch("http://localhost:8000/api/ai/rewrite-field", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     field: "description",
+      //     current_title: title.trim(),
+      //     current_text: description.trim(),
+      //     iteration_index: nextCount,
+      //   }),
+      // });
+
+      // if (!res.ok) throw new Error("Failed to rewrite description");
+
+      // const data = await res.json();
+      const { data } = await bitescoutApi.post("/api/ai/rewrite-field", {
+        field: "description",
+        current_title: title.trim(),
+        current_text: description.trim(),
+        iteration_index: nextCount,
       });
-
-      if (!res.ok) throw new Error("Failed to rewrite description");
-
-      const data = await res.json();
       if (data.generated_text) {
         setDescription(data.generated_text);
         setErrors((prev) => ({ ...prev, description: undefined }));

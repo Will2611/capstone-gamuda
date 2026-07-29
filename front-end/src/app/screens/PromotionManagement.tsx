@@ -14,6 +14,7 @@ import {
 import { PromotionCard } from "../components/PromotionCard";
 import type { Promotion } from "../types/promotion";
 import { isPromotionActive } from "../utils/promotionUtils";
+import { bitescoutApi } from "../services/baseApi";
 
 export default function PromotionManagement() {
   const navigate = useNavigate();
@@ -22,9 +23,9 @@ export default function PromotionManagement() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "active" | "draft" | "expired">(
-    "all"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "all" | "active" | "draft" | "expired"
+  >("all");
   const [promoToDelete, setPromoToDelete] = useState<Promotion | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
@@ -38,22 +39,22 @@ export default function PromotionManagement() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("bitescouts_token");
+      // const token = localStorage.getItem("bitescouts_token");
 
-      const response = await fetch("http://localhost:8000/promotions", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      });
+      // const response = await fetch("http://localhost:8000/promotions", {
+      //   method: "GET",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //     Authorization: token ? `Bearer ${token}` : "",
+      //   },
+      // });
 
-      const data = await response.json();
+      // const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.detail || "Failed to fetch promotions");
-      }
-
+      // if (!response.ok) {
+      //   throw new Error(data.detail || "Failed to fetch promotions");
+      // }
+      const { data } = await bitescoutApi.get("/promotions");
       setPromotions(data);
     } catch (err: any) {
       console.error("API Error:", err);
@@ -69,27 +70,28 @@ export default function PromotionManagement() {
 
     try {
       setIsDeleting(true);
-      const token = localStorage.getItem("bitescouts_token");
+      // const token = localStorage.getItem("bitescouts_token");
 
-      const response = await fetch(
-        `http://localhost:8000/promotions/${targetId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: token ? `Bearer ${token}` : "",
-          },
-        }
-      );
+      // const response = await fetch(
+      //   `http://localhost:8000/promotions/${targetId}`,
+      //   {
+      //     method: "DELETE",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //       Authorization: token ? `Bearer ${token}` : "",
+      //     },
+      //   }
+      // );
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.detail || "Failed to delete promotion");
-      }
+      // if (!response.ok) {
+      //   const data = await response.json().catch(() => ({}));
+      //   throw new Error(data.detail || "Failed to delete promotion");
+      // }
 
+      await bitescoutApi.delete(`/promotions/${targetId}`);
       // Update local state upon successful removal from DB
       setPromotions((prev) =>
-        prev.filter((p) => p.id !== targetId && p.promoId !== targetId)
+        prev.filter((p) => p.id !== targetId && p.promoId !== targetId),
       );
       setPromoToDelete(null);
     } catch (err: any) {
@@ -111,7 +113,7 @@ export default function PromotionManagement() {
   const activeCount = promotions.filter(checkIsActive).length;
   const draftCount = promotions.filter((p) => p.status === "draft").length;
   const expiredCount = promotions.filter(
-    (p) => p.status !== "draft" && !isPromotionActive(p)
+    (p) => p.status !== "draft" && !isPromotionActive(p),
   ).length;
 
   // Filtered promotions based on query and tab
@@ -246,9 +248,10 @@ export default function PromotionManagement() {
               className={`
                 flex-1 md:flex-none
                 px-4 py-2 rounded-lg text-xs font-bold transition-all
-                ${activeTab === "all"
-                  ? "bg-white text-bs-neutral-900 shadow-sm"
-                  : "text-bs-neutral-600 hover:text-bs-neutral-900"
+                ${
+                  activeTab === "all"
+                    ? "bg-white text-bs-neutral-900 shadow-sm"
+                    : "text-bs-neutral-600 hover:text-bs-neutral-900"
                 }
               `}
             >
@@ -259,9 +262,10 @@ export default function PromotionManagement() {
               className={`
                 flex-1 md:flex-none
                 px-4 py-2 rounded-lg text-xs font-bold transition-all
-                ${activeTab === "active"
-                  ? "bg-white text-emerald-600 shadow-sm"
-                  : "text-bs-neutral-600 hover:text-bs-neutral-900"
+                ${
+                  activeTab === "active"
+                    ? "bg-white text-emerald-600 shadow-sm"
+                    : "text-bs-neutral-600 hover:text-bs-neutral-900"
                 }
               `}
             >
@@ -272,9 +276,10 @@ export default function PromotionManagement() {
               className={`
                 flex-1 md:flex-none
                 px-4 py-2 rounded-lg text-xs font-bold transition-all
-                ${activeTab === "draft"
-                  ? "bg-white text-amber-600 shadow-sm"
-                  : "text-bs-neutral-600 hover:text-bs-neutral-900"
+                ${
+                  activeTab === "draft"
+                    ? "bg-white text-amber-600 shadow-sm"
+                    : "text-bs-neutral-600 hover:text-bs-neutral-900"
                 }
               `}
             >
@@ -285,9 +290,10 @@ export default function PromotionManagement() {
               className={`
                 flex-1 md:flex-none
                 px-4 py-2 rounded-lg text-xs font-bold transition-all
-                ${activeTab === "expired"
-                  ? "bg-white text-rose-600 shadow-sm"
-                  : "text-bs-neutral-600 hover:text-bs-neutral-900"
+                ${
+                  activeTab === "expired"
+                    ? "bg-white text-rose-600 shadow-sm"
+                    : "text-bs-neutral-600 hover:text-bs-neutral-900"
                 }
               `}
             >

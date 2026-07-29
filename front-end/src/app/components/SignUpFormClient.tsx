@@ -37,6 +37,7 @@ import {
 } from "./config/FilterOption";
 
 import { useUser } from "../context/UserContext";
+import { bitescoutApi } from "../services/baseApi";
 
 // const GENDER_OPTIONS = [
 //   { label: "Male", value: "male" },
@@ -314,22 +315,25 @@ export function SignUpFormClient() {
     };
 
     try {
-      const response = await fetch(
-        "http://localhost:8000/user/client/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        },
-      );
+      // const response = await fetch(
+      //   "http://localhost:8000/user/client/register",
+      //   {
+      //     method: "POST",
+      //     headers: {
+      //       "Content-Type": "application/json",
+      //     },
+      //     body: JSON.stringify(formData),
+      //   },
+      // );
 
-      const data = await response.json();
+      // const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.detail || "Registration failed");
-      }
+      // if (!response.ok) {
+      //   throw new Error(data.detail || "Registration failed");
+      // }
+      await bitescoutApi.post("/user/client/register", {
+        ...formData,
+      });
 
       setSuccess(true);
       setTimeout(() => navigate("/login"), 1500);
@@ -337,7 +341,10 @@ export function SignUpFormClient() {
       console.error("API Error:", error);
       setErrors((prev) => ({
         ...prev,
-        apiError: error.message || "Something went wrong",
+        apiError:
+          error.response?.data?.detail ||
+          error.message ||
+          "Something went wrong",
       }));
     } finally {
       setIsLoading(false);

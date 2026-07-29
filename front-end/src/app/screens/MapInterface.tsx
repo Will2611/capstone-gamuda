@@ -18,6 +18,7 @@ import { mockPromotions } from "../data/mockPromotions";
 import { normalizePromotion } from "../utils/promotionUtils";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
 import FilterBar from "../components/FilterBar";
+import { bitescoutApi } from "../services/baseApi";
 
 const emptyForm: SearchPreferences = {
   cuisine: [],
@@ -39,13 +40,16 @@ export default function MapInterface() {
   useEffect(() => {
     async function fetchDbPromotions() {
       try {
-        const response = await fetch("http://localhost:8000/promotions");
-        if (response.ok) {
-          const data = await response.json();
-          if (Array.isArray(data)) {
-            setDbPromotions(data.map(normalizePromotion));
-          }
+        const { data } = await bitescoutApi.get("/promotions");
+        if (Array.isArray(data)) {
+          setDbPromotions(data.map(normalizePromotion));
         }
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   if (Array.isArray(data)) {
+        //     setDbPromotions(data.map(normalizePromotion));
+        //   }
+        // }
       } catch (err) {
         console.error("Failed to load DB promotions in MapInterface:", err);
       }

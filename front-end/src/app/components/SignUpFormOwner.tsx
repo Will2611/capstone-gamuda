@@ -30,6 +30,7 @@ import {
   AMBIENCE_OPTIONS,
   DIETARY_OPTIONS,
 } from "./config/FilterOption";
+import { bitescoutApi } from "../services/baseApi";
 
 export function SignUpFormOwner() {
   const navigate = useNavigate();
@@ -304,7 +305,7 @@ export function SignUpFormOwner() {
       // );
 
       // const data = await response.json();
-      await axios.post("http://localhost:8000/user/owner/register", payload);
+      await bitescoutApi.post("/user/owner/register", payload);
 
       setSuccess(true);
       setTimeout(() => navigate("/login"), 1500);

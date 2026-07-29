@@ -14,10 +14,14 @@ import {
 } from "lucide-react";
 import type { DatePlan } from "../../types/foodMatch";
 import type { Promotion } from "../../types/promotion";
-import { isPromotionActive, normalizePromotion } from "../../utils/promotionUtils";
+import {
+  isPromotionActive,
+  normalizePromotion,
+} from "../../utils/promotionUtils";
 import { PromotionPreview } from "../PromotionPreview";
 import { PlanProgressIndicator } from "./PlanProgressIndicator";
 import { Button } from "../Button";
+import { bitescoutApi } from "../../services/baseApi";
 
 interface RestaurantRecommendationPopupProps {
   plan: DatePlan | null;
@@ -48,13 +52,22 @@ export function RestaurantRecommendationPopup({
     if (!restaurant?.id) return;
     async function fetchPromos() {
       try {
-        const res = await fetch(`http://localhost:8000/promotions?restaurantId=${restaurant.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setPromotions(data.map(normalizePromotion));
-          }
+        if (!restaurant?.id) return;
+        const { data } = await bitescoutApi.get("/promotions", {
+          params: { restaurantId: restaurant.id },
+        });
+        if (Array.isArray(data)) {
+          setPromotions(data.map(normalizePromotion));
         }
+        // const res = await fetch(
+        //   `http://localhost:8000/promotions?restaurantId=${restaurant.id}`,
+        // );
+        // if (res.ok) {
+        //   const data = await res.json();
+        //   if (Array.isArray(data)) {
+        //     setPromotions(data.map(normalizePromotion));
+        //   }
+        // }
       } catch {
         /* ignore fallback */
       }
@@ -140,7 +153,9 @@ export function RestaurantRecommendationPopup({
                 <div className="rounded-xl bg-bs-neutral-50 p-3 flex gap-2">
                   <MapPin className="w-4 h-4 text-bs-red shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-bs-neutral-500">Distance (you)</p>
+                    <p className="text-xs text-bs-neutral-500">
+                      Distance (you)
+                    </p>
                     <p className="font-medium">
                       {restaurant.distance_a_km} km · ~
                       {restaurant.travel_time_a_min} min
@@ -150,7 +165,9 @@ export function RestaurantRecommendationPopup({
                 <div className="rounded-xl bg-bs-neutral-50 p-3 flex gap-2">
                   <MapPin className="w-4 h-4 text-bs-blue shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-bs-neutral-500">Distance (them)</p>
+                    <p className="text-xs text-bs-neutral-500">
+                      Distance (them)
+                    </p>
                     <p className="font-medium">
                       {restaurant.distance_b_km} km · ~
                       {restaurant.travel_time_b_min} min
@@ -175,7 +192,10 @@ export function RestaurantRecommendationPopup({
                   </div>
                   <div className="space-y-2">
                     {activePromos.map((promo) => (
-                      <PromotionPreview key={promo.promoId || promo.id} promotion={promo} />
+                      <PromotionPreview
+                        key={promo.promoId || promo.id}
+                        promotion={promo}
+                      />
                     ))}
                   </div>
                 </div>
