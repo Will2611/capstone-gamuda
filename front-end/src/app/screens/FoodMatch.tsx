@@ -164,7 +164,7 @@ export default function FoodMatch() {
     if (type === "PUSH_RECEIVED") {
       const { isMatched } = payload;
       if (isMatched) {
-        refreshNearby();
+        void refreshNearby();
       }
     }
   };

@@ -162,9 +162,10 @@ def _build_init_payload(room_id: str, viewer_id: str) -> Optional[dict]:
             .filter(ChatMessageModel.room_id == rid)
             .order_by(ChatMessageModel.created_at.desc())
             .limit(100)
-            .order_by(ChatMessageModel.created_at.asc())
+            # .order_by(ChatMessageModel.created_at.asc())
             .all()
         )
+        msgs.sort(key= lambda x: x.created_at)
         messages = []
         for m in msgs:
             author = user_by_id.get(m.user_id) if m.user_id else None

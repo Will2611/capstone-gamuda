@@ -353,7 +353,7 @@ async def like_user(
     
     match, chat_room_id, is_new = _create_or_get_connected_match(db, me, partner)
     if is_new and partner.user_notifications:
-        await webpush_list(partner.user_notifications,payload={"title": "Food Buddy Found!", "body": f"{me.display_name} has matched with you", 'isMatch':'True'})
+        await webpush_list(partner.user_notifications,payload={"title": "Food Buddy Found!", "body": f"{me.display_name} has matched with you", 'isMatched':'True'})
         
         
     return LikeResponse(
