@@ -30,6 +30,9 @@ export default function LoginPage() {
         }); // Send clients to the food map
       }
     }
+    if (!result.success) {
+    setLoading(false);
+}
 
     return result;
   };
