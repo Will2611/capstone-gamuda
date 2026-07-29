@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -10,8 +10,12 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  Tag,
 } from "lucide-react";
 import type { DatePlan } from "../../types/foodMatch";
+import type { Promotion } from "../../types/promotion";
+import { isPromotionActive, normalizePromotion } from "../../utils/promotionUtils";
+import { PromotionPreview } from "../PromotionPreview";
 import { PlanProgressIndicator } from "./PlanProgressIndicator";
 import { Button } from "../Button";
 
@@ -37,7 +41,28 @@ export function RestaurantRecommendationPopup({
   currentUserId,
 }: RestaurantRecommendationPopupProps) {
   const [ideasOpen, setIdeasOpen] = useState(true);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const restaurant = plan?.recommendation;
+
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    async function fetchPromos() {
+      try {
+        const res = await fetch(`http://localhost:8000/promotions?restaurantId=${restaurant.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setPromotions(data.map(normalizePromotion));
+          }
+        }
+      } catch {
+        /* ignore fallback */
+      }
+    }
+    fetchPromos();
+  }, [restaurant?.id]);
+
+  const activePromos = promotions.filter(isPromotionActive);
   const ideas = plan?.date_ideas;
   const alreadyAccepted = Boolean(
     currentUserId && plan?.accepted_by?.includes(currentUserId),
@@ -138,6 +163,22 @@ export function RestaurantRecommendationPopup({
                 <p className="text-sm text-bs-neutral-700 leading-relaxed">
                   {plan.ranking_reason || restaurant.summary}
                 </p>
+              )}
+
+              {activePromos.length > 0 && (
+                <div className="rounded-2xl border border-bs-neutral-200 bg-bs-neutral-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-bs-red" />
+                    <h3 className="font-semibold text-sm text-bs-neutral-900">
+                      Active Promotions ({activePromos.length})
+                    </h3>
+                  </div>
+                  <div className="space-y-2">
+                    {activePromos.map((promo) => (
+                      <PromotionPreview key={promo.promoId || promo.id} promotion={promo} />
+                    ))}
+                  </div>
+                </div>
               )}
 
               {ideas && (

@@ -13,7 +13,9 @@ import { useRestaurantMap } from "../hooks/useRestaurantMap";
 import { getSentiment, type Sentiment } from "../services/visibilityApi";
 import { trackVisit } from "../services/trackersApi";
 import type { Restaurant, SearchPreferences } from "../types/restaurant";
+import type { Promotion } from "../types/promotion";
 import { mockPromotions } from "../data/mockPromotions";
+import { normalizePromotion } from "../utils/promotionUtils";
 import PersonPin from "@/assets/person-circle-pin.svg?react";
 import FilterBar from "../components/FilterBar";
 
@@ -32,6 +34,24 @@ export default function MapInterface() {
   const { toggleFavorite, isFavorite, profile } = useUser();
 
   const [filters, setFilters] = useState<SearchPreferences>(emptyForm);
+  const [dbPromotions, setDbPromotions] = useState<Promotion[]>([]);
+
+  useEffect(() => {
+    async function fetchDbPromotions() {
+      try {
+        const response = await fetch("http://localhost:8000/promotions");
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data)) {
+            setDbPromotions(data.map(normalizePromotion));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load DB promotions in MapInterface:", err);
+      }
+    }
+    fetchDbPromotions();
+  }, []);
 
   useEffect(() => {
     if (profile?.savedPreferences) {
@@ -66,14 +86,50 @@ export default function MapInterface() {
   const [selectedPin, setSelectedPin] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("map");
 
+  const getPromotionsForRestaurant = useCallback(
+    (restaurantId: string, mockId?: string) => {
+      const allPromos = [
+        ...dbPromotions,
+        ...mockPromotions.map(normalizePromotion),
+      ];
+      return allPromos.filter((p) => {
+        const restId = (p.id || "").toLowerCase();
+        // General promotions created without a specific restaurantId apply to all restaurants
+        if (!restId) return true;
+        const rId = (restaurantId || "").toLowerCase();
+        const mId = (mockId || "").toLowerCase();
+        return restId === rId || (mId && restId === mId);
+      });
+    },
+    [dbPromotions],
+  );
+
   const [displayedRestaurants, setDisplayedRestaurants] = useState<
     Restaurant[]
   >(() =>
     MOCK_RESTAURANTS.map((restaurant) => ({
       ...restaurant,
-      promotions: mockPromotions.filter((promo) => promo.id === restaurant.id),
+      promotions: mockPromotions
+        .map(normalizePromotion)
+        .filter((promo) => promo.id === restaurant.id),
     })),
   );
+
+  // Update initial list when dbPromotions finishes loading
+  useEffect(() => {
+    setDisplayedRestaurants((prev) =>
+      prev.map((restaurant) => {
+        const mockMatch = MOCK_RESTAURANTS.find(
+          (m) => m.name.toLowerCase() === restaurant.name.toLowerCase(),
+        );
+        return {
+          ...restaurant,
+          promotions: getPromotionsForRestaurant(restaurant.id, mockMatch?.id),
+        };
+      }),
+    );
+  }, [dbPromotions, getPromotionsForRestaurant]);
+
   type SuggestedRestaurant = Restaurant & { description: string };
 
   // Randomizer useMemo
@@ -121,10 +177,7 @@ export default function MapInterface() {
                 : mockMatch?.coordinates || [101.71, 3.15],
             image: mockMatch?.image,
             images: mockMatch?.images,
-            promotions: mockPromotions.filter(
-              (promo) =>
-                promo.id === restaurantId || promo.id === mockMatch?.id,
-            ),
+            promotions: getPromotionsForRestaurant(restaurantId, mockMatch?.id),
           } as Restaurant;
         });
         setDisplayedRestaurants(mapped);
@@ -132,14 +185,12 @@ export default function MapInterface() {
         setDisplayedRestaurants(
           MOCK_RESTAURANTS.map((restaurant) => ({
             ...restaurant,
-            promotions: mockPromotions.filter(
-              (promo) => promo.id === restaurant.id,
-            ),
+            promotions: getPromotionsForRestaurant(restaurant.id),
           })),
         );
       }
     },
-    [],
+    [getPromotionsForRestaurant],
   );
 
   const filteredRestaurants = useMemo(() => {

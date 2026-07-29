@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { Promotion } from "../types/promotion";
 import { PromotionCard } from "./PromotionCard";
+import { bitescoutApi } from "../services/baseApi";
 
 interface PromotionFormProps {
   initialData?: Promotion;
@@ -212,8 +213,6 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
       setIsSubmitting(true);
       setApiError(null);
 
-      const token = localStorage.getItem("bitescouts_token");
-
       const payload = {
         title: title.trim(),
         description: description.trim(),
@@ -232,36 +231,21 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
         initialData && (initialData.id || initialData.promoId),
       );
       const targetId = initialData?.id || initialData?.promoId;
-      const url = isEdit
-        ? `http://localhost:8000/promotions/${targetId}`
-        : "http://localhost:8000/promotions";
-      const method = isEdit ? "PUT" : "POST";
+      const url = isEdit ? `/promotions/${targetId}` : "/promotions";
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const resData = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = Array.isArray(resData.detail)
-          ? resData.detail
-              .map((d: any) => `${d.loc?.join(".")}: ${d.msg}`)
-              .join(", ")
-          : resData.detail || "Failed to save promotion";
-        throw new Error(errorMsg);
-      }
+      const { data: resData } = await (isEdit
+        ? bitescoutApi.put<Promotion>(url, payload)
+        : bitescoutApi.post<Promotion>(url, { ...payload }));
 
       onSubmit?.(resData);
       navigate("/promotion");
     } catch (err: any) {
       console.error("Failed to save promotion:", err);
-      setApiError(err.message || "Failed to save promotion to database");
+      setApiError(
+        err.response.data.detail ||
+          err.message ||
+          "Failed to save promotion to database",
+      );
     } finally {
       setIsSubmitting(false);
     }

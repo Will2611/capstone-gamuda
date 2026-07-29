@@ -87,7 +87,7 @@ export function RestaurantPopupCard({
 }: RestaurantPopupCardProps) {
   const [activeSlide, setActiveSlide] = useState<0 | 1>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isPromotionsExpanded, setIsPromotionsExpanded] = useState(false);
+  const [isPromotionsExpanded, setIsPromotionsExpanded] = useState(true);
 
   const tiktokUrl = getTikTokSearchUrl(restaurant.name);
   const instagramUrl = getInstagramTagUrl(restaurant.name);
@@ -430,7 +430,7 @@ export function RestaurantPopupCard({
                   <>
                     <div className="bg-white rounded-2xl border border-bs-neutral-200 p-4">
                       <div className="h-48">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <PieChart>
                             <Pie
                               key="sentiment"

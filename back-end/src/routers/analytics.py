@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from src.database.connection import db_dependency
 from src.database.models.promotion import PromotionModel
 from src.services.google_sheets import sheet_service
+from src.database.schemas.promotion import PromotionResponse
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -12,7 +13,8 @@ async def get_dashboard_analytics(db: db_dependency):
     
     # 2. 查询 PostgreSQL 数据库
     db_promotions = db.query(PromotionModel).all()
-    
+    # Serialize promotions using Pydantic schema
+    serialized_promos = [PromotionResponse.from_orm(p).dict() for p in db_promotions]
     # 3. 统一返回结构 (全部改为安全的 menu_items)
     return {
         "step1_data": {
@@ -21,6 +23,6 @@ async def get_dashboard_analytics(db: db_dependency):
             "financial_summary": sheet_data["financial_summary"]
         },
         "step2_data": {
-            "historical_campaigns": db_promotions 
+            "historical_campaigns": serialized_promos
         }
     }
