@@ -132,7 +132,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
   const handleApplyRecommendation = (rec: AIPromotionRecommendation) => {
     setTitle(rec.title);
     setDescription(rec.description);
-    if (rec.suggested_image_url) setImageUrl(rec.suggested_image_url);
+    // if (rec.suggested_image_url) setImageUrl(rec.suggested_image_url);
     if (rec.suggested_start_date) setStartDate(rec.suggested_start_date);
     if (rec.suggested_end_date) setEndDate(rec.suggested_end_date);
 
@@ -408,9 +408,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   ) : (
                     <Wand2 size={12} />
                   )}
-                  {title
-                    ? `Rewrite Title (v${titleGenCount + 1})`
-                    : "AI Generate Title"}
+                  {title ? `Rewrite Title` : "AI Generate Title"}
                 </button>
               </div>
               <input
@@ -452,9 +450,7 @@ export function PromotionForm({ initialData, onSubmit }: PromotionFormProps) {
                   ) : (
                     <Wand2 size={12} />
                   )}
-                  {description
-                    ? `Generate Next Idea (v${descGenCount + 1})`
-                    : "AI Generate Copy"}
+                  {description ? `Generate Next Idea` : "AI Generate Copy"}
                 </button>
               </div>
               <textarea
