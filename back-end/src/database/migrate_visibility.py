@@ -103,7 +103,7 @@ def users_update(conn:Connection, inspector: Inspector):
 def chat_rooms_update(conn:Connection, inspector: Inspector):
     existing_cols = inspector.get_columns('chat_rooms')
     existing_index_names = set([col['name'] for col in existing_cols])
-    if 'user_notifications' not in existing_index_names:
+    if 'session_id' not in existing_index_names:
         conn.execute(text("ALTER TABLE chat_rooms ADD COLUMN session_id UUID"))
 
     return
@@ -111,7 +111,7 @@ def chat_rooms_update(conn:Connection, inspector: Inspector):
 def chat_messages_update(conn:Connection, inspector: Inspector):
     existing_cols = inspector.get_columns('chat_messages')
     existing_index_names = set([col['name'] for col in existing_cols])
-    if 'user_notifications' not in existing_index_names:
+    if 'session_id' not in existing_index_names:
         conn.execute(text("ALTER TABLE chat_messages ADD COLUMN session_id UUID"))
     return
 def drop_tables(conn:Connection, inspector:Inspector, table_names:list[str]):
